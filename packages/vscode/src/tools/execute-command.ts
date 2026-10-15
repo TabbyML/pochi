@@ -46,7 +46,15 @@ export const executeCommand: ToolFunctionType<
     background = false,
     timeout = ExecuteCommandDefaultTimeoutSec,
   },
-  { abortSignal, cwd: workspaceDir, envs, toolCallId, taskId, allowBackground },
+  {
+    abortSignal,
+    cwd: workspaceDir,
+    envs,
+    toolCallId,
+    taskId,
+    rootTaskId,
+    allowBackground,
+  },
 ) => {
   if (!command) {
     throw new Error("Command is required to execute.");
@@ -75,6 +83,7 @@ export const executeCommand: ToolFunctionType<
       location,
       abortSignal,
       taskId,
+      rootTaskId,
       ...(envs ? { envs } : {}),
     });
     job.revealTerminal();
@@ -159,6 +168,8 @@ export const executeCommand: ToolFunctionType<
             cwd,
             location,
             taskId,
+            rootTaskId,
+            abortSignal,
             ...(envs ? { envs } : {}),
           });
           job.revealTerminal();

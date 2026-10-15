@@ -9,6 +9,7 @@ import { signal } from "@preact/signals-core";
 import * as R from "remeda";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
+import { TerminalJob } from "../terminal/terminal-job";
 import { PochiTaskEditorProvider } from "../webview/webview-panel";
 
 const logger = getLogger("TaskActivityTracker");
@@ -43,7 +44,14 @@ export class TaskActivityTracker implements vscode.Disposable {
     this.disposables.push(
       taskPendingApproval.event(this.onTaskPendingApproval),
     );
+
+    // A command may finish startup or become background after its tab closed.
+    this.disposables.push(TerminalJob.onDidCreate(this.stopIfTaskClosed));
   }
+
+  private stopIfTaskClosed = (job: TerminalJob) => {
+    if (job.rootTaskId && !this.state.value[job.rootTaskId]) job.kill();
+  };
 
   private onTabChanged = () => {
     const tabGroups = vscode.window.tabGroups.all;
@@ -84,6 +92,7 @@ export class TaskActivityTracker implements vscode.Disposable {
     }
 
     this.saveState(newState);
+    for (const job of TerminalJob.list()) this.stopIfTaskClosed(job);
   };
 
   private onTaskUpdated = ({ event }: { event: unknown }) => {

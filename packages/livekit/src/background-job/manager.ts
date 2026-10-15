@@ -30,6 +30,7 @@ import { defaultCatalog as catalog } from "../livestore";
 import { createBackgroundSubagentNotification } from "../task-utils";
 import type { LiveKitStore, Message } from "../types";
 import { MonitorDelivery } from "./monitor-delivery";
+import { MonitorWakeup } from "./monitor-wakeup";
 import type { BackgroundJobEntry, JobStatus } from "./state";
 
 const logger = getLogger("BackgroundJobManager");
@@ -68,6 +69,8 @@ export interface BackgroundCommandAdaptor {
   ): Promise<{
     dispose(): void;
     acknowledge(notificationId: string): Promise<void>;
+    /** Read stable pending output, including buffers, without acknowledging it. */
+    snapshotPending?(): Promise<BackgroundJobNotification[]>;
   }>;
 }
 
@@ -113,9 +116,12 @@ type TaskSubscription = {
   )[];
   dispose?: () => void;
   acknowledge?: (id: string) => Promise<void>;
+  snapshotPending?: () => Promise<BackgroundJobNotification[]>;
   acknowledging: Map<string, Promise<void>>;
   acknowledgeRetry?: ReturnType<typeof setTimeout>;
-  listeners: Set<(notifications: BackgroundJobNotification[]) => void>;
+  listeners: Set<
+    (notifications: BackgroundJobNotification[], wakeup?: boolean) => void
+  >;
 };
 
 /** One manager per store. All task-scoped handles below delegate to this instance. */
@@ -152,6 +158,7 @@ export class BackgroundJobManager {
   private readonly autoMemories = new Map<string, AutoMemoryAdaptor>();
   private readonly subscriptions = new Map<string, TaskSubscription>();
   private readonly monitorDeliveries = new Map<string, MonitorDelivery>();
+  private readonly monitorWakeups = new Map<string, MonitorWakeup>();
   /** Jobs whose owner stopped them itself; their notifications stay undelivered. */
   private readonly silenced = new Set<string>();
   private readonly listeners = new Set<() => void>();
@@ -676,6 +683,7 @@ export class BackgroundJobManager {
           else {
             subscription.dispose = remote.dispose;
             subscription.acknowledge = remote.acknowledge;
+            subscription.snapshotPending = remote.snapshotPending;
           }
         });
       await Promise.all([this.observeCommands(), notificationsReady]);
@@ -708,16 +716,72 @@ export class BackgroundJobManager {
   }
 
   getReadyNotifications(taskId: string): BackgroundJobNotification[] {
-    return this.monitorDelivery(taskId).ready(
-      this.getPendingNotifications(taskId),
+    const notifications = this.getPendingNotifications(taskId);
+    return this.isAutoWakeReady(taskId, notifications)
+      ? this.monitorDelivery(taskId).ready(notifications)
+      : [];
+  }
+
+  private monitorWakeup(taskId: string) {
+    let wakeup = this.monitorWakeups.get(taskId);
+    if (!wakeup) {
+      wakeup = new MonitorWakeup(() => {
+        if (this.disposed) return;
+        // Readiness can change without any new output. Wake both subscribed
+        // webviews and CLI / executor waiters, which recheck their own guards.
+        this.deliver(taskId, true);
+        this.revision++;
+        for (const listener of this.listeners) listener();
+      });
+      this.monitorWakeups.set(taskId, wakeup);
+    }
+    return wakeup;
+  }
+
+  private isAutoWakeReady(
+    taskId: string,
+    notifications: readonly BackgroundJobNotification[],
+  ) {
+    return this.monitorWakeup(taskId).ready(notifications);
+  }
+
+  startNotificationTurn(taskId: string) {
+    return this.monitorWakeup(taskId).started();
+  }
+
+  /** Read all pending output for a request; persistence still owns acknowledgement. */
+  async snapshotPendingNotifications(taskId: string) {
+    await this.watchTask(taskId);
+    // Read the source even if the observable is empty or still awaiting an ACK.
+    const snapshot = await this.subscriptions.get(taskId)?.snapshotPending?.();
+    const { delivered, pending } = this.readNotifications(taskId);
+    const merged = new Map(
+      [...pending, ...(snapshot ?? [])].map((notice) => [
+        notice.notificationId,
+        notice,
+      ]),
     );
+    return [...merged.values()].filter((notice) => {
+      const job = this.jobs.get(notice.backgroundJobId);
+      return (
+        !delivered.has(notice.notificationId) &&
+        !this.silenced.has(notice.backgroundJobId) &&
+        (!job || job.ownerTaskId === taskId)
+      );
+    });
   }
 
   takeReadyNotifications(
     taskId: string,
     notifications: readonly BackgroundJobNotification[],
     maxMonitorCharacters?: number,
+    automatic = false,
   ): BackgroundJobNotification[] {
+    if (automatic) {
+      if (!this.isAutoWakeReady(taskId, notifications)) return [];
+    } else {
+      this.monitorWakeup(taskId).clear();
+    }
     return this.monitorDelivery(taskId).take(
       notifications,
       maxMonitorCharacters,
@@ -765,7 +829,10 @@ export class BackgroundJobManager {
 
   subscribeNotifications(
     taskId: string,
-    listener: (notifications: BackgroundJobNotification[]) => void,
+    listener: (
+      notifications: BackgroundJobNotification[],
+      wakeup?: boolean,
+    ) => void,
   ) {
     void this.watchTask(taskId)
       .then(() => {
@@ -783,10 +850,11 @@ export class BackgroundJobManager {
     };
   }
 
-  private deliver(taskId: string) {
+  private deliver(taskId: string, wakeup = false) {
     const subscription = this.subscriptions.get(taskId);
     if (!subscription) return;
     const { delivered, pending } = this.readNotifications(taskId);
+    if (!wakeup) this.isAutoWakeReady(taskId, pending);
     for (const notice of subscription.notifications) {
       const id = notice.notificationId;
       const silenced = this.silenced.has(notice.backgroundJobId);
@@ -818,7 +886,7 @@ export class BackgroundJobManager {
           .finally(() => subscription.acknowledging.delete(id)),
       );
     }
-    for (const listener of subscription.listeners) listener(pending);
+    for (const listener of subscription.listeners) listener(pending, wakeup);
   }
 
   private isJobPending(job: Job) {
@@ -1040,6 +1108,8 @@ export class BackgroundJobManager {
     if (this.disposed) return;
     this.disposed = true;
     this.disposeCommands?.();
+    for (const wakeup of this.monitorWakeups.values()) wakeup.clear();
+    this.monitorWakeups.clear();
     this.monitorDeliveries.clear();
     for (const subscription of this.subscriptions.values()) {
       subscription.dispose?.();
@@ -1047,10 +1117,24 @@ export class BackgroundJobManager {
     }
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
     this.changed();
-    await this.executor?.dispose();
+    // Kill every running command started by a task in this store, including
+    // commands of subtasks that have already completed.
+    const commandIds = Object.entries(this.runningCommands)
+      .filter(([, { taskId }]) =>
+        taskId
+          ? this.store.query(catalog.queries.makeTaskQuery(taskId))
+          : false,
+      )
+      .map(([id]) => id);
+    const results = await Promise.allSettled([
+      this.executor?.dispose(),
+      ...commandIds.map((id) => this.commandAdaptor?.kill(id)),
+    ]);
     this.adaptor?.dispose?.();
     if (BackgroundJobManager.stores.get(this.store) === this)
       BackgroundJobManager.stores.delete(this.store);
+    const failed = results.find((result) => result.status === "rejected");
+    if (failed) throw failed.reason;
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);

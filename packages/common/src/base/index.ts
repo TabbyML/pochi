@@ -31,6 +31,7 @@ export {
   acknowledgeBackgroundJobNotification,
   enqueueBackgroundJobNotification,
   getPendingBackgroundJobNotifications,
+  snapshotPendingBackgroundJobNotifications,
 } from "./background-job-notification-queue";
 export {
   createBackgroundSubAgentStartedResult,

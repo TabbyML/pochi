@@ -1,6 +1,12 @@
 import {
   type BackgroundJobNotification,
+  type BackgroundJobNotificationQueueEntry,
+  type BackgroundMonitorNotification,
+  acknowledgeBackgroundJobNotification,
   createBackgroundJobNotification,
+  enqueueBackgroundJobNotification,
+  getPendingBackgroundJobNotifications,
+  snapshotPendingBackgroundJobNotifications,
 } from "@getpochi/common";
 import type { ChatInit, ChatStatus } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,8 +25,174 @@ const kits = new Set<LiveChatKit<FakeChat>>();
 afterEach(async () => {
   await Promise.all([...kits].map((kit) => kit.backgroundJobManager.dispose()));
   kits.clear();
+  vi.useRealTimers();
 });
 describe("LiveChatKit background job notification delivery", () => {
+  it("shares the automatic progress cooldown across chat instances while explicit delivery bypasses it", async () => {
+    vi.useFakeTimers();
+    const { kit, push, store, setMessages } = await makeQueuedChatKit();
+    push("first");
+    expect(kit.flushBackgroundJobNotifications()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(kit.flushBackgroundJobNotifications()).toBe(true);
+    await makeRequest(kit);
+    setMessages("task-1", kit.chat.messages);
+    await Promise.resolve();
+    const secondKit = makeChatKit(undefined, store);
+    secondKit.chat.messages = [...kit.chat.messages, assistantMessage()];
+    push("second");
+    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
+    await vi.advanceTimersByTimeAsync(9999);
+    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(secondKit.flushBackgroundJobNotifications()).toBe(true);
+    await makeRequest(secondKit);
+    setMessages("task-1", secondKit.chat.messages);
+    await Promise.resolve();
+    secondKit.chat.status = "ready";
+    secondKit.chat.messages.push(assistantMessage());
+    push("third");
+    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(secondKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    expect(idsOf(secondKit.chat.messages.at(-1)!.parts)).toEqual(["third"]);
+  });
+
+  it("keeps accumulated output within the remaining per-request budget", async () => {
+    const { kit, push, pending, setMessages } = await makeQueuedChatKit();
+    const lines = ["x".repeat(8192)];
+    for (let index = 0; index < 3; index++) {
+      const backgroundJobId = `bgjob-monitor-${index}`;
+      push(`head-${index}`, { lines, backgroundJobId });
+      push(`buffer-${index}`, { lines, backgroundJobId });
+    }
+    expect(kit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    await makeRequest(kit);
+    const sent = idsOf(kit.chat.messages.at(-1)!.parts);
+    expect(sent).toEqual(["head-0", "head-1", "head-2", "buffer-0"]);
+    expect(pending()).toHaveLength(6);
+    expect(idsOf(kit.pendingBackgroundJobNotifications)).toEqual(["buffer-1", "buffer-2"]);
+    setMessages("task-1", kit.chat.messages);
+    await Promise.resolve();
+    kit.chat.messages.push(assistantMessage(), userMessage("continue"));
+    await makeRequest(kit);
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["buffer-1", "buffer-2"]);
+  });
+
+  it.each(["automatic", "user", "continuation"])(
+    "includes accumulated output in the same %s request before acknowledging either snapshot",
+    async (trigger) => {
+      vi.useFakeTimers();
+      const { kit, push, snapshotPending, acknowledge, setMessages, pending } = await makeQueuedChatKit();
+      kit.chat.messages = trigger === "user"
+        ? [assistantMessage(), userMessage("continue")]
+        : [userMessage("watch"), assistantMessage()];
+      push("first");
+      push("second");
+      push("third");
+      expect(pending().map((item) => item.notificationId)).toEqual(["first"]);
+      if (trigger === "automatic") {
+        expect(kit.flushBackgroundJobNotifications()).toBe(false);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(kit.flushBackgroundJobNotifications()).toBe(true);
+      }
+      await makeRequest(kit);
+      const parts = kit.chat.messages.at(-1)!.parts;
+      expect(idsOf(parts)).toEqual(["first", "second"]);
+      expect(parts.filter((part) => part.type === "data-background-job-notification").map((part) => part.data)).toMatchObject([
+        { lines: ["first"] }, { lines: ["second", "third"] },
+      ]);
+      expect(snapshotPending).toHaveBeenCalledExactlyOnceWith();
+      expect(acknowledge).not.toHaveBeenCalled();
+      // Retrying a snapshot cannot duplicate it or acknowledge it early.
+      await makeRequest(kit);
+      expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["first", "second"]);
+      expect(pending()).toHaveLength(2);
+      setMessages("task-1", kit.chat.messages);
+      await Promise.resolve();
+      expect(pending()).toEqual([]);
+      expect(acknowledge.mock.calls.map(([id]) => id).sort()).toEqual(["first", "second"]);
+    },
+  );
+
+  it("retains request snapshots if the request is aborted, including later output on a subsequent request", async () => {
+    const { kit, push, pending, acknowledge, setMessages } = await makeQueuedChatKit();
+    kit.chat.messages = [userMessage("watch")];
+    push("first");
+    push("second");
+    const controller = new AbortController();
+    controller.abort();
+    await expect(makeRequest(kit, controller.signal)).rejects.toThrow();
+    expect(acknowledge).not.toHaveBeenCalled();
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual([]);
+    push("later");
+    await makeRequest(kit);
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["first", "second"]);
+    setMessages("task-1", kit.chat.messages);
+    await Promise.resolve();
+    expect(pending().map((item) => item.notificationId)).toEqual(["later"]);
+    kit.chat.messages.push(assistantMessage(), userMessage("continue"));
+    await makeRequest(kit);
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["later"]);
+  });
+
+  it("reads all accumulated output even before the first observable notification arrives", async () => {
+    const { kit, push, snapshotPending, acknowledge } = await makeQueuedChatKit({ publishUpdates: false });
+    kit.chat.messages = [userMessage("continue")];
+    push("first");
+    push("second");
+    push("third");
+    push("other", { backgroundJobId: "bgjob-monitor-other" });
+    expect(kit.backgroundJobManager.getPendingNotifications("task-1")).toEqual([]);
+    await makeRequest(kit);
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["first", "other", "second"]);
+    expect(kit.chat.messages.at(-1)!.parts).toContainEqual(expect.objectContaining({
+      type: "data-background-job-notification",
+      data: expect.objectContaining({ notificationId: "second", lines: ["second", "third"] }),
+    }));
+    expect(snapshotPending).toHaveBeenCalledExactlyOnceWith();
+    expect(acknowledge).not.toHaveBeenCalled();
+  });
+
+  it("retries a failed snapshot read without attaching or acknowledging partial output", async () => {
+    const { kit, push, snapshotPending, acknowledge } = await makeQueuedChatKit();
+    kit.chat.messages = [userMessage("continue")];
+    push("first");
+    push("second");
+    snapshotPending.mockRejectedValueOnce(new Error("source unavailable"));
+    await expect(makeRequest(kit)).rejects.toThrow("source unavailable");
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual([]);
+    expect(acknowledge).not.toHaveBeenCalled();
+    push("third");
+    await makeRequest(kit);
+    expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["first", "second"]);
+    expect(kit.chat.messages.at(-1)!.parts).toContainEqual(expect.objectContaining({
+      type: "data-background-job-notification",
+      data: expect.objectContaining({ notificationId: "second", lines: ["second", "third"] }),
+    }));
+    expect(acknowledge).not.toHaveBeenCalled();
+  });
+
+  it("collects hidden output when a delivered head is still awaiting its source ACK", async () => {
+    const { kit, push, acknowledge, setMessages } = await makeQueuedChatKit();
+    // Hold the source ACK while the next user request is already starting.
+    let release!: () => void;
+    acknowledge.mockImplementationOnce(() => new Promise<void>((resolve) => { release = resolve; }));
+    push("first");
+    push("second");
+    kit.chat.messages = [
+      createBackgroundJobNotificationMessage(toBackgroundJobNotificationParts([{ ...monitorEvent("first"), lines: ["first"] }])),
+      assistantMessage(), userMessage("continue"),
+    ];
+    setMessages("task-1", kit.chat.messages);
+    expect(kit.backgroundJobManager.getPendingNotifications("task-1")).toEqual([]);
+    try {
+      await makeRequest(kit);
+      expect(idsOf(kit.chat.messages.at(-1)!.parts)).toEqual(["second"]);
+    } finally {
+      release();
+    }
+  });
+
   it("attaches another monitor batch to the next request without waiting", async () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [userMessage("watch")];
@@ -43,18 +215,19 @@ describe("LiveChatKit background job notification delivery", () => {
       chatKit.chat.messages = [userMessage("watch"), assistantMessage()];
       chatKit.enqueueBackgroundJobNotifications([monitorEvent("event")]);
       chatKit.chat.status = status;
-      expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+      expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(false);
       expect(chatKit.chat.sentMessages).toHaveLength(0);
       expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
         "event",
       ]);
       chatKit.chat.status = "ready";
-      expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+      expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
       expect(chatKit.chat.sentMessages).toHaveLength(1);
     },
   );
 
-  it("retains the original notification after a synchronous host failure and deduplicates the retry", () => {
+  it("retains the original notification after a synchronous host failure and deduplicates the retry", async () => {
+    vi.useFakeTimers();
     const startTurn = vi.fn((_message: Message): void => {
       throw new Error("send failed");
     });
@@ -62,6 +235,8 @@ describe("LiveChatKit background job notification delivery", () => {
     const event = monitorEvent("event");
     chatKit.chat.messages = [userMessage("watch"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications([event]);
+    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
     expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["event"]);
     startTurn.mockImplementation((message) => {
@@ -75,15 +250,17 @@ describe("LiveChatKit background job notification delivery", () => {
   });
 
   it("retains a batch when the SDK rejects before accepting its message", async () => {
+    vi.useFakeTimers();
     const chatKit = makeChatKit();
     const send = vi
       .spyOn(chatKit.chat, "sendMessage")
       .mockRejectedValueOnce(new Error("send failed"));
     chatKit.enqueueBackgroundJobNotifications([monitorEvent("event")]);
+    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    await vi.advanceTimersByTimeAsync(1000);
     expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
-    await expect
-      .poll(() => idsOf(chatKit.pendingBackgroundJobNotifications))
-      .toEqual(["event"]);
+    await Promise.resolve();
+    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["event"]);
     expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
     expect(send).toHaveBeenCalledTimes(2);
     expect(idsOf(send.mock.calls[1][0].parts)).toEqual(["event"]);
@@ -100,7 +277,7 @@ describe("LiveChatKit background job notification delivery", () => {
         lines: Array.from({ length: 4 }, () => "x".repeat(2048)),
       })),
     );
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
     await makeRequest(chatKit);
     expect(idsOf(chatKit.chat.messages.at(-1)!.parts)).toEqual([
       "0",
@@ -114,7 +291,7 @@ describe("LiveChatKit background job notification delivery", () => {
     ]);
     chatKit.chat.messages.push(assistantMessage());
     chatKit.chat.status = "ready";
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
     await makeRequest(chatKit);
     expect(idsOf(chatKit.chat.messages.at(-1)!.parts)).toEqual(["4", "5"]);
     expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
@@ -448,10 +625,11 @@ describe("LiveChatKit background job notification delivery", () => {
 });
 function makeChatKit(
   backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions,
+  store = new FakeStore() as unknown as LiveKitStore,
 ) {
   const kit = new LiveChatKit<FakeChat>({
     taskId: "task-1",
-    store: new FakeStore() as unknown as LiveKitStore,
+    store,
     blobStore: {} as BlobStore,
     chatClass: FakeChat,
     getters: {
@@ -463,15 +641,53 @@ function makeChatKit(
   return kit;
 }
 /** Runs the hook the patched ai-sdk calls right before it snapshots. */
-async function makeRequest(chatKit: LiveChatKit<FakeChat>) {
+async function makeRequest(chatKit: LiveChatKit<FakeChat>, abortSignal = new AbortController().signal) {
   const chat = chatKit.chat as unknown as {
     onBeforeSnapshotInMakeRequest: (options: {
       abortSignal: AbortSignal;
     }) => Promise<void>;
   };
   await chat.onBeforeSnapshotInMakeRequest({
-    abortSignal: new AbortController().signal,
+    abortSignal,
   });
+}
+
+async function makeQueuedChatKit({ publishUpdates = true } = {}) {
+  const data = makeJobStore();
+  const kit = makeChatKit(undefined, data.store);
+  let queue: BackgroundJobNotificationQueueEntry[] = [];
+  const pending = () => getPendingBackgroundJobNotifications(queue);
+  let update = (_notifications: readonly BackgroundJobNotification[]) => {};
+  const acknowledge = vi.fn(async (id: string) => {
+    queue = acknowledgeBackgroundJobNotification(queue, id);
+    update(pending());
+  });
+  const snapshotPending = vi.fn(async () => {
+    const snapshot = snapshotPendingBackgroundJobNotifications(queue);
+    queue = snapshot.queue;
+    // Exercise an RPC response arriving before its observable update.
+    return snapshot.notifications;
+  });
+  kit.backgroundJobManager.connect({
+    kill: async () => {},
+    observeCommands: async (onChange) => {
+      onChange({});
+      return { dispose() {} };
+    },
+    observeNotifications: async (_taskId, onChange) => {
+      update = onChange;
+      update(pending());
+      return { acknowledge, snapshotPending, dispose() {} };
+    },
+  });
+  await kit.backgroundJobManager.watchTask("task-1");
+  return {
+    ...data, kit, pending, snapshotPending, acknowledge,
+    push(id: string, overrides: Partial<BackgroundMonitorNotification> = {}) {
+      queue = enqueueBackgroundJobNotification(queue, { ...monitorEvent(id), lines: [id], ...overrides });
+      if (publishUpdates) update(pending());
+    },
+  };
 }
 function idsOf(parts: readonly Message["parts"][number][]) {
   return getBackgroundJobNotificationIds(parts);

@@ -89,7 +89,9 @@ interface UseChatSubmitProps {
    */
   onBeforeSendText?: (text: string) => void;
   /** Asks the chat kit to deliver its pending notifications right away. */
-  flushBackgroundJobNotifications?: () => boolean;
+  flushBackgroundJobNotifications?: (options?: {
+    automatic?: boolean;
+  }) => boolean;
 }
 
 export function useChatSubmit({
@@ -531,7 +533,7 @@ export function useChatSubmit({
     if (readyToSend) {
       // Explicit steering resumes the agent after handleStop paused it.
       autoApproveGuard.current = "auto";
-      flushBackgroundJobNotifications?.();
+      flushBackgroundJobNotifications?.({ automatic: false });
     }
   }, [
     allowSteer,

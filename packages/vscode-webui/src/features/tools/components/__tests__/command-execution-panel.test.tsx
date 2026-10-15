@@ -275,7 +275,7 @@ describe("BackgroundJobPanel job control", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(row.getAttribute("aria-expanded")).toBe("false");
     expect(screen.queryByText(/first log/)).toBeNull();
-    expect(row.querySelector(".lucide-activity")).not.toBeNull();
+    expect(row.parentElement?.querySelector(".lucide-activity")).not.toBeNull();
     expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
     expect(row.querySelector(".lucide-chevron-left")).not.toBeNull();
     expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
@@ -383,10 +383,44 @@ describe("BackgroundJobPanel job control", () => {
     );
 
     const row = screen.getByLabelText("backgroundJobNotifications.openOutput");
-    expect(row.firstElementChild?.textContent).toBe("%2");
+    const displayId = screen.getByLabelText(
+      "commandExecutionPanel.terminalClosedOpenOutput",
+    );
+    expect(displayId.textContent).toBe("%2");
+    expect(displayId.nextElementSibling).toBe(row);
     expect(container.querySelector(".lucide-terminal")).toBeNull();
-    fireEvent.click(row);
+    fireEvent.click(displayId);
     expect(openFile).toHaveBeenCalledWith("/tmp/bgjob-cmd-1.log");
+    fireEvent.click(row);
+    expect(openFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens a running monitor's terminal from its notification job number", () => {
+    jobInfo = { command: "watch logs", displayId: "%5" };
+    backgroundCommands = { "bgjob-monitor-1": { isVisible: false } };
+
+    render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-monitor-1"
+        appearance="notification"
+        command="watch logs"
+        notificationTitle="Simulated log entries"
+        notificationEvents={[{ id: "event-1", text: "first log" }]}
+        outputFile="/tmp/monitor.log"
+      />,
+    );
+
+    const row = screen.getByRole("button", {
+      name: "commandExecutionPanel.expand",
+    });
+    const displayId = screen.getByLabelText("commandExecutionPanel.openJob");
+    expect(displayId.textContent).toBe("%5");
+    expect(row.contains(displayId)).toBe(false);
+
+    fireEvent.click(displayId);
+    expect(showBackgroundCommand).toHaveBeenCalledWith("bgjob-monitor-1");
+    expect(openFile).not.toHaveBeenCalled();
+    expect(row.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("truncates a long notification command", () => {

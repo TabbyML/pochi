@@ -26,57 +26,41 @@ export const useManageBrowserSession = ({
 }: { messages: Message[] }) => {
   const store = useDefaultStore();
   const { browserSettings } = useBrowserAgentSettings();
-  const lastMessage = messages.at(-1);
-
   useEffect(() => {
-    const manageBrowserSession = async () => {
-      if (!browserSettings) {
-        return;
-      }
+    if (!browserSettings) return;
+    const { taskId: parentId } = decodeStoreId(store.storeId);
 
-      if (!lastMessage) {
-        return;
-      }
-
-      for (const part of lastMessage.parts) {
-        if (part.type !== "tool-newTask") {
-          continue;
-        }
-        if (part.input?.agentType !== "browser") {
-          continue;
-        }
-
-        // Register browser related sessions
-        if (part.state === "input-available") {
-          const taskId = part.input?._meta?.uid || "";
-          const { taskId: parentId } = decodeStoreId(store.storeId);
-          if (!browserSessionManager.isRegistered(taskId)) {
-            await browserSessionManager.registerSession(taskId, parentId, {
-              viewport:
-                browserSettings.runtime.mode === "managed"
-                  ? browserSettings.managedBrowser.viewport
-                  : undefined,
-            });
-          }
-        }
-
-        // Unregister browser related sessions
+    // Completion and the next assistant message can arrive in the same render.
+    // Inspect the whole trajectory so a finished browser call is still flushed.
+    for (const message of messages) {
+      for (const part of message.parts) {
         if (
+          part.type !== "tool-newTask" ||
+          part.input?.agentType !== "browser"
+        ) {
+          continue;
+        }
+        const taskId = part.input._meta?.uid;
+        if (!taskId) continue;
+
+        if (part.state === "input-available") {
+          void browserSessionManager.registerSession(taskId, parentId, {
+            viewport:
+              browserSettings.runtime.mode === "managed"
+                ? browserSettings.managedBrowser.viewport
+                : undefined,
+          });
+        } else if (
           part.state === "output-available" ||
           part.state === "output-error"
         ) {
-          const taskId = part.input?._meta?.uid || "";
-          if (browserSessionManager.isRegistered(taskId)) {
-            await browserSessionManager.unregisterSession(
-              taskId,
-              part.toolCallId,
-              store,
-            );
-          }
+          void browserSessionManager.unregisterSession(
+            taskId,
+            part.toolCallId,
+            store,
+          );
         }
       }
-    };
-
-    manageBrowserSession();
-  }, [browserSettings, lastMessage, store]);
+    }
+  }, [browserSettings, messages, store]);
 };

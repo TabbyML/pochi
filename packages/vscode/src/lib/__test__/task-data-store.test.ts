@@ -5,6 +5,58 @@ import type * as vscode from "vscode";
 import { TaskDataStore } from "../task-data-store";
 
 describe("TaskDataStore background job notifications", () => {
+  it("atomically snapshots accumulated output, persists retry snapshots, and isolates output arriving afterward", async () => {
+    let persisted: Record<string, unknown> = {};
+    const context = { globalState: {
+      get: () => persisted,
+      update: async (_key: string, value: Record<string, unknown>) => {
+        await new Promise<void>((resolve) => setImmediate(resolve));
+        persisted = value;
+      },
+    } } as unknown as vscode.ExtensionContext;
+    const store = new TaskDataStore(context);
+    await store.addBackgroundJobNotification("task", monitor("watch:0"));
+    const [, snapshot] = await Promise.all([
+      store.addBackgroundJobNotification("task", monitor("watch:1")),
+      store.snapshotPendingBackgroundJobNotifications("task"),
+      store.addBackgroundJobNotification("task", monitor("watch:2")),
+    ]);
+    assert.deepStrictEqual(snapshot, [monitor("watch:0"), monitor("watch:1")]);
+    const reloaded = new TaskDataStore(context);
+    assert.deepStrictEqual(await reloaded.snapshotPendingBackgroundJobNotifications("task"), snapshot);
+    assert.deepStrictEqual(await reloaded.snapshotPendingBackgroundJobNotifications("sibling"), []);
+    await Promise.all(snapshot.map((item) => reloaded.acknowledgeBackgroundJobNotification("task", item.notificationId)));
+    assert.deepStrictEqual(new TaskDataStore(context).getBackgroundJobNotificationsSignal("task").value, [monitor("watch:2")]);
+  });
+
+  it("does not expose a snapshot until it is persisted and can retry a failed write", async () => {
+    let persisted: Record<string, unknown> = {};
+    let failNextWrite = false;
+    const context = { globalState: {
+      get: () => persisted,
+      update: async (_key: string, value: Record<string, unknown>) => {
+        if (failNextWrite) {
+          failNextWrite = false;
+          throw new Error("storage unavailable");
+        }
+        persisted = value;
+      },
+    } } as unknown as vscode.ExtensionContext;
+    const store = new TaskDataStore(context);
+    await store.addBackgroundJobNotification("task", monitor("watch:0"));
+    await store.addBackgroundJobNotification("task", monitor("watch:1"));
+    failNextWrite = true;
+    await assert.rejects(store.snapshotPendingBackgroundJobNotifications("task"), /storage unavailable/);
+    assert.deepStrictEqual(store.getBackgroundJobNotificationsSignal("task").value, [monitor("watch:0")]);
+    const reloaded = new TaskDataStore(context);
+    await reloaded.addBackgroundJobNotification("task", monitor("watch:2"));
+    const snapshot = await reloaded.snapshotPendingBackgroundJobNotifications("task");
+    assert.deepStrictEqual(snapshot, [monitor("watch:0"), { ...monitor("watch:1"), lines: ["watch:1", "watch:2"], omittedLines: 0 }]);
+    assert.deepStrictEqual(await new TaskDataStore(context).snapshotPendingBackgroundJobNotifications("task"), snapshot);
+    await Promise.all(snapshot.map((item) => reloaded.acknowledgeBackgroundJobNotification("task", item.notificationId)));
+    assert.deepStrictEqual(await reloaded.snapshotPendingBackgroundJobNotifications("task"), []);
+  });
+
   it("stores command and monitor notifications together across reloads and acknowledgements", async () => {
     let persisted: Record<string, unknown> = {};
     const context = { globalState: {
