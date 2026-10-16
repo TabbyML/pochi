@@ -6,7 +6,12 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import {
+  formatters,
+  getLogger,
+  isForkAgentUseCase,
+  prompts,
+} from "@getpochi/common";
 import {
   hasActiveTodos,
   stripOpenAIItemReferencesFromLastStep,
@@ -587,14 +592,25 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
-      // If restoring the environment needs a new message, append its complete
-      // reminder before the SDK snapshot. Ordinary turns inject in the transport.
-      const prepared = await this.transport.prepareEnvironment(
-        this.chat.messages,
-      );
-      if (!prepared) return; // sendMessages reports the environment error.
-      if (prepared !== this.chat.messages) {
-        this.chat.messages = prepared;
+      // Resume through the existing system-reminder flow. The transport adds
+      // the missing full environment to this new user message as usual.
+      if (
+        getters.getEnvironment &&
+        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
+      ) {
+        this.chat.messages = [
+          ...this.chat.messages,
+          {
+            id: crypto.randomUUID(),
+            role: "user",
+            parts: [
+              {
+                type: "text",
+                text: prompts.createSystemReminder(prompts.toolCallsReminder),
+              },
+            ],
+          },
+        ];
       }
 
       if (onOverrideMessages) {

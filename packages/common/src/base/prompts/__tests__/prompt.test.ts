@@ -278,7 +278,7 @@ test("injectEnvironment preserves a full environment when regenerating a request
   });
 });
 
-test("injectEnvironment appends a compacted environment after an assistant continuation", () => {
+test("injectEnvironment restores a compacted environment on a new continuation reminder", () => {
   const environment = createTestEnvironment();
   const messages = [
     createTextMessage(
@@ -297,7 +297,13 @@ test("injectEnvironment appends a compacted environment after an assistant conti
   ];
   const original = structuredClone(messages);
 
-  const result = injectEnvironment(messages, environment);
+  expect(prompts.shouldAppendEnvironmentMessage(messages)).toBe(true);
+  expect(injectEnvironment(messages, environment)).toBe(messages);
+  const result = injectEnvironment(
+    [...messages, createContinuationMessage()],
+    environment,
+  );
+  expect(prompts.shouldAppendEnvironmentMessage(result)).toBe(false);
   const modelMessages = formatters.llm(result);
 
   expect(countFullEnvironments(modelMessages)).toBe(1);
@@ -339,12 +345,18 @@ test("an appended environment remains stable after persistence", () => {
   ];
   const inMemory = structuredClone(persisted);
 
-  const first = injectEnvironment(inMemory, environment);
+  const first = injectEnvironment(
+    [...inMemory, createContinuationMessage()],
+    environment,
+  );
 
   // The in-memory chat state must stay identical to what is persisted.
   expect(inMemory).toEqual(persisted);
   expect(first.slice(0, -1)).toEqual(persisted);
-  expect(first.at(-1)?.parts).toEqual([{ type: "text", text: fullReminder }]);
+  expect(first.at(-1)?.parts).toEqual([
+    { type: "text", text: fullReminder },
+    ...createContinuationMessage().parts,
+  ]);
   expect(countFullEnvironments(formatters.llm(first))).toBe(1);
 
   // The transport persists the new last message through chatStreamStarted.
@@ -378,7 +390,7 @@ test("an appended environment remains stable after persistence", () => {
 });
 
 test.each([false, true])(
-  "injectEnvironment preserves lite reminders and appends a full snapshot after compaction (continuation: %s)",
+  "injectEnvironment preserves lite reminders and restores the environment on a new reminder (assistant tail: %s)",
   (continuation) => {
     const environment = createTestEnvironment();
     const messages: UIMessage[] = [
@@ -424,7 +436,12 @@ test.each([false, true])(
       );
     const original = structuredClone(messages);
 
-    const result = injectEnvironment(messages, environment);
+    expect(prompts.shouldAppendEnvironmentMessage(messages)).toBe(true);
+    expect(injectEnvironment(messages, environment)).toBe(messages);
+    const result = injectEnvironment(
+      [...messages, createContinuationMessage()],
+      environment,
+    );
     expect(injectEnvironment(result, environment)).toBe(result);
 
     expect(messages).toEqual(original);
@@ -436,6 +453,7 @@ test.each([false, true])(
           createEnvironmentPrompt(environment, undefined),
         ),
       },
+      ...createContinuationMessage().parts,
     ]);
     const text = getMessageText(result.at(-1));
     expect(text).toContain("current.ts (active)");
@@ -458,6 +476,7 @@ test("injectEnvironment preserves assistant-ended history when a full environmen
   ];
   const original = structuredClone(messages);
 
+  expect(prompts.shouldAppendEnvironmentMessage(messages)).toBe(false);
   expect(injectEnvironment(messages, createTestEnvironment())).toBe(messages);
 
   expect(messages).toEqual(original);
@@ -619,6 +638,14 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
     ]),
   ).toBeUndefined();
 });
+
+function createContinuationMessage(): UIMessage {
+  return createTextMessage(
+    "continuation",
+    "user",
+    prompts.createSystemReminder(prompts.toolCallsReminder),
+  );
+}
 
 function createTextMessage(
   id: string,

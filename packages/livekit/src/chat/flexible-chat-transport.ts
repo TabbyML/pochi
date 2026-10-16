@@ -203,7 +203,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly attemptCompletionSchema?: z.ZodAny;
   private readonly systemPromptOverride?: string;
   private readonly onRequestFinished?: ChatTransportOptions["onRequestFinished"];
-  private preparedEnvironment?: Promise<Environment | undefined>;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -219,28 +218,6 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.onRequestFinished = options.onRequestFinished;
   }
 
-  /** Prepare a new reminder only when the SDK must snapshot a different tail. */
-  async prepareEnvironment(
-    messages: Message[],
-  ): Promise<Message[] | undefined> {
-    this.preparedEnvironment = undefined;
-    // Ordinary turns retain the existing injection point in sendMessages,
-    // after checkpoint hooks. Only a new message must precede the SDK snapshot.
-    if (!prompts.shouldAppendEnvironmentMessage(messages)) return messages;
-    this.preparedEnvironment = Promise.resolve().then(() =>
-      this.getters.getEnvironment?.(),
-    );
-    let environment: Environment | undefined;
-    try {
-      environment = await this.preparedEnvironment;
-    } catch {
-      // The snapshot hook runs outside the SDK's error handler. sendMessages
-      // awaits this same promise so failures follow normal request handling.
-      return undefined;
-    }
-    return prompts.injectEnvironment(messages, environment) as Message[];
-  }
-
   sendMessages: (
     options: {
       trigger: "submit-message" | "regenerate-message";
@@ -254,12 +231,9 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages,
     abortSignal,
   }) => {
-    const preparedEnvironment = this.preparedEnvironment;
-    this.preparedEnvironment = undefined;
     const numCompacts = getNumCompacts(messages);
     const llm = await this.getters.getLLM();
-    const environment = await (preparedEnvironment ??
-      this.getters.getEnvironment?.());
+    const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
     messages = prompts.injectEnvironment(messages, environment) as Message[];
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];

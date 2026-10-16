@@ -217,16 +217,17 @@ describe("environment after compaction", () => {
         },
       });
 
-      // LiveChatKit does this before the SDK snapshots its response message.
-      messages = (await transport.prepareEnvironment(messages))!;
-      expect(messages.at(-1)?.parts).toEqual([
-        {
-          type: "text",
-          text: prompts.createSystemReminder(
-            prompts.environment(environment, undefined),
-          ),
-        },
-      ]);
+      // A normal continuation reminder receives environment in the transport.
+      messages.push({
+        id: "continuation",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: prompts.createSystemReminder(prompts.toolCallsReminder),
+          },
+        ],
+      });
       await expect(
         transport.sendMessages({
           trigger: "submit-message",
@@ -236,6 +237,18 @@ describe("environment after compaction", () => {
           abortSignal: undefined,
         }),
       ).rejects.toThrow("Persistence failed");
+      expect(messages.at(-1)?.parts).toEqual([
+        {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.environment(environment, undefined),
+          ),
+        },
+        {
+          type: "text",
+          text: prompts.createSystemReminder(prompts.toolCallsReminder),
+        },
+      ]);
       expect(messages.slice(0, -1)).toEqual(original);
       expect(savedMessages).toEqual(original);
       expect(model.doStreamCalls).toHaveLength(0);
@@ -250,8 +263,8 @@ describe("environment after compaction", () => {
           ...environment,
           currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
         };
-        expect(await transport.prepareEnvironment(requestMessages)).toBe(
-          requestMessages,
+        expect(prompts.shouldAppendEnvironmentMessage(requestMessages)).toBe(
+          false,
         );
         const stream = await transport.sendMessages({
           trigger: "submit-message",
