@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
     modelId: "public-model",
     options: {},
   } as DisplayModel,
+  modelList: [] as DisplayModel[],
 }));
 
 vi.mock("react-i18next", () => ({
@@ -40,7 +41,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("@/lib/hooks/use-model-list", () => ({
   useModelList: () => ({
-    modelList: [mocks.superModel, mocks.publicModel],
+    modelList: mocks.modelList,
     isLoading: false,
     isFetching: false,
   }),
@@ -67,6 +68,7 @@ describe("useSelectedModels", () => {
       id: mocks.publicModel.id,
       name: mocks.publicModel.name,
     };
+    mocks.modelList = [mocks.superModel, mocks.publicModel];
     mocks.modelAccess = {
       superModels: true,
       isLoading: false,
@@ -76,20 +78,86 @@ describe("useSelectedModels", () => {
     };
   });
 
-  it("waits for model access before choosing an initial model", () => {
+  it("chooses Swift while Super access is loading", () => {
     mocks.selectedModel = undefined;
+    mocks.modelAccess.superModels = false;
     mocks.modelAccess.isLoading = true;
     renderHook(() => useSelectedModels());
-    expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+    expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+      id: mocks.publicModel.id,
+      name: mocks.publicModel.name,
+    });
   });
 
-  it("does not choose an initial model when model access failed to load", () => {
+  it("chooses Swift when model access failed to load", () => {
     mocks.selectedModel = undefined;
     mocks.modelAccess.superModels = false;
     mocks.modelAccess.isError = true;
     renderHook(() => useSelectedModels());
-    expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+    expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+      id: mocks.publicModel.id,
+      name: mocks.publicModel.name,
+    });
   });
+
+  it.each(["loading", "failed"])(
+    "chooses a BYOK model while Pochi access is %s",
+    (state) => {
+      mocks.selectedModel = undefined;
+      mocks.modelAccess.superModels = false;
+      mocks.modelAccess.isLoading = state === "loading";
+      mocks.modelAccess.isError = state === "failed";
+      const byokModel = {
+        ...mocks.superModel,
+        id: "byok-model",
+        name: "BYOK model",
+        vendorId: "other-vendor",
+      } as DisplayModel;
+      mocks.modelList = [mocks.superModel, byokModel];
+      renderHook(() => useSelectedModels());
+      expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+        id: byokModel.id,
+        name: byokModel.name,
+      });
+    },
+  );
+
+  it.each(["loading", "failed"])(
+    "chooses a local model while Pochi access is %s",
+    (state) => {
+      mocks.selectedModel = undefined;
+      mocks.modelAccess.superModels = false;
+      mocks.modelAccess.isLoading = state === "loading";
+      mocks.modelAccess.isError = state === "failed";
+      const localModel: DisplayModel = {
+        id: "local-model",
+        name: "Local model",
+        type: "provider",
+        modelId: "local",
+        options: {},
+        provider: { baseURL: "http://localhost:11434/v1" },
+      };
+      mocks.modelList = [localModel];
+      renderHook(() => useSelectedModels());
+      expect(mocks.updateSelectedModel).toHaveBeenCalledWith({
+        id: localModel.id,
+        name: localModel.name,
+      });
+    },
+  );
+
+  it.each(["loading", "failed", "denied"])(
+    "does not default to Super when access is %s and no alternative exists",
+    (state) => {
+      mocks.selectedModel = undefined;
+      mocks.modelList = [mocks.superModel];
+      mocks.modelAccess.superModels = false;
+      mocks.modelAccess.isLoading = state === "loading";
+      mocks.modelAccess.isError = state === "failed";
+      renderHook(() => useSelectedModels());
+      expect(mocks.updateSelectedModel).not.toHaveBeenCalled();
+    },
+  );
 
   it("uses server access to choose an initial Super model", () => {
     mocks.selectedModel = undefined;

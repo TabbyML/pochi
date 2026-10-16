@@ -158,7 +158,7 @@ export function ModelSelect({
                             !isAccessLoading && (
                               <span className="ml-4 font-normal text-xs">
                                 <a
-                                  href={`${getServerBaseUrl()}/team`}
+                                  href={`${getServerBaseUrl()}/billing`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-[var(--vscode-textLink-foreground)] hover:underline"

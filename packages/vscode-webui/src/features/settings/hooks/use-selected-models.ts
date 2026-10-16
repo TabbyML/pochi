@@ -115,19 +115,17 @@ export function useSelectedModels(options?: UseSelectedModelsOptions) {
 
   // Effect to set an initial model if none is selected and models are loaded.
   useEffect(() => {
-    if (
-      !isLoading &&
-      !isAccessLoading &&
-      !isAccessError &&
-      !selectedModelFromStore &&
-      models?.length
-    ) {
-      let initialModel = models[0];
-      if (!superModels) {
-        initialModel =
-          models.find((x) => x.options.label !== "super") || models[0];
+    if (!isLoading && !selectedModelFromStore && models?.length) {
+      const initialModel = models.find(
+        (model) =>
+          model.type !== "vendor" ||
+          model.vendorId !== "pochi" ||
+          model.options.label !== "super" ||
+          (superModels && !isAccessLoading && !isAccessError),
+      );
+      if (initialModel) {
+        updateSelectedModel(pick(initialModel, ["id", "name"]));
       }
-      updateSelectedModel(pick(initialModel, ["id", "name"]));
     }
   }, [
     isLoading,
