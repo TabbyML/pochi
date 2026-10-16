@@ -96,6 +96,65 @@ describe("UserEditState", () => {
 
     assert.deepStrictEqual(userEditState.edits.value, { taskId: [] });
   });
+
+  it("keeps edits empty when the branch baseline cannot be saved", async () => {
+    workspaceUri = vscode.Uri.file(
+      path.join(os.tmpdir(), `pochi-user-edit-state-${Date.now()}`),
+    );
+    await vscode.workspace.fs.createDirectory(workspaceUri);
+    const cwd = workspaceUri.fsPath;
+
+    const saveUserEditBaseline = sinon
+      .stub()
+      .rejects(new Error("index.lock: File exists"));
+    const getCheckpointFileEdits = sinon
+      .stub()
+      .resolves([{ filepath: "branch.ts", added: 1, removed: 0, diff: "" }]);
+    const taskState = signal<TaskStates>({
+      taskId: {
+        cwd,
+        lastCheckpointHash: "checkpoint",
+      },
+    });
+    const branchChangeEmitter = new vscode.EventEmitter<GitBranchChangeEvent>();
+    const workspaceState = new Map<string, unknown>();
+
+    userEditState = new UserEditState(
+      { cwd } as WorkspaceScope,
+      {
+        latestCheckpoint: signal<string | null>("checkpoint"),
+        saveUserEditBaseline,
+        getCheckpointFileEdits,
+      } as unknown as CheckpointService,
+      { state: taskState } as TaskActivityTracker,
+      {
+        onDidChangeBranch: branchChangeEmitter.event,
+      } as GitState,
+      {
+        workspaceState: {
+          get: (key: string) => workspaceState.get(key),
+          update: async (key: string, value: unknown) => {
+            workspaceState.set(key, value);
+          },
+        },
+      } as unknown as vscode.ExtensionContext,
+    );
+
+    const internals = userEditState as unknown as UserEditStateInternals;
+    internals.handleBranchChange();
+    getCheckpointFileEdits.resetHistory();
+
+    await waitFor(() => workspaceState.size > 0);
+    assert.deepStrictEqual([...workspaceState.values()], [
+      { taskId: { taskCheckpoint: "checkpoint", baseline: null } },
+    ]);
+
+    // Outlast the 1s update funnel so the post-branch recomputation runs.
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    assert.strictEqual(getCheckpointFileEdits.callCount, 0);
+    assert.deepStrictEqual(userEditState.edits.value, { taskId: [] });
+  }).timeout(5000);
 });
 
 async function waitFor(predicate: () => boolean) {

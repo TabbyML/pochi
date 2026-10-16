@@ -20,7 +20,8 @@ const branchBaselinesStateKeyPrefix = "pochi.userEditState.branchBaselines";
 
 interface BranchBaseline {
   taskCheckpoint: string | undefined;
-  baseline: string;
+  // null: capturing the baseline failed, hide edits until the next checkpoint.
+  baseline: string | null;
 }
 
 @scoped(Lifecycle.ContainerScoped)
@@ -73,7 +74,7 @@ export class UserEditState implements vscode.Disposable {
         typeof value !== "object" ||
         value === null ||
         !("baseline" in value) ||
-        typeof value.baseline !== "string"
+        (typeof value.baseline !== "string" && value.baseline !== null)
       ) {
         continue;
       }
@@ -237,19 +238,25 @@ export class UserEditState implements vscode.Disposable {
       revision: number,
       trackingTasks: Map<string, string | undefined>,
     ) => {
+      let baseline: string | null = null;
       try {
-        const baseline = await this.checkpointService.saveUserEditBaseline();
+        baseline = await this.checkpointService.saveUserEditBaseline();
+      } catch (error) {
+        logger.error("Failed to reset user edits after branch change", error);
+      }
+
+      try {
         if (revision !== this.branchBaselineRevision) {
           return;
         }
 
+        // Without a baseline, diffing against the task checkpoint would report
+        // the whole branch change as user edits, so record a null baseline.
         for (const [uid, taskCheckpoint] of trackingTasks) {
           if (this.trackingTasks.get(uid) === taskCheckpoint) {
             this.branchBaselines.set(uid, { taskCheckpoint, baseline });
           }
         }
-      } catch (error) {
-        logger.error("Failed to reset user edits after branch change", error);
       } finally {
         if (revision === this.branchBaselineRevision) {
           await this.persistBranchBaselines();
@@ -283,7 +290,7 @@ export class UserEditState implements vscode.Disposable {
           storedBranchBaseline?.taskCheckpoint === hash
             ? storedBranchBaseline
             : undefined;
-        const effectiveHash = branchBaseline?.baseline ?? hash;
+        const effectiveHash = branchBaseline ? branchBaseline.baseline : hash;
         logger.trace(
           `Updating edits for task ${uid} with hash ${effectiveHash}, latest ${latestCheckpoint}`,
         );
@@ -328,7 +335,7 @@ export class UserEditState implements vscode.Disposable {
     logger.trace(
       "do update userEdits",
       Object.keys(nextEdits).length,
-      nextEdits[Object.keys(nextEdits)[0]].map((x) => ({
+      nextEdits[Object.keys(nextEdits)[0]]?.map((x) => ({
         filepath: x.filepath,
         added: x.added,
         removed: x.removed,
