@@ -259,6 +259,16 @@ export function injectEnvironment(
 ): UIMessage[] {
   if (environment === undefined) return messages;
   const lastMessage = messages.at(-1);
+  if (shouldAppendEnvironmentMessage(messages)) {
+    return [
+      ...messages,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [createEnvironmentReminderPart(environment, "full")],
+      },
+    ];
+  }
   if (lastMessage?.role !== "user" || hasEnvironmentReminder(lastMessage)) {
     return messages;
   }

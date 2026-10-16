@@ -194,7 +194,8 @@ describe("environment after compaction", () => {
       let requestEnvironment = environment;
       let failPersistence = true;
       const onStart = vi.fn<OnStartCallback>(
-        ({ messages }) => {
+        ({ messages: requestMessages }) => {
+          messages = requestMessages;
           if (failPersistence) throw new Error("Persistence failed");
           // chatStreamStarted only saves the final message.
           const updated = messages.at(-1)!;
@@ -217,17 +218,6 @@ describe("environment after compaction", () => {
         },
       });
 
-      // A normal continuation reminder receives environment in the transport.
-      messages.push({
-        id: "continuation",
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: prompts.createSystemReminder(prompts.toolCallsReminder),
-          },
-        ],
-      });
       await expect(
         transport.sendMessages({
           trigger: "submit-message",
@@ -243,10 +233,6 @@ describe("environment after compaction", () => {
           text: prompts.createSystemReminder(
             prompts.environment(environment, undefined),
           ),
-        },
-        {
-          type: "text",
-          text: prompts.createSystemReminder(prompts.toolCallsReminder),
         },
       ]);
       expect(messages.slice(0, -1)).toEqual(original);

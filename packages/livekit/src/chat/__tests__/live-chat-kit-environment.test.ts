@@ -11,10 +11,6 @@ import type { BlobStore, LiveKitStore, Message, Task } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
 
 const kits: LiveChatKit<Chat<Message>>[] = [];
-const continuationPart = {
-  type: "text" as const,
-  text: prompts.createSystemReminder(prompts.toolCallsReminder),
-};
 afterEach(async () => {
   await Promise.all(
     kits.splice(0).map((kit) => kit.backgroundJobManager.dispose()),
@@ -102,8 +98,14 @@ describe("LiveChatKit environment messages", () => {
     expect(kit.chat.messages[3]).toEqual(original[3]);
     const added = kit.chat.messages[original.length];
     expect(added.role).toBe("user");
-    expect(preparedRequests[0].at(-1)?.parts).toEqual([continuationPart]);
-    expect(added.parts).toContainEqual(continuationPart);
+    expect(preparedRequests[0].at(-1)?.parts).toEqual([
+      {
+        type: "text",
+        text: prompts.createSystemReminder(
+          prompts.environment(environment, undefined),
+        ),
+      },
+    ]);
     expect(getEnvironment).toHaveBeenCalledTimes(1);
     expect(saved.get(added.id)).toEqual(added);
     expect(parseEnvironmentInfo(model.doStreamCalls[0].prompt)).toEqual(
@@ -135,6 +137,16 @@ describe("LiveChatKit environment messages", () => {
       expect(kit.chat.messages).toHaveLength(original.length + 2);
       const environmentMessage = kit.chat.messages[original.length];
       expect(environmentMessage.role).toBe("user");
+      expect(
+        environmentMessage.parts.filter((part) => part.type === "text"),
+      ).toEqual([
+        {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.environment(environment, undefined),
+          ),
+        },
+      ]);
       expect(environmentMessage.parts).toContainEqual({
         type: "data-checkpoint",
         data: { commit: "after-tools" },
@@ -147,6 +159,9 @@ describe("LiveChatKit environment messages", () => {
       ).toBe(false);
       const response = kit.chat.messages.at(-1)!;
       expect(response.role).toBe("assistant");
+      expect(
+        response.parts.filter((part) => part.type.startsWith("tool-")),
+      ).toEqual([]);
       expect(original.some(({ id }) => id === response.id)).toBe(false);
       const prompt = model.doStreamCalls[0].prompt;
       expect(parseEnvironmentInfo(prompt)).toEqual(environment.info);
@@ -194,7 +209,7 @@ describe("LiveChatKit environment messages", () => {
     },
   );
 
-  it("adds environment to the existing continuation reminder after checkpoint preparation", async () => {
+  it("appends no message until the complete environment is available", async () => {
     const { kit, original, environment, getEnvironment, preparedRequests } =
       makeFixture(true);
     let resolveEnvironment!: (value: Environment) => void;
@@ -207,33 +222,22 @@ describe("LiveChatKit environment messages", () => {
 
     const request = kit.chat.sendMessage();
     await vi.waitFor(() => expect(getEnvironment).toHaveBeenCalledTimes(1));
-    expect(kit.chat.messages.slice(0, original.length)).toEqual(original);
-    expect(kit.chat.messages).toHaveLength(original.length + 1);
-    const continuation = kit.chat.messages.at(-1)!;
-    expect(continuation.parts).toEqual([
-      continuationPart,
-      { type: "data-checkpoint", data: { commit: "after-tools" } },
-    ]);
-    expect(preparedRequests).toHaveLength(1);
-    expect(preparedRequests[0].at(-1)?.parts).toEqual([continuationPart]);
+    expect(kit.chat.messages).toEqual(original);
+    expect(preparedRequests).toHaveLength(0);
 
     resolveEnvironment(environment);
     await request;
     expect(kit.chat.status).toBe("ready");
     expect(getEnvironment).toHaveBeenCalledTimes(1);
-    expect(kit.chat.messages[original.length]).toEqual({
-      ...continuation,
-      parts: [
-        {
-          type: "text",
-          text: prompts.createSystemReminder(
-            prompts.environment(environment, undefined),
-          ),
-        },
-        continuationPart,
-        { type: "data-checkpoint", data: { commit: "after-tools" } },
-      ],
-    });
+    expect(kit.chat.messages[original.length].parts).toEqual([
+      {
+        type: "text",
+        text: prompts.createSystemReminder(
+          prompts.environment(environment, undefined),
+        ),
+      },
+      { type: "data-checkpoint", data: { commit: "after-tools" } },
+    ]);
   });
 
   it.each(["environment", "persistence"] as const)(
@@ -249,12 +253,8 @@ describe("LiveChatKit environment messages", () => {
       expect([...saved.values()].slice(0, original.length)).toEqual(original);
       expect(getEnvironment).toHaveBeenCalledTimes(1);
       const pendingMessage = kit.chat.messages[original.length];
-      expect(pendingMessage.parts).toContainEqual(continuationPart);
       if (failure === "environment") {
-        expect(pendingMessage.parts).toEqual([
-          continuationPart,
-          { type: "data-checkpoint", data: { commit: "after-tools" } },
-        ]);
+        expect(kit.chat.messages).toEqual(original);
       } else {
         expect(pendingMessage.parts[0]).toMatchObject({
           type: "text",
@@ -269,7 +269,7 @@ describe("LiveChatKit environment messages", () => {
       expect(model.doStreamCalls).toHaveLength(1);
       expect(kit.chat.messages).toHaveLength(original.length + 2);
       const environmentMessage = kit.chat.messages[original.length];
-      expect(environmentMessage.id).toBe(pendingMessage.id);
+      if (pendingMessage) expect(environmentMessage.id).toBe(pendingMessage.id);
       expect(saved.get(environmentMessage.id)).toEqual(environmentMessage);
       expect(getEnvironment).toHaveBeenCalledTimes(2);
       expect(kit.chat.messages.slice(0, original.length)).toEqual(original);

@@ -450,10 +450,33 @@ export class LiveChatKit<
         ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
         : undefined;
 
+    const overrideMessages = async (
+      messages: Message[],
+      abortSignal: AbortSignal | undefined,
+    ) => {
+      if (!onOverrideMessages || !abortSignal) return;
+      await runSideEffectSafely({
+        sideEffectName: "onOverrideMessages",
+        timeoutMs: OverrideMessagesSideEffectTimeoutMs,
+        abortSignal,
+        run: async () => {
+          await onOverrideMessages({ store, taskId, messages, abortSignal });
+        },
+      });
+    };
+
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
-      onStart: this.onStart,
+      onStart: async (request) => {
+        if (request.messages.at(-1)?.id !== this.chat.messages.at(-1)?.id) {
+          // Environment injection can append a complete user message. Publish
+          // it to the SDK and checkpoint that message before persisting it.
+          this.chat.messages = request.messages;
+          await overrideMessages(request.messages, request.abortSignal);
+        }
+        await this.onStart(request);
+      },
       getters,
       isSubTask,
       requestUseCase,
@@ -592,41 +615,13 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
-      // Resume through the existing system-reminder flow. The transport adds
-      // the missing full environment to this new user message as usual.
+      // When environment injection will append a message, checkpoint the new
+      // message in onStart. Ordinary requests keep their existing hook order.
       if (
-        getters.getEnvironment &&
-        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
+        !getters.getEnvironment ||
+        !prompts.shouldAppendEnvironmentMessage(this.chat.messages)
       ) {
-        this.chat.messages = [
-          ...this.chat.messages,
-          {
-            id: crypto.randomUUID(),
-            role: "user",
-            parts: [
-              {
-                type: "text",
-                text: prompts.createSystemReminder(prompts.toolCallsReminder),
-              },
-            ],
-          },
-        ];
-      }
-
-      if (onOverrideMessages) {
-        await runSideEffectSafely({
-          sideEffectName: "onOverrideMessages",
-          timeoutMs: OverrideMessagesSideEffectTimeoutMs,
-          abortSignal,
-          run: async () => {
-            await onOverrideMessages({
-              store: this.store,
-              taskId: this.taskId,
-              messages: this.chat.messages,
-              abortSignal,
-            });
-          },
-        });
+        await overrideMessages(this.chat.messages, abortSignal);
       }
     };
 

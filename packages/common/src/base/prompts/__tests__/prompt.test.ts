@@ -278,7 +278,7 @@ test("injectEnvironment preserves a full environment when regenerating a request
   });
 });
 
-test("injectEnvironment restores a compacted environment on a new continuation reminder", () => {
+test("injectEnvironment appends only the missing environment after a compacted continuation", () => {
   const environment = createTestEnvironment();
   const messages = [
     createTextMessage(
@@ -298,11 +298,7 @@ test("injectEnvironment restores a compacted environment on a new continuation r
   const original = structuredClone(messages);
 
   expect(prompts.shouldAppendEnvironmentMessage(messages)).toBe(true);
-  expect(injectEnvironment(messages, environment)).toBe(messages);
-  const result = injectEnvironment(
-    [...messages, createContinuationMessage()],
-    environment,
-  );
+  const result = injectEnvironment(messages, environment);
   expect(prompts.shouldAppendEnvironmentMessage(result)).toBe(false);
   const modelMessages = formatters.llm(result);
 
@@ -345,17 +341,13 @@ test("an appended environment remains stable after persistence", () => {
   ];
   const inMemory = structuredClone(persisted);
 
-  const first = injectEnvironment(
-    [...inMemory, createContinuationMessage()],
-    environment,
-  );
+  const first = injectEnvironment(inMemory, environment);
 
   // The in-memory chat state must stay identical to what is persisted.
   expect(inMemory).toEqual(persisted);
   expect(first.slice(0, -1)).toEqual(persisted);
   expect(first.at(-1)?.parts).toEqual([
     { type: "text", text: fullReminder },
-    ...createContinuationMessage().parts,
   ]);
   expect(countFullEnvironments(formatters.llm(first))).toBe(1);
 
@@ -437,11 +429,7 @@ test.each([false, true])(
     const original = structuredClone(messages);
 
     expect(prompts.shouldAppendEnvironmentMessage(messages)).toBe(true);
-    expect(injectEnvironment(messages, environment)).toBe(messages);
-    const result = injectEnvironment(
-      [...messages, createContinuationMessage()],
-      environment,
-    );
+    const result = injectEnvironment(messages, environment);
     expect(injectEnvironment(result, environment)).toBe(result);
 
     expect(messages).toEqual(original);
@@ -453,7 +441,6 @@ test.each([false, true])(
           createEnvironmentPrompt(environment, undefined),
         ),
       },
-      ...createContinuationMessage().parts,
     ]);
     const text = getMessageText(result.at(-1));
     expect(text).toContain("current.ts (active)");
@@ -638,14 +625,6 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
     ]),
   ).toBeUndefined();
 });
-
-function createContinuationMessage(): UIMessage {
-  return createTextMessage(
-    "continuation",
-    "user",
-    prompts.createSystemReminder(prompts.toolCallsReminder),
-  );
-}
 
 function createTextMessage(
   id: string,
