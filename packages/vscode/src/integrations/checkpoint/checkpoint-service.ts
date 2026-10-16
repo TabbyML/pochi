@@ -27,7 +27,7 @@ import {
 const logger = getLogger("CheckpointService");
 const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 
-/** Timeout (ms) for the saveCheckpoint operation. */
+/** Timeout (ms) for saving a checkpoint, excluding time waiting for the index lock. */
 const SaveCheckpointTimeoutMs = 10_000;
 
 @scoped(Lifecycle.ContainerScoped)
@@ -94,19 +94,22 @@ export class CheckpointService implements vscode.Disposable {
     message: string,
     options: SaveCheckpointOptions = {},
   ): Promise<string | null> => {
-    return withTimeout(
-      this.saveCheckpointImpl(message, options),
-      SaveCheckpointTimeoutMs,
-      "saveCheckpoint",
-    );
+    const started = new Deferred<void>();
+    const checkpoint = this.saveCheckpointImpl(started, message, options);
+    await started.promise;
+    return withTimeout(checkpoint, SaveCheckpointTimeoutMs, "saveCheckpoint");
   };
 
   private saveCheckpointImpl = runExclusive.build(
     this.indexLock,
     async (
+      started: Deferred<void>,
       message: string,
       options: SaveCheckpointOptions = {},
     ): Promise<string | null> => {
+      // Start the caller's timeout only after acquiring the lock. Keep holding
+      // the lock until this operation finishes, even if the caller times out.
+      started.resolve();
       const startTime = performance.now();
       logger.trace(`Saving checkpoint with message: ${message}`);
 
