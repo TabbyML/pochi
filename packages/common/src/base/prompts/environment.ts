@@ -224,12 +224,7 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
   return result;
 }
 
-export function injectEnvironment(
-  messages: UIMessage[],
-  environment: Environment | undefined,
-): UIMessage[] {
-  if (environment === undefined) return messages;
-
+function getVisibleMessages(messages: UIMessage[]): UIMessage[] {
   // The LLM formatter discards every message before the latest compact block.
   // Only inspect that visible suffix when deciding whether the request already
   // contains a complete environment.
@@ -238,25 +233,39 @@ export function injectEnvironment(
       (part) => part.type === "text" && prompts.isCompact(part.text),
     ),
   );
-  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
-  const completeEnvironmentVisible =
-    hasCompleteEnvironmentPrompt(visibleMessages);
-  const lastMessage = visibleMessages.at(-1);
+  return messages.slice(Math.max(compactIndex, 0));
+}
 
-  if (lastMessage?.role !== "user") {
-    // Tool continuation: every message has already been sent to the model.
-    if (completeEnvironmentVisible) return messages;
-    return repairCompactedEnvironment(messages, visibleMessages, environment);
-  }
-
-  // A reminder already attached to the latest user message was sent before
-  // (retry / regenerate / resume). Keep it byte-for-byte stable so volatile
-  // fields (time, terminals, git status) do not invalidate the prompt cache.
-  const hasEnvironmentReminder = lastMessage.parts.some(
+function hasEnvironmentReminder(message: UIMessage): boolean {
+  return message.parts.some(
     (part) =>
       part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
   );
-  if (completeEnvironmentVisible && hasEnvironmentReminder) return messages;
+}
+
+export function injectEnvironment(
+  messages: UIMessage[],
+  environment: Environment | undefined,
+): UIMessage[] {
+  if (environment === undefined) return messages;
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) return messages;
+  const completeEnvironmentVisible = hasCompleteEnvironmentPrompt(
+    getVisibleMessages(messages),
+  );
+  if (lastMessage.role !== "user" || hasEnvironmentReminder(lastMessage)) {
+    if (completeEnvironmentVisible) return messages;
+    // Keep historical messages and their reminders unchanged. A compacted
+    // continuation receives a complete reminder in a new user message.
+    return [
+      ...messages,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [createEnvironmentReminderPart(environment, "full")],
+      },
+    ];
+  }
 
   // The latest user message is persisted together with the request
   // (`chatStreamStarted`), so mutating it keeps the in-memory chat state and
@@ -266,34 +275,10 @@ export function injectEnvironment(
       environment,
       completeEnvironmentVisible ? "lite" : "full",
     ),
-    ...withoutEnvironmentReminders(lastMessage.parts),
+    ...lastMessage.parts,
   ];
 
   return messages;
-}
-
-/**
- * Compaction can hide the complete environment from a tool continuation. The
- * repaired user message is returned as a copy so the transport can persist it
- * with the request before updating the in-memory history. Replace any lite
- * reminder with a full snapshot of the current environment.
- */
-function repairCompactedEnvironment(
-  messages: UIMessage[],
-  visibleMessages: UIMessage[],
-  environment: Environment,
-): UIMessage[] {
-  const target = visibleMessages.findLast((message) => message.role === "user");
-  if (!target) return messages;
-
-  const repaired: UIMessage = {
-    ...target,
-    parts: [
-      createEnvironmentReminderPart(environment, "full"),
-      ...withoutEnvironmentReminders(target.parts),
-    ],
-  };
-  return messages.map((message) => (message === target ? repaired : message));
 }
 
 function createEnvironmentReminderPart(
@@ -316,13 +301,6 @@ function createEnvironmentReminderPart(
         : createLiteEnvironmentPrompt(environment),
     ),
   };
-}
-
-function withoutEnvironmentReminders(parts: UIMessage["parts"]) {
-  return parts.filter(
-    (part) =>
-      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
-  );
 }
 
 function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {

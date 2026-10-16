@@ -278,7 +278,7 @@ test("injectEnvironment preserves a full environment when regenerating a request
   });
 });
 
-test("injectEnvironment restores a compacted environment before an assistant continuation", () => {
+test("injectEnvironment appends a compacted environment after an assistant continuation", () => {
   const environment = createTestEnvironment();
   const messages = [
     createTextMessage(
@@ -301,11 +301,10 @@ test("injectEnvironment restores a compacted environment before an assistant con
   const modelMessages = formatters.llm(result);
 
   expect(countFullEnvironments(modelMessages)).toBe(1);
-  expect(result.map((message) => message.id)).toEqual(
-    original.map((message) => message.id),
-  );
-  expect(result[0]).toEqual(original[0]);
-  expect(result[2]).toEqual(original[2]);
+  expect(messages).toEqual(original);
+  expect(result.slice(0, -1)).toEqual(original);
+  expect(result.at(-1)?.role).toBe("user");
+  expect(formatters.ui(result)).toEqual(formatters.ui(original));
 
   const restored = structuredClone(result);
   injectEnvironment(restored, { ...environment, currentTime: "later" });
@@ -313,7 +312,7 @@ test("injectEnvironment restores a compacted environment before an assistant con
   expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
 });
 
-test("injectEnvironment returns a history repair that remains stable after persistence", () => {
+test("an appended environment remains stable after persistence", () => {
   const environment = createTestEnvironment();
   const fullReminder = prompts.createSystemReminder(
     createEnvironmentPrompt(environment, undefined),
@@ -344,14 +343,11 @@ test("injectEnvironment returns a history repair that remains stable after persi
 
   // The in-memory chat state must stay identical to what is persisted.
   expect(inMemory).toEqual(persisted);
-  expect(first[2]?.parts).toEqual([
-    { type: "text", text: fullReminder },
-    persisted[2]?.parts[0],
-    persisted[2]?.parts[2],
-  ]);
+  expect(first.slice(0, -1)).toEqual(persisted);
+  expect(first.at(-1)?.parts).toEqual([{ type: "text", text: fullReminder }]);
   expect(countFullEnvironments(formatters.llm(first))).toBe(1);
 
-  // The transport persists the returned repair before updating chat state.
+  // The transport persists the new last message through chatStreamStarted.
   const saved = structuredClone(first);
 
   // Later continuations, including after reloading from the store with a
@@ -361,6 +357,7 @@ test("injectEnvironment returns a history repair that remains stable after persi
   laterEnvironment.workspace.terminals = [
     { name: "New terminal", isActive: true, backgroundJobId: "term-new" },
   ];
+  expect(injectEnvironment(first, laterEnvironment)).toBe(first);
   expect(
     formatters.llm(injectEnvironment(first, laterEnvironment)),
   ).toEqual(formatters.llm(first));
@@ -370,18 +367,18 @@ test("injectEnvironment returns a history repair that remains stable after persi
     ),
   ).toEqual(formatters.llm(first));
 
-  // New user turns retain the same repaired prefix and receive a lite reminder.
+  // New user turns retain the same prefix and receive a lite reminder.
   const nextTurn = [
     ...first,
     createTextMessage("user-2", "user", "next question"),
   ];
   injectEnvironment(nextTurn, laterEnvironment);
   expect(getMessageText(nextTurn.at(-1))).not.toContain("# System Information");
-  expect(formatters.llm(nextTurn).slice(0, 2)).toEqual(formatters.llm(first));
+  expect(formatters.llm(nextTurn).slice(0, 3)).toEqual(formatters.llm(first));
 });
 
 test.each([false, true])(
-  "injectEnvironment replaces lite with a current full snapshot after compaction (continuation: %s)",
+  "injectEnvironment preserves lite reminders and appends a full snapshot after compaction (continuation: %s)",
   (continuation) => {
     const environment = createTestEnvironment();
     const messages: UIMessage[] = [
@@ -415,30 +412,36 @@ test.each([false, true])(
       text: "<compact>Summary</compact>",
     });
     messages[2].parts.push({ type: "text", text: agentReminder });
+    messages[2].parts.push({
+      type: "text",
+      text: prompts.createSystemReminder(
+        "# GIT STATUS\nAnother environment reminder",
+      ),
+    });
     if (continuation)
       messages.push(
         createTextMessage("assistant-1", "assistant", "tool result"),
       );
-    const originalParts = structuredClone(messages[2].parts);
+    const original = structuredClone(messages);
 
-    const repaired = injectEnvironment(messages, environment);
+    const result = injectEnvironment(messages, environment);
+    expect(injectEnvironment(result, environment)).toBe(result);
 
-    expect(repaired[2].parts).toEqual([
+    expect(messages).toEqual(original);
+    expect(result.slice(0, -1)).toEqual(original);
+    expect(result.at(-1)?.parts).toEqual([
       {
         type: "text",
         text: prompts.createSystemReminder(
           createEnvironmentPrompt(environment, undefined),
         ),
       },
-      originalParts[0],
-      originalParts[2],
-      originalParts[3],
     ]);
-    const text = getMessageText(repaired[2]);
+    const text = getMessageText(result.at(-1));
     expect(text).toContain("current.ts (active)");
     expect(text).toContain("term-current");
     expect(text).toContain("Current branch: current");
-    expect(countFullEnvironments(formatters.llm(repaired))).toBe(1);
+    expect(countFullEnvironments(formatters.llm(result))).toBe(1);
   },
 );
 
@@ -455,7 +458,7 @@ test("injectEnvironment preserves assistant-ended history when a full environmen
   ];
   const original = structuredClone(messages);
 
-  injectEnvironment(messages, createTestEnvironment());
+  expect(injectEnvironment(messages, createTestEnvironment())).toBe(messages);
 
   expect(messages).toEqual(original);
 });

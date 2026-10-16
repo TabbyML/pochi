@@ -57,8 +57,6 @@ import {
 
 export type OnStartCallback = (options: {
   messages: Message[];
-  /** Historical environment repairs to persist with the last message. */
-  repairedMessages?: Message[];
   environment?: Environment;
   abortSignal?: AbortSignal;
   getters: PrepareRequestGetters;
@@ -205,6 +203,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
   private readonly attemptCompletionSchema?: z.ZodAny;
   private readonly systemPromptOverride?: string;
   private readonly onRequestFinished?: ChatTransportOptions["onRequestFinished"];
+  private preparedEnvironment?: Promise<Environment | undefined>;
 
   constructor(options: ChatTransportOptions) {
     this.onStart = options.onStart;
@@ -220,6 +219,24 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.onRequestFinished = options.onRequestFinished;
   }
 
+  /** Prepare complete environment reminders before the SDK snapshots messages. */
+  async prepareEnvironment(
+    messages: Message[],
+  ): Promise<Message[] | undefined> {
+    this.preparedEnvironment = Promise.resolve().then(() =>
+      this.getters.getEnvironment?.(),
+    );
+    let environment: Environment | undefined;
+    try {
+      environment = await this.preparedEnvironment;
+    } catch {
+      // The snapshot hook runs outside the SDK's error handler. sendMessages
+      // awaits this same promise so failures follow normal request handling.
+      return undefined;
+    }
+    return prompts.injectEnvironment(messages, environment) as Message[];
+  }
+
   sendMessages: (
     options: {
       trigger: "submit-message" | "regenerate-message";
@@ -233,15 +250,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     messages,
     abortSignal,
   }) => {
+    const preparedEnvironment = this.preparedEnvironment;
+    this.preparedEnvironment = undefined;
     const numCompacts = getNumCompacts(messages);
     const llm = await this.getters.getLLM();
-    const environment = await this.getters.getEnvironment?.();
+    const environment = await (preparedEnvironment ??
+      this.getters.getEnvironment?.());
     const autoMemory = await this.getters.getAutoMemory?.();
-    const originalMessages = messages;
     messages = prompts.injectEnvironment(messages, environment) as Message[];
-    const repairedMessages = messages.filter(
-      (message, index) => message !== originalMessages[index],
-    );
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();
@@ -258,20 +274,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
 
     await this.onStart?.({
       messages,
-      repairedMessages:
-        repairedMessages.length > 0 ? repairedMessages : undefined,
       environment,
       abortSignal,
       getters: this.getters,
     });
-
-    // onStart persists historical repairs atomically with chatStreamStarted.
-    // Only then update the chat's shared message objects, so continuations and
-    // new user turns keep exactly the same prefix as a reload from the store.
-    for (const repaired of repairedMessages) {
-      const original = originalMessages.find(({ id }) => id === repaired.id);
-      if (original) original.parts = repaired.parts;
-    }
 
     const model = createModel({ llm, taskId: chatId });
     const middlewares = [];

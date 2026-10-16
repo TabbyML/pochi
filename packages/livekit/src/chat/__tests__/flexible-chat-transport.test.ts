@@ -93,7 +93,7 @@ describe("subtask delegation", () => {
 
 describe("environment after compaction", () => {
   it.each(["llm", "task-memory"])(
-    "restores the environment on repeated and reloaded %s compacted tool continuations",
+    "appends the environment on repeated and reloaded %s compacted tool continuations",
     async (summarySource) => {
       const environment: Environment = {
         currentTime: "2026-09-16",
@@ -139,7 +139,7 @@ describe("environment after compaction", () => {
           }),
         }),
       });
-      const messages: Message[] = [
+      let messages: Message[] = [
         {
           id: "user-1",
           role: "user",
@@ -189,25 +189,18 @@ describe("environment after compaction", () => {
           ? { store, taskMemoryBoundaryMessageId: "assistant-2" }
           : {}),
       });
-      const assistant = structuredClone(messages.at(-1));
+      const original = structuredClone(messages);
       const savedMessages = structuredClone(messages);
       let requestEnvironment = environment;
       let failPersistence = true;
       const onStart = vi.fn<OnStartCallback>(
-        ({ messages, repairedMessages }) => {
+        ({ messages }) => {
           if (failPersistence) throw new Error("Persistence failed");
-          // Model chatStreamStarted's storage boundary: only explicitly supplied
-          // historical repairs and the last message are saved.
-          for (const updated of [
-            ...(repairedMessages ?? []),
-            messages.at(-1)!,
-          ]) {
-            const index = savedMessages.findIndex(
-              ({ id }) => id === updated.id,
-            );
-            if (index === -1) savedMessages.push(structuredClone(updated));
-            else savedMessages[index] = structuredClone(updated);
-          }
+          // chatStreamStarted only saves the final message.
+          const updated = messages.at(-1)!;
+          const index = savedMessages.findIndex(({ id }) => id === updated.id);
+          if (index === -1) savedMessages.push(structuredClone(updated));
+          else savedMessages[index] = structuredClone(updated);
         },
       );
       const transport = new FlexibleChatTransport({
@@ -224,6 +217,16 @@ describe("environment after compaction", () => {
         },
       });
 
+      // LiveChatKit does this before the SDK snapshots its response message.
+      messages = (await transport.prepareEnvironment(messages))!;
+      expect(messages.at(-1)?.parts).toEqual([
+        {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.environment(environment, undefined),
+          ),
+        },
+      ]);
       await expect(
         transport.sendMessages({
           trigger: "submit-message",
@@ -233,7 +236,8 @@ describe("environment after compaction", () => {
           abortSignal: undefined,
         }),
       ).rejects.toThrow("Persistence failed");
-      expect(messages).toEqual(savedMessages);
+      expect(messages.slice(0, -1)).toEqual(original);
+      expect(savedMessages).toEqual(original);
       expect(model.doStreamCalls).toHaveLength(0);
       failPersistence = false;
       onStart.mockClear();
@@ -246,6 +250,9 @@ describe("environment after compaction", () => {
           ...environment,
           currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
         };
+        expect(await transport.prepareEnvironment(requestMessages)).toBe(
+          requestMessages,
+        );
         const stream = await transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",
@@ -259,7 +266,8 @@ describe("environment after compaction", () => {
         expect(
           parseEnvironmentInfo(model.doStreamCalls[attempt].prompt),
         ).toEqual(environment.info);
-        expect(requestMessages.at(-1)).toEqual(assistant);
+        expect(requestMessages.slice(0, -1)).toEqual(original);
+        expect(requestMessages.at(-1)?.role).toBe("user");
         expect(requestMessages).toEqual(savedMessages);
       }
 
@@ -270,11 +278,7 @@ describe("environment after compaction", () => {
       expect(model.doStreamCalls[2].prompt).toEqual(
         model.doStreamCalls[0].prompt,
       );
-      expect(
-        onStart.mock.calls[0][0].repairedMessages?.map(({ id }) => id),
-      ).toEqual(["user-2"]);
-      expect(onStart.mock.calls[1][0].repairedMessages).toBeUndefined();
-      expect(onStart.mock.calls[2][0].repairedMessages).toBeUndefined();
+      expect(onStart).toHaveBeenCalledTimes(3);
       expect(messages).toEqual(savedMessages);
 
       messages.push({

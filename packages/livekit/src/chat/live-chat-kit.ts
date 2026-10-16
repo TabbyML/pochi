@@ -587,6 +587,16 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
+      // Append a complete environment reminder before the SDK snapshots the
+      // response, so it starts a new assistant message and persists normally.
+      const prepared = await this.transport.prepareEnvironment(
+        this.chat.messages,
+      );
+      if (!prepared) return; // sendMessages reports the environment error.
+      if (prepared !== this.chat.messages) {
+        this.chat.messages = prepared;
+      }
+
       if (onOverrideMessages) {
         await runSideEffectSafely({
           sideEffectName: "onOverrideMessages",
@@ -1032,7 +1042,6 @@ export class LiveChatKit<
 
   private readonly onStart: OnStartCallback = async ({
     messages,
-    repairedMessages,
     environment,
     getters,
   }) => {
@@ -1080,7 +1089,6 @@ export class LiveChatKit<
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
-          repairedMessages,
           todos: environment?.todos || [],
           git: toTaskGitInfo(environment?.workspace.gitStatus),
           updatedAt: new Date(),

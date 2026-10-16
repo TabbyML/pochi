@@ -153,7 +153,6 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       data: DBMessage,
-      repairedMessages: Schema.optional(Schema.Array(DBMessage)),
       todos: Todos,
       title: Schema.optional(Schema.String).pipe(
         deprecated("use updateTitle instead"),
@@ -423,7 +422,6 @@ const materializers = State.SQLite.materializers(events, {
   "v1.ChatStreamStarted": ({
     id,
     data,
-    repairedMessages,
     todos,
     git,
     title,
@@ -443,9 +441,6 @@ const materializers = State.SQLite.materializers(events, {
         lastCheckpointHash: null, // set as null to disable user edit when streaming
       })
       .where({ id }),
-    ...(repairedMessages ?? []).map((message) =>
-      tables.messages.update({ data: message }).where({ id: message.id }),
-    ),
     tables.messages
       .insert({
         id: data.id,

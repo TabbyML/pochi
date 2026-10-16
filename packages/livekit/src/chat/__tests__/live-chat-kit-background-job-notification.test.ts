@@ -297,7 +297,7 @@ describe("LiveChatKit background job notification delivery", () => {
     ]);
     expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
   });
-  it("persists historical repairs with the checkpoint added to a notification continuation", async () => {
+  it("persists the checkpoint added to a notification continuation", async () => {
     const store = new FakeStore();
     const commit = vi.spyOn(store, "commit");
     const getters = { getLLM: () => ({ id: "test-model" }) as never };
@@ -322,21 +322,18 @@ describe("LiveChatKit background job notification delivery", () => {
     chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
     await makeRequest(chatKit);
-    const repairedMessages = [userMessage("repaired environment")];
     await (
       chatKit as unknown as {
         onStart: OnStartCallback;
       }
     ).onStart({
       messages: chatKit.chat.messages,
-      repairedMessages,
       getters,
     });
     expect(commit).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "v1.ChatStreamStarted",
         args: expect.objectContaining({
-          repairedMessages,
           data: expect.objectContaining({
             role: "user",
             parts: [
