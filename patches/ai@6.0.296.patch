@@ -16,21 +16,6 @@ diff --git a/dist/index.js b/dist/index.js
      const lastMessage = this.lastMessage;
      const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
      const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
-@@ -14840,6 +14848,14 @@
-           trigger,
-           messageId
-         });
-+        // A local transport may append a user message while preparing the request.
-+        // Start the response after that message instead of copying the prior assistant.
-+        if (!usesEarlierAssistantMessage && this.lastMessage?.role === "user" && this.lastMessage.id !== lastMessage?.id) {
-+          response.state = createStreamingUIMessageState({
-+            lastMessage: trigger === "regenerate-message" ? void 0 : this.state.snapshot(this.lastMessage),
-+            messageId: this.generateId()
-+          });
-+        }
-       }
-       const runUpdateMessageJob = (job) => (
-         // serialize the job execution to avoid race conditions:
 diff --git a/dist/index.mjs b/dist/index.mjs
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
@@ -49,18 +34,3 @@ diff --git a/dist/index.mjs b/dist/index.mjs
      const lastMessage = this.lastMessage;
      const responseMessageIndex = trigger === "submit-message" && messageId != null ? this.state.messages.findIndex((message) => message.id === messageId) : this.state.messages.length - 1;
      const responseMessage = responseMessageIndex === -1 ? lastMessage : this.state.messages[responseMessageIndex];
-@@ -14830,6 +14838,14 @@
-           trigger,
-           messageId
-         });
-+        // A local transport may append a user message while preparing the request.
-+        // Start the response after that message instead of copying the prior assistant.
-+        if (!usesEarlierAssistantMessage && this.lastMessage?.role === "user" && this.lastMessage.id !== lastMessage?.id) {
-+          response.state = createStreamingUIMessageState({
-+            lastMessage: trigger === "regenerate-message" ? void 0 : this.state.snapshot(this.lastMessage),
-+            messageId: this.generateId()
-+          });
-+        }
-       }
-       const runUpdateMessageJob = (job) => (
-         // serialize the job execution to avoid race conditions:

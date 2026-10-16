@@ -106,7 +106,7 @@ describe("LiveChatKit environment messages", () => {
         ),
       },
     ]);
-    expect(getEnvironment).toHaveBeenCalledTimes(1);
+    expect(getEnvironment).toHaveBeenCalledTimes(2);
     expect(saved.get(added.id)).toEqual(added);
     expect(parseEnvironmentInfo(model.doStreamCalls[0].prompt)).toEqual(
       environment.info,
@@ -131,7 +131,7 @@ describe("LiveChatKit environment messages", () => {
       await kit.chat.sendMessage();
 
       expect(kit.chat.status).toBe("ready");
-      expect(getEnvironment).toHaveBeenCalledTimes(1);
+      expect(getEnvironment).toHaveBeenCalledTimes(2);
       expect(kit.chat.messages.slice(0, original.length)).toEqual(original);
       expect([...saved.values()].slice(0, original.length)).toEqual(original);
       expect(kit.chat.messages).toHaveLength(original.length + 2);
@@ -205,7 +205,7 @@ describe("LiveChatKit environment messages", () => {
           (part) => part.type === "text" && part.text.includes("# GIT STATUS"),
         ),
       ).toBe(true);
-      expect(getEnvironment).toHaveBeenCalledTimes(4);
+      expect(getEnvironment).toHaveBeenCalledTimes(5);
     },
   );
 
@@ -228,7 +228,7 @@ describe("LiveChatKit environment messages", () => {
     resolveEnvironment(environment);
     await request;
     expect(kit.chat.status).toBe("ready");
-    expect(getEnvironment).toHaveBeenCalledTimes(1);
+    expect(getEnvironment).toHaveBeenCalledTimes(2);
     expect(kit.chat.messages[original.length].parts).toEqual([
       {
         type: "text",
@@ -246,12 +246,21 @@ describe("LiveChatKit environment messages", () => {
       const { kit, model, original, saved, failNextRequest, getEnvironment } =
         makeFixture(true);
       failNextRequest(failure);
-      await kit.chat.sendMessage();
-      expect(kit.chat.status).toBe("error");
+      if (failure === "environment") {
+        // Pre-request failures propagate to the caller, like compaction errors.
+        await expect(kit.chat.sendMessage()).rejects.toThrow(
+          "Environment failed",
+        );
+      } else {
+        await kit.chat.sendMessage();
+        expect(kit.chat.status).toBe("error");
+      }
       expect(model.doStreamCalls).toHaveLength(0);
       expect(kit.chat.messages.slice(0, original.length)).toEqual(original);
       expect([...saved.values()].slice(0, original.length)).toEqual(original);
-      expect(getEnvironment).toHaveBeenCalledTimes(1);
+      expect(getEnvironment).toHaveBeenCalledTimes(
+        failure === "environment" ? 1 : 2,
+      );
       const pendingMessage = kit.chat.messages[original.length];
       if (failure === "environment") {
         expect(kit.chat.messages).toEqual(original);
@@ -271,7 +280,7 @@ describe("LiveChatKit environment messages", () => {
       const environmentMessage = kit.chat.messages[original.length];
       if (pendingMessage) expect(environmentMessage.id).toBe(pendingMessage.id);
       expect(saved.get(environmentMessage.id)).toEqual(environmentMessage);
-      expect(getEnvironment).toHaveBeenCalledTimes(2);
+      expect(getEnvironment).toHaveBeenCalledTimes(3);
       expect(kit.chat.messages.slice(0, original.length)).toEqual(original);
     },
   );

@@ -450,33 +450,10 @@ export class LiveChatKit<
         ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
         : undefined;
 
-    const overrideMessages = async (
-      messages: Message[],
-      abortSignal: AbortSignal | undefined,
-    ) => {
-      if (!onOverrideMessages || !abortSignal) return;
-      await runSideEffectSafely({
-        sideEffectName: "onOverrideMessages",
-        timeoutMs: OverrideMessagesSideEffectTimeoutMs,
-        abortSignal,
-        run: async () => {
-          await onOverrideMessages({ store, taskId, messages, abortSignal });
-        },
-      });
-    };
-
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
-      onStart: async (request) => {
-        if (request.messages.at(-1)?.id !== this.chat.messages.at(-1)?.id) {
-          // Environment injection can append a complete user message. Publish
-          // it to the SDK and checkpoint that message before persisting it.
-          this.chat.messages = request.messages;
-          await overrideMessages(request.messages, request.abortSignal);
-        }
-        await this.onStart(request);
-      },
+      onStart: this.onStart,
       getters,
       isSubTask,
       requestUseCase,
@@ -615,13 +592,32 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
-      // When environment injection will append a message, checkpoint the new
-      // message in onStart. Ordinary requests keep their existing hook order.
+      // Append a complete reminder through the same pre-request flow as other
+      // messages. Normal user-message environment injection stays in transport.
       if (
-        !getters.getEnvironment ||
-        !prompts.shouldAppendEnvironmentMessage(this.chat.messages)
+        getters.getEnvironment &&
+        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
       ) {
-        await overrideMessages(this.chat.messages, abortSignal);
+        this.chat.messages = prompts.injectEnvironment(
+          this.chat.messages,
+          await getters.getEnvironment(),
+        ) as Message[];
+      }
+
+      if (onOverrideMessages) {
+        await runSideEffectSafely({
+          sideEffectName: "onOverrideMessages",
+          timeoutMs: OverrideMessagesSideEffectTimeoutMs,
+          abortSignal,
+          run: async () => {
+            await onOverrideMessages({
+              store: this.store,
+              taskId: this.taskId,
+              messages: this.chat.messages,
+              abortSignal,
+            });
+          },
+        });
       }
     };
 
