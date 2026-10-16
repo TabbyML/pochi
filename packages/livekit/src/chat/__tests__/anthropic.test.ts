@@ -38,13 +38,16 @@ describe("Anthropic model", () => {
       >;
     });
 
-    createAnthropicModel({
-      id: "anthropic",
-      type: "anthropic",
-      modelId: "claude-sonnet-4-5",
-      contextWindow: 200_000,
-      maxOutputTokens: 8192,
-    });
+    createAnthropicModel(
+      {
+        id: "anthropic",
+        type: "anthropic",
+        modelId: "claude-sonnet-4-5",
+        contextWindow: 200_000,
+        maxOutputTokens: 8192,
+      },
+      "task-1",
+    );
 
     await anthropicFetch?.("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -55,6 +58,32 @@ describe("Anthropic model", () => {
         "https://proxy.example/?url=https%3A%2F%2Fapi.anthropic.com%2Fv1%2Fmessages",
       ),
       { method: "POST" },
+    );
+  });
+
+  it("sends the task id as the x-pochi-session-id header", () => {
+    vi.mocked(createAnthropic).mockImplementation(
+      () =>
+        ((modelId: string) => ({ modelId })) as ReturnType<
+          typeof createAnthropic
+        >,
+    );
+
+    createAnthropicModel(
+      {
+        id: "anthropic",
+        type: "anthropic",
+        modelId: "claude-sonnet-4-5",
+        contextWindow: 200_000,
+        maxOutputTokens: 8192,
+      },
+      "task-1",
+    );
+
+    expect(createAnthropic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: { "x-pochi-session-id": "task-1" },
+      }),
     );
   });
 });

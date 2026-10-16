@@ -3,14 +3,9 @@ import { getLogger } from "@getpochi/common";
 import { wrapLanguageModel } from "ai";
 import { z } from "zod";
 import type { RequestData } from "../../types";
+import { PochiSessionIdHeader } from "./constants";
 
 const logger = getLogger("openai");
-
-/**
- * Sent on outgoing BYOK OpenAI-compatible requests so the task id can be
- * correlated on the provider side.
- */
-const PochiSessionIdHeader = "x-pochi-session-id";
 
 // Zod schema for validating OpenAI API request parameters
 const OpenAIRequestParamsSchema = z

@@ -13,8 +13,8 @@ export function createModel({
   llm: RequestData["llm"];
   /**
    * The task id for this request. Passed to the BYOK (bring-your-own-key)
-   * OpenAI-compatible provider so it can send it as the `x-pochi-session-id`
-   * header on outgoing LLM requests.
+   * OpenAI-compatible and Anthropic providers so they can send it as the
+   * `x-pochi-session-id` header on outgoing LLM requests.
    */
   taskId: string;
 }) {
@@ -27,7 +27,7 @@ export function createModel({
   }
 
   if (llm.type === "anthropic") {
-    return createAnthropicModel(llm);
+    return createAnthropicModel(llm, taskId);
   }
 
   if (llm.type === "google-vertex-tuning") {
