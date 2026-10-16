@@ -12,6 +12,7 @@ import type {
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import * as runExclusive from "run-exclusive";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
@@ -35,6 +36,9 @@ export class CheckpointService implements vscode.Disposable {
   private shadowGit: ShadowGitRepo | undefined;
   private readyDefer = new Deferred<void>();
   private initialized = false;
+  // Operations that write the shadow index (stage + commit/diff/reset) must not
+  // overlap, otherwise one of them fails on index.lock.
+  private indexLock = runExclusive.createGroupRef();
 
   latestCheckpoint = signal<string | null>(null);
 
@@ -97,121 +101,130 @@ export class CheckpointService implements vscode.Disposable {
     );
   };
 
-  private saveCheckpointImpl = async (
-    message: string,
-    options: SaveCheckpointOptions = {},
-  ): Promise<string | null> => {
-    const startTime = performance.now();
-    logger.trace(`Saving checkpoint with message: ${message}`);
+  private saveCheckpointImpl = runExclusive.build(
+    this.indexLock,
+    async (
+      message: string,
+      options: SaveCheckpointOptions = {},
+    ): Promise<string | null> => {
+      const startTime = performance.now();
+      logger.trace(`Saving checkpoint with message: ${message}`);
 
-    await this.ensureInitialized();
+      await this.ensureInitialized();
 
-    if (!this.shadowGit) {
-      throw new Error("Shadow Git repository not initialized");
-    }
+      if (!this.shadowGit) {
+        throw new Error("Shadow Git repository not initialized");
+      }
 
-    try {
-      const status = await this.shadowGit.status();
-      if (status.isClean && !options.force) {
+      try {
+        const status = await this.shadowGit.status();
+        if (status.isClean && !options.force) {
+          const duration = performance.now() - startTime;
+          logger.trace(
+            `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
+          );
+          return null;
+        }
+        await this.shadowGit.stageAll();
+        const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
+        const commitHash = await this.shadowGit.commit(commitMessage);
         const duration = performance.now() - startTime;
         logger.trace(
-          `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
+          `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}, duration: ${duration.toFixed(0)}ms`,
         );
-        return null;
+        this.latestCheckpoint.value = commitHash;
+        return commitHash;
+      } catch (error) {
+        const duration = performance.now() - startTime;
+        const errorMessage = toErrorMessage(error);
+        const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}, duration: ${duration.toFixed(0)}ms`;
+        logger.error(fullErrorMessage, { error });
+        throw new Error(fullErrorMessage);
       }
+    },
+  );
+
+  saveUserEditBaseline = runExclusive.build(
+    this.indexLock,
+    async (): Promise<string> => {
+      await this.ensureInitialized();
+
+      if (!this.shadowGit) {
+        throw new Error("Shadow Git repository not initialized");
+      }
+
       await this.shadowGit.stageAll();
-      const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
-      const commitHash = await this.shadowGit.commit(commitMessage);
-      const duration = performance.now() - startTime;
-      logger.trace(
-        `Successfully saved checkpoint with message: ${message}, commit hash: ${commitHash}, duration: ${duration.toFixed(0)}ms`,
+      return this.shadowGit.commit(
+        `user-edit-baseline-${this.cwd}-${Date.now()}`,
       );
-      this.latestCheckpoint.value = commitHash;
-      return commitHash;
-    } catch (error) {
-      const duration = performance.now() - startTime;
-      const errorMessage = toErrorMessage(error);
-      const fullErrorMessage = `Failed to save checkpoint with message: ${message}: ${errorMessage}, duration: ${duration.toFixed(0)}ms`;
-      logger.error(fullErrorMessage, { error });
-      throw new Error(fullErrorMessage);
-    }
-  };
-
-  saveUserEditBaseline = async (): Promise<string> => {
-    await this.ensureInitialized();
-
-    if (!this.shadowGit) {
-      throw new Error("Shadow Git repository not initialized");
-    }
-
-    await this.shadowGit.stageAll();
-    return this.shadowGit.commit(
-      `user-edit-baseline-${this.cwd}-${Date.now()}`,
-    );
-  };
+    },
+  );
 
   /**
    * Restores a checkpoint for the current workspace.
    * @param commitHash The commit hash to restore the checkpoint from.
    * @returns A promise that resolves when the checkpoint is restored.
    */
-  restoreCheckpoint = async (
-    commitHash: string,
-    files?: string[],
-  ): Promise<void> => {
-    logger.trace(`Restoring checkpoint for commit hash: ${commitHash}`);
-    await this.ensureInitialized();
+  restoreCheckpoint = runExclusive.build(
+    this.indexLock,
+    async (commitHash: string, files?: string[]): Promise<void> => {
+      logger.trace(`Restoring checkpoint for commit hash: ${commitHash}`);
+      await this.ensureInitialized();
 
-    if (!this.shadowGit) {
-      throw new Error("Shadow Git repository not initialized");
-    }
-
-    try {
-      await this.shadowGit.reset(commitHash, files);
-      this.latestCheckpoint.value = commitHash;
-    } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      logger.error(
-        `Failed to restore checkpoint for commit hash: ${commitHash}: ${errorMessage}`,
-      );
-      throw new Error(`Failed to restore checkpoint: ${errorMessage}`);
-    }
-  };
-
-  restoreChangedFiles = async (files: TaskChangedFile[]): Promise<void> => {
-    await this.ensureInitialized();
-    if (!this.shadowGit) {
-      throw new Error("Shadow Git repository not initialized");
-    }
-
-    try {
-      for (const file of files) {
-        if (file.content === null) {
-          await fs.rm(path.join(this.cwd, file.filepath), { force: true });
-        } else if (file.content?.type === "checkpoint") {
-          const exists = await this.checkFileExistsInCheckpoint(
-            file.content.commit,
-            file.filepath,
-          );
-          if (exists) {
-            await this.shadowGit.reset(file.content.commit, [file.filepath]);
-          } else {
-            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
-          }
-        } else if (file.content?.type === "text") {
-          await fs.writeFile(
-            path.join(this.cwd, file.filepath),
-            file.content.text,
-            "utf8",
-          );
-        }
+      if (!this.shadowGit) {
+        throw new Error("Shadow Git repository not initialized");
       }
-    } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      logger.error(`Failed to restore changed files: ${errorMessage}`);
-      throw new Error(`Failed to restore changed files: ${errorMessage}`);
-    }
-  };
+
+      try {
+        await this.shadowGit.reset(commitHash, files);
+        this.latestCheckpoint.value = commitHash;
+      } catch (error) {
+        const errorMessage = toErrorMessage(error);
+        logger.error(
+          `Failed to restore checkpoint for commit hash: ${commitHash}: ${errorMessage}`,
+        );
+        throw new Error(`Failed to restore checkpoint: ${errorMessage}`);
+      }
+    },
+  );
+
+  restoreChangedFiles = runExclusive.build(
+    this.indexLock,
+    async (files: TaskChangedFile[]): Promise<void> => {
+      await this.ensureInitialized();
+      if (!this.shadowGit) {
+        throw new Error("Shadow Git repository not initialized");
+      }
+
+      try {
+        for (const file of files) {
+          if (file.content === null) {
+            await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+          } else if (file.content?.type === "checkpoint") {
+            const exists = await this.checkFileExistsInCheckpoint(
+              file.content.commit,
+              file.filepath,
+            );
+            if (exists) {
+              await this.shadowGit.reset(file.content.commit, [file.filepath]);
+            } else {
+              await fs.rm(path.join(this.cwd, file.filepath), { force: true });
+            }
+          } else if (file.content?.type === "text") {
+            await fs.writeFile(
+              path.join(this.cwd, file.filepath),
+              file.content.text,
+              "utf8",
+            );
+          }
+        }
+      } catch (error) {
+        const errorMessage = toErrorMessage(error);
+        logger.error(`Failed to restore changed files: ${errorMessage}`);
+        throw new Error(`Failed to restore changed files: ${errorMessage}`);
+      }
+    },
+  );
 
   async getShadowGitPath() {
     if (!this.context.globalStorageUri) {
@@ -261,32 +274,35 @@ export class CheckpointService implements vscode.Disposable {
     }
   };
 
-  getCheckpointFileEdits = async (
-    from: string,
-    files?: string[],
-    options?: DiffCheckpointOptions,
-  ): Promise<FileDiff[] | null> => {
-    await this.ensureInitialized();
-    if (!this.shadowGit) {
-      throw new Error("Shadow Git repository not initialized");
-    }
-    try {
-      await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
-      const changes = await this.shadowGit.getDiff(from, undefined, files);
-      const result = processGitChangesToFileEdits(changes, options);
-      logger.debug(
-        `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
-      );
-      return result;
-    } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      logger.error(
-        `Failed to get user edits for commit hash: ${from}${files ? ` for files: ${files}` : ""}: ${errorMessage}`,
-        { error },
-      );
-      return null;
-    }
-  };
+  getCheckpointFileEdits = runExclusive.build(
+    this.indexLock,
+    async (
+      from: string,
+      files?: string[],
+      options?: DiffCheckpointOptions,
+    ): Promise<FileDiff[] | null> => {
+      await this.ensureInitialized();
+      if (!this.shadowGit) {
+        throw new Error("Shadow Git repository not initialized");
+      }
+      try {
+        await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
+        const changes = await this.shadowGit.getDiff(from, undefined, files);
+        const result = processGitChangesToFileEdits(changes, options);
+        logger.debug(
+          `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
+        );
+        return result;
+      } catch (error) {
+        const errorMessage = toErrorMessage(error);
+        logger.error(
+          `Failed to get user edits for commit hash: ${from}${files ? ` for files: ${files}` : ""}: ${errorMessage}`,
+          { error },
+        );
+        return null;
+      }
+    },
+  );
 
   diffChangedFiles = async (
     changedFiles: TaskChangedFile[],
