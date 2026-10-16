@@ -243,6 +243,16 @@ function hasEnvironmentReminder(message: UIMessage): boolean {
   );
 }
 
+/** Whether restoring the visible environment requires a new message. */
+export function shouldAppendEnvironmentMessage(messages: UIMessage[]): boolean {
+  const lastMessage = messages.at(-1);
+  return Boolean(
+    lastMessage &&
+      (lastMessage.role !== "user" || hasEnvironmentReminder(lastMessage)) &&
+      !hasCompleteEnvironmentPrompt(getVisibleMessages(messages)),
+  );
+}
+
 export function injectEnvironment(
   messages: UIMessage[],
   environment: Environment | undefined,

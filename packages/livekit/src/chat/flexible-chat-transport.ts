@@ -219,10 +219,14 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     this.onRequestFinished = options.onRequestFinished;
   }
 
-  /** Prepare complete environment reminders before the SDK snapshots messages. */
+  /** Prepare a new reminder only when the SDK must snapshot a different tail. */
   async prepareEnvironment(
     messages: Message[],
   ): Promise<Message[] | undefined> {
+    this.preparedEnvironment = undefined;
+    // Ordinary turns retain the existing injection point in sendMessages,
+    // after checkpoint hooks. Only a new message must precede the SDK snapshot.
+    if (!prompts.shouldAppendEnvironmentMessage(messages)) return messages;
     this.preparedEnvironment = Promise.resolve().then(() =>
       this.getters.getEnvironment?.(),
     );

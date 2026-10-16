@@ -18,6 +18,62 @@ afterEach(async () => {
 });
 
 describe("LiveChatKit environment messages", () => {
+  it.each(["user", "notification"] as const)(
+    "injects environment into a new %s message after checkpoint preparation",
+    async (kind) => {
+      const {
+        kit,
+        original,
+        environment,
+        getEnvironment,
+        preparedRequests,
+        requests,
+      } = makeFixture(true);
+      const parts: Message["parts"] =
+        kind === "user"
+          ? [{ type: "text", text: "Continue" }]
+          : [
+              {
+                type: "data-background-job-notification",
+                data: {
+                    kind: "command",
+                  notificationId: "bgjob-cmd-1:terminal",
+                  backgroundJobId: "bgjob-cmd-1",
+                  outputFile: "/tmp/output.log",
+                  status: "completed",
+                  summary: "Command finished",
+                  exitCode: 0,
+                  finishedAt: 1,
+                },
+              },
+            ];
+      getEnvironment.mockImplementationOnce(async () => {
+        // Checkpoint hooks must see the original outgoing message, including
+        // notification-only messages that they classify by their parts.
+        expect(preparedRequests).toHaveLength(1);
+        expect(preparedRequests[0].at(-1)?.parts).toEqual(parts);
+        expect(kit.chat.messages.at(-1)?.parts).toContainEqual({
+          type: "data-checkpoint",
+          data: { commit: "after-tools" },
+        });
+        return environment;
+      });
+
+      await kit.chat.sendMessage({ parts: structuredClone(parts) });
+
+      expect(kit.chat.status).toBe("ready");
+      expect(getEnvironment).toHaveBeenCalledTimes(1);
+      expect(kit.chat.messages).toHaveLength(original.length + 2);
+      expect(kit.chat.messages.slice(0, original.length)).toEqual(original);
+      expect(requests[0].at(-1)?.parts[0]).toEqual({
+        type: "text",
+        text: prompts.createSystemReminder(
+          prompts.environment(environment, undefined),
+        ),
+      });
+    },
+  );
+
   it("appends the environment after auto-compaction hides the original snapshot", async () => {
     const {
       kit,

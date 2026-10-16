@@ -587,8 +587,8 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
-      // Append a complete environment reminder before the SDK snapshots the
-      // response, so it starts a new assistant message and persists normally.
+      // If restoring the environment needs a new message, append its complete
+      // reminder before the SDK snapshot. Ordinary turns inject in the transport.
       const prepared = await this.transport.prepareEnvironment(
         this.chat.messages,
       );
