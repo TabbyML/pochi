@@ -47,6 +47,7 @@ export const executeCommandWithNode = async ({
   color = true,
   envs,
 }: ExecuteCommandOptions) => {
+  if (abortSignal?.aborted) throw ExecutionError.createAbortError();
   const shellCommand = buildShellCommand(command);
   const options = {
     cwd,

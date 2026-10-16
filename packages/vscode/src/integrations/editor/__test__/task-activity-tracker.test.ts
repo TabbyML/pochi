@@ -65,7 +65,7 @@ function createHarness() {
   return { open, createJob, stopped, tracker };
 }
 
-describe("TaskActivityTracker background job cleanup", () => {
+describe("TaskActivityTracker task cleanup", () => {
   it("kills jobs throughout the task tree when its tab closes", () => {
     const h = createHarness();
     try {
@@ -75,7 +75,12 @@ describe("TaskActivityTracker background job cleanup", () => {
         h.createJob(id, "parent");
       h.createJob("other", "other");
       h.createJob("unowned");
+      const foregroundSignals = ["parent", "child", "grandchild"].map(() =>
+        h.tracker.getTaskAbortSignal("parent"),
+      );
+      const otherSignal = h.tracker.getTaskAbortSignal("other");
       assert.deepStrictEqual(h.stopped, []);
+      assert.ok(foregroundSignals.every((signal) => !signal.aborted));
       closeParent();
       assert.deepStrictEqual(h.stopped, [
         "parent",
@@ -83,9 +88,56 @@ describe("TaskActivityTracker background job cleanup", () => {
         "grandchild",
         "completed-child",
       ]);
+      assert.ok(foregroundSignals.every((signal) => signal.aborted));
+      assert.strictEqual(otherSignal.aborted, false);
     } finally {
       h.tracker.dispose();
     }
+  });
+
+  it("aborts late foreground calls and gives reopened tasks a fresh lifetime", () => {
+    const h = createHarness();
+    try {
+      const close = h.open("parent");
+      const previousSignal = h.tracker.getTaskAbortSignal("parent");
+      close();
+      assert.strictEqual(previousSignal.aborted, true);
+      assert.strictEqual(h.tracker.getTaskAbortSignal("parent").aborted, true);
+
+      h.open("parent");
+      const nextSignal = h.tracker.getTaskAbortSignal("parent");
+      assert.strictEqual(nextSignal.aborted, false);
+      assert.notStrictEqual(nextSignal, previousSignal);
+      assert.strictEqual(previousSignal.aborted, true);
+    } finally {
+      h.tracker.dispose();
+    }
+  });
+
+  it("keeps foreground calls alive until the last tab for their task closes", () => {
+    const h = createHarness();
+    try {
+      const closeFirst = h.open("parent");
+      const signal = h.tracker.getTaskAbortSignal("parent");
+      const closeSecond = h.open("parent");
+      h.open("other");
+      assert.strictEqual(signal.aborted, false);
+      closeFirst();
+      assert.strictEqual(signal.aborted, false);
+      assert.strictEqual(h.tracker.getTaskAbortSignal("parent"), signal);
+      closeSecond();
+      assert.strictEqual(signal.aborted, true);
+    } finally {
+      h.tracker.dispose();
+    }
+  });
+
+  it("aborts active foreground calls when the tracker is disposed", () => {
+    const h = createHarness();
+    h.open("parent");
+    const signal = h.tracker.getTaskAbortSignal("parent");
+    h.tracker.dispose();
+    assert.strictEqual(signal.aborted, true);
   });
 
   it("kills late registrations from startup or foreground promotion after close", () => {
