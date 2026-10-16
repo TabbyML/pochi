@@ -18,11 +18,22 @@ const logger = getLogger("TaskActivityTracker");
 @singleton()
 export class TaskActivityTracker implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
+  private readonly taskAbortControllers = new Map<string, AbortController>();
   state = signal<TaskStates>({});
 
   constructor() {
     this.state.value = createTaskStates();
     this.setupEventListeners();
+  }
+
+  getTaskAbortSignal(rootTaskId: string): AbortSignal {
+    if (!this.state.value[rootTaskId]) return AbortSignal.abort();
+    let controller = this.taskAbortControllers.get(rootTaskId);
+    if (!controller) {
+      controller = new AbortController();
+      this.taskAbortControllers.set(rootTaskId, controller);
+    }
+    return controller.signal;
   }
 
   /**
@@ -92,6 +103,14 @@ export class TaskActivityTracker implements vscode.Disposable {
     }
 
     this.saveState(newState);
+    // Foreground commands have no TerminalJob yet, but belong to the same
+    // root task and must stop when its last tab closes too.
+    for (const [rootTaskId, controller] of this.taskAbortControllers) {
+      if (!newState[rootTaskId]) {
+        this.taskAbortControllers.delete(rootTaskId);
+        controller.abort();
+      }
+    }
     for (const job of TerminalJob.list()) this.stopIfTaskClosed(job);
   };
 
@@ -166,6 +185,10 @@ export class TaskActivityTracker implements vscode.Disposable {
    * Release all resources held by this class
    */
   dispose() {
+    for (const controller of this.taskAbortControllers.values()) {
+      controller.abort();
+    }
+    this.taskAbortControllers.clear();
     for (const disposable of this.disposables) {
       disposable.dispose();
     }
