@@ -83,21 +83,30 @@ describe("monitor execution through the shared background job manager", () => {
     await rm(outputDir, { recursive: true, force: true });
   });
   it("lets a noisy monitor finish and promotes its merged output after acknowledgement", async () => {
+    const release = join(outputDir, "release-flood");
     const job = adaptor.startBackgroundCommand(taskId,
-      'i=0; while [ "$i" -lt 14 ]; do printf "event-%s\\n" "$i"; i=$((i + 1)); sleep 0.25; done; printf "flood-finished\\n"',
-      ".", undefined, { description: "noisy monitor" },
+      'printf "event-0\\n"; while [ ! -f "$POCHI_MONITOR_TEST_RELEASE" ]; do sleep 0.05; done; i=1; while [ "$i" -lt 14 ]; do printf "event-%s\\n" "$i"; i=$((i + 1)); sleep 0.25; done; printf "flood-finished\\n"',
+      ".", { POCHI_MONITOR_TEST_RELEASE: release }, { description: "noisy monitor" },
     );
+    // Wait for the published head before producing more output. A shell sleep
+    // alone cannot guarantee batch boundaries when the CI event loop is busy.
+    await expect.poll(() => events().flatMap((event) => event.lines), { timeout: 6000 }).toEqual(["event-0"]);
+    const first = events().slice(0, 1);
+    await writeFile(release, "");
     await expect.poll(async () => readFile(job.outputFile, "utf8"), { timeout: 6000 }).toContain("flood-finished");
     expect(await manager.wait(taskId, { timeoutMs: 2000 })).toBe("completed");
     expect(events().at(-1)?.ended?.status).toBe("completed");
-    const first = events().slice(0, 1);
     expect(first).toHaveLength(1);
     expect(first[0].lines).toEqual(["event-0"]);
+    expect(events()[0]).toEqual(first[0]);
     data.setMessages(taskId, [{ id: "first", role: "user", parts: first.map((data) => ({ type: "data-background-job-notification", data })) }]);
     await expect.poll(() => events().flatMap((event) => event.lines)).toContain("flood-finished");
     expect(events()).toHaveLength(1);
-    expect(events()[0].lines).toContain("event-1");
-  });
+    expect(events()[0].lines).toEqual([
+      ...Array.from({ length: 13 }, (_, index) => `event-${index + 1}`),
+      "flood-finished",
+    ]);
+  }, 15_000);
 
   it("reads all accumulated watcher batches in one snapshot before acknowledgement through the CLI adaptor", async () => {
     adaptor.startBackgroundCommand(taskId,

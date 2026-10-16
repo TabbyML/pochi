@@ -173,10 +173,12 @@ describe.skipIf(process.platform === "win32")("browser Bash installer", () => {
 // On POSIX hosts, executable shell fixtures stand in for the downloaded Windows
 // binary so PowerShell can exercise the installer without network access.
 const powershell = process.env.POCHI_TEST_POWERSHELL || "pwsh";
+// Cold PowerShell startup can exceed 10s while CI runs the workspace suites.
+const powershellTimeoutMs = 30_000;
 const canRunPowerShell =
   process.platform !== "win32" &&
   spawnSync(powershell, ["-NoProfile", "-Command", "exit 0"], {
-    timeout: 10_000,
+    timeout: powershellTimeoutMs,
   }).status === 0;
 
 async function runPowerShell(
@@ -198,7 +200,7 @@ function Invoke-WebRequest {
 exit $LASTEXITCODE
 `,
   );
-  return spawnSync(
+  const result = spawnSync(
     powershell,
     [
       "-NoProfile",
@@ -214,18 +216,19 @@ exit $LASTEXITCODE
         ...env,
       },
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: powershellTimeoutMs,
     },
   );
+  expect(result.error, result.stderr).toBeUndefined();
+  return result;
 }
 
 describe(
   "browser PowerShell installer",
   {
     skip: !canRunPowerShell,
-    // A cold PowerShell process can exceed Vitest's default 5s on busy CI
-    // runners. Cover the 10s process timeout plus fixture setup and assertions.
-    timeout: 15_000,
+    // Cover the process timeout plus fixture setup and assertions.
+    timeout: powershellTimeoutMs + 5_000,
   },
   () => {
     it.each([
