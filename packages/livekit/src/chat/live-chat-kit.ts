@@ -59,6 +59,10 @@ import {
   getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
+import {
+  injectEnvironment,
+  shouldAppendEnvironmentMessage,
+} from "./environment";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -586,6 +590,18 @@ export class LiveChatKit<
       // Attach after compaction, but before checkpoint hooks so they update
       // the final message that this request will send and persist.
       await this.attachPendingBackgroundJobNotifications(abortSignal);
+
+      // Append a complete reminder through the same pre-request flow as other
+      // messages. Normal user-message environment injection stays in transport.
+      if (
+        getters.getEnvironment &&
+        shouldAppendEnvironmentMessage(this.chat.messages)
+      ) {
+        this.chat.messages = injectEnvironment(
+          this.chat.messages,
+          await getters.getEnvironment(),
+        ) as Message[];
+      }
 
       if (onOverrideMessages) {
         await runSideEffectSafely({

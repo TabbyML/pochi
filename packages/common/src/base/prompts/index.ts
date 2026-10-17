@@ -18,7 +18,11 @@ import {
 import { renderBackgroundJobNotification } from "./background-job-notification";
 import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
-import { createEnvironmentPrompt, injectEnvironment } from "./environment";
+import {
+  createEnvironmentPrompt,
+  createLiteEnvironmentPrompt,
+  hasCompleteEnvironmentInfo,
+} from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
 import { renderReviewComments } from "./review-comments";
@@ -42,9 +46,10 @@ export {
 
 export const prompts = {
   system: createSystemPrompt,
-  injectEnvironment,
   injectAutoMemory,
   environment: createEnvironmentPrompt,
+  liteEnvironment: createLiteEnvironmentPrompt,
+  hasCompleteEnvironmentInfo,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,

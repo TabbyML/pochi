@@ -1,7 +1,5 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
-import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
-import { prompts } from "./index";
 
 type User = { name: string; email: string };
 export type EnvironmentInfo = Pick<
@@ -224,73 +222,12 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
   return result;
 }
 
-export function injectEnvironment(
-  messages: UIMessage[],
-  environment: Environment | undefined,
-): UIMessage[] {
-  if (environment === undefined) return messages;
-
-  // The LLM formatter discards every message before the latest compact block.
-  // Only inspect that visible suffix when deciding whether the request already
-  // contains a complete environment.
-  const compactIndex = messages.findLastIndex((message) =>
-    message.parts.some(
-      (part) => part.type === "text" && prompts.isCompact(part.text),
-    ),
-  );
-  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
-  let messageToInject = visibleMessages.at(-1);
-  if (messageToInject?.role !== "user") {
-    // Tool continuations may compact away the full environment. Repair the
-    // visible user context only when needed, keeping normal continuations stable.
-    if (hasCompleteEnvironmentPrompt(visibleMessages)) return messages;
-    messageToInject = visibleMessages.findLast(
-      (message) => message.role === "user",
-    );
-  }
-  if (!messageToInject) return messages;
-
-  const { gitStatus } = environment.workspace;
-  const user =
-    gitStatus?.userEmail && gitStatus?.userName
-      ? {
-          name: gitStatus.userName,
-          email: gitStatus.userEmail,
-        }
-      : undefined;
-
-  const parts = messageToInject.parts.filter(
-    (part) =>
-      part.type !== "text" || !prompts.isEnvironmentSystemReminder(part.text),
-  );
-  // Ignore the reminder being replaced when checking the outgoing request.
-  messageToInject.parts = parts;
-
-  const environmentDetails = !hasCompleteEnvironmentPrompt(visibleMessages)
-    ? createEnvironmentPrompt(environment, user)
-    : createLiteEnvironmentPrompt(environment);
-
-  const reminderPart = {
-    type: "text",
-    text: prompts.createSystemReminder(environmentDetails),
-  } satisfies TextUIPart;
-
-  messageToInject.parts = [reminderPart, ...parts];
-
-  return messages;
-}
-
-function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
-  return messages.some((message) =>
-    message.parts.some((part) => {
-      if (part.type !== "text") return false;
-      const systemInfo = parseSystemInfoLines(part.text);
-      return Boolean(
-        systemInfo["Operating System"] &&
-          systemInfo["Home Directory"] &&
-          systemInfo["Current Working Directory"],
-      );
-    }),
+export function hasCompleteEnvironmentInfo(text: string): boolean {
+  const systemInfo = parseSystemInfoLines(text);
+  return Boolean(
+    systemInfo["Operating System"] &&
+      systemInfo["Home Directory"] &&
+      systemInfo["Current Working Directory"],
   );
 }
 
