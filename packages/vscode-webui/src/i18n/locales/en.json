@@ -112,7 +112,7 @@
     "super": "Super",
     "swift": "Swift",
     "reload": "Reload",
-    "subscriptionRequired": "Subscribe to access Super models"
+    "topUpRequired": "Top up to access Super models"
   },
   "worktreeSelect": {
     "selectWorktree": "Select Worktree",
@@ -500,14 +500,14 @@
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
-    "requireSubscription": "You've used all your free credits. To continue, please subscribe to Pochi.",
-    "subscribe": "Subscribe",
-    "requireOrgSubscription": "Your team does not have a subscription yet. To continue, please subscribe to Pochi.",
+    "insufficientCredits": "Your credits are exhausted. Top up to continue using Pochi.",
+    "topUp": "Top up",
+    "insufficientOrgCredits": "Your team's credits are exhausted. Ask an owner or admin to top up.",
     "requirePayment": "You have unpaid invoices. Please",
     "makePayment": "make a payment",
     "toContinueUsingPochi": "to continue using Pochi",
     "requireOrgPayment": "Your team has unpaid invoices. Please",
-    "requireSubscriptionForSuperModels": "To use Super models, please subscribe to Pochi."
+    "superModelsRequireCredits": "Top up your balance to use Super models."
   },
   "chatPage": {
     "defaultUserName": "You"

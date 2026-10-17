@@ -84,7 +84,6 @@
     "hast": "^1.0.0",
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
-    "jose": "catalog:",
     "lucide-react": "catalog:",
     "mermaid": "^11.11.0",
     "morphdom": "^2.7.8",

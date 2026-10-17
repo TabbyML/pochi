@@ -26,7 +26,8 @@ import { useTranslation } from "react-i18next";
 
 import LoadingWrapper from "@/components/loading-wrapper";
 import type { ModelGroups } from "@/features/settings";
-import { usePayingPlan } from "@/lib/hooks/use-paying-plan";
+import { useModelAccess } from "@/lib/hooks/use-model-access";
+import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { DisplayModel } from "@getpochi/common/vscode-webui-bridge";
 import { DropdownMenuPortal } from "@radix-ui/react-dropdown-menu";
 
@@ -62,10 +63,13 @@ export function ModelSelect({
     onChange(v.id);
   };
 
-  const payingInfo = usePayingPlan();
-  const isSuperModelsDisabled =
-    payingInfo.plan === "freebie" &&
-    !payingInfo.isFreebieWhitelistedForSuperModel;
+  const {
+    superModels,
+    isLoading: isAccessLoading,
+    isError: isAccessError,
+  } = useModelAccess();
+  // Only an explicit server denial disables Super models.
+  const isSuperModelsDisabled = !superModels && !isAccessError;
 
   return (
     <LoadingWrapper
@@ -149,18 +153,20 @@ export function ModelSelect({
                           aria-label="model-group-title"
                         >
                           <span>{group.title}</span>
-                          {!isSuperModelGroup && isSuperModelsDisabled && (
-                            <span className="ml-4 font-normal text-xs">
-                              <a
-                                href="https://app.getpochi.com/pricing"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[var(--vscode-textLink-foreground)] hover:underline"
-                              >
-                                {t("modelSelect.subscriptionRequired")}
-                              </a>
-                            </span>
-                          )}
+                          {!isSuperModelGroup &&
+                            isSuperModelsDisabled &&
+                            !isAccessLoading && (
+                              <span className="ml-4 font-normal text-xs">
+                                <a
+                                  href={`${getServerBaseUrl()}/billing`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[var(--vscode-textLink-foreground)] hover:underline"
+                                >
+                                  {t("modelSelect.topUpRequired")}
+                                </a>
+                              </span>
+                            )}
                         </div>
                         {group.models.map((model: DisplayModel) => {
                           const isSelected = model.id === value?.id;

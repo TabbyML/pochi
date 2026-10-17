@@ -111,7 +111,7 @@
     "super": "加強",
     "swift": "極速",
     "reload": "再読み込み",
-    "subscriptionRequired": "Super モデルを使用するにはサブスクライブしてください"
+    "topUpRequired": "Super モデルを使うにはチャージしてください"
   },
   "worktreeSelect": {
     "selectWorktree": "ワークツリーを選択",
@@ -492,14 +492,14 @@
     "reachedCreditLimit": "支出限度額に達しました。",
     "seeMore": "詳細を見る",
     "teamReachedCreditLimit": "チームが支出限度額に達しました。",
-    "requireSubscription": "無料クレジットをすべて使い切りました。続行するには、Pochiにサブスクライブしてください。",
-    "subscribe": "サブスクライブ",
-    "requireOrgSubscription": "チームはまだサブスクリプションを持っていません。続行するには、Pochiにサブスクライブしてください。",
+    "insufficientCredits": "クレジット残高が不足しています。Pochi を使い続けるにはチャージしてください。",
+    "topUp": "チャージ",
+    "insufficientOrgCredits": "チームのクレジット残高が不足しています。オーナーまたは管理者にチャージを依頼してください。",
     "requirePayment": "未払いの請求書があります。",
     "makePayment": "支払いを行う",
     "toContinueUsingPochi": "Pochiを引き続き使用するために",
     "requireOrgPayment": "チームに未払いの請求書があります。",
-    "requireSubscriptionForSuperModels": "加強モデルを使用するには、Pochiにサブスクライブしてください。"
+    "superModelsRequireCredits": "Super モデルを使うには残高をチャージしてください。"
   },
   "chatPage": {
     "defaultUserName": "あなた"
