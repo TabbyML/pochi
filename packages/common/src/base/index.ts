@@ -4,7 +4,6 @@ import { z } from "zod";
 export { attachTransport, getLogger } from "./logger";
 
 export {
-  extractCompactMessages,
   formatters,
   getUIUserMessageKind,
   type LLMFormatterOptions,

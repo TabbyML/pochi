@@ -7,7 +7,12 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import {
+  formatters,
+  getLogger,
+  isForkAgentUseCase,
+  prompts,
+} from "@getpochi/common";
 import {
   hasActiveTodos,
   stripOpenAIItemReferencesFromLastStep,
@@ -60,7 +65,7 @@ import {
   getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
-import { injectEnvironment } from "./environment";
+
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -610,7 +615,10 @@ export class LiveChatKit<
         // A failure is left for the transport to rethrow, where it becomes a
         // request error instead of escaping this hook.
         const environment = await request.catch(() => undefined);
-        this.chat.messages = injectEnvironment(this.chat.messages, environment);
+        this.chat.messages = prompts.injectEnvironment(
+          this.chat.messages,
+          environment,
+        ) as Message[];
       }
 
       if (onOverrideMessages) {

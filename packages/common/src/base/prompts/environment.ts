@@ -1,5 +1,7 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
+import { prompts } from "./index";
 
 type User = { name: string; email: string };
 export type EnvironmentInfo = Pick<
@@ -74,45 +76,36 @@ export function parseEnvironmentInfoResult(
           : [];
 
     for (const text of textParts) {
-      const result = parseEnvironmentInfoText(text);
-      if (result.success) return result;
-      if (result.missingFields.length < closestMissingFields.length) {
-        closestMissingFields = result.missingFields;
+      const systemInfo = parseSystemInfoLines(text);
+      const os = systemInfo["Operating System"];
+      const shell = systemInfo["Default Shell"];
+      const homedir = systemInfo["Home Directory"];
+      const cwd = systemInfo["Current Working Directory"];
+
+      if (os && homedir && cwd) {
+        return {
+          success: true,
+          value: {
+            os,
+            shell: shell ?? "",
+            homedir,
+            cwd,
+          },
+        };
+      }
+
+      const missingFields: EnvironmentInfoField[] = [];
+      if (!os) missingFields.push("os");
+      if (!homedir) missingFields.push("homedir");
+      if (!cwd) missingFields.push("cwd");
+
+      if (missingFields.length < closestMissingFields.length) {
+        closestMissingFields = missingFields;
       }
     }
   }
 
   return { success: false, missingFields: closestMissingFields };
-}
-
-export function hasCompleteEnvironmentInfo(text: string): boolean {
-  return parseEnvironmentInfoText(text).success;
-}
-
-function parseEnvironmentInfoText(text: string): EnvironmentInfoParseResult {
-  const systemInfo = parseSystemInfoLines(text);
-  const os = systemInfo["Operating System"];
-  const shell = systemInfo["Default Shell"];
-  const homedir = systemInfo["Home Directory"];
-  const cwd = systemInfo["Current Working Directory"];
-
-  if (os && homedir && cwd) {
-    return {
-      success: true,
-      value: {
-        os,
-        shell: shell ?? "",
-        homedir,
-        cwd,
-      },
-    };
-  }
-
-  const missingFields: EnvironmentInfoField[] = [];
-  if (!os) missingFields.push("os");
-  if (!homedir) missingFields.push("homedir");
-  if (!cwd) missingFields.push("cwd");
-  return { success: false, missingFields };
 }
 
 function parseSystemInfoLines(text: string) {
@@ -229,6 +222,107 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
   }
 
   return result;
+}
+
+/**
+ * Adds the environment to the request tail only, so the prompt prefix written
+ * by earlier requests stays cacheable. Mutates the last user message in place
+ * and returns a new array when a message has to be appended; callers must
+ * store the result before the request snapshots its messages.
+ */
+export function injectEnvironment(
+  messages: UIMessage[],
+  environment: Environment | undefined,
+): UIMessage[] {
+  const lastMessage = messages.at(-1);
+  if (environment === undefined || lastMessage === undefined) return messages;
+
+  // The LLM formatter discards every message before the latest compact block.
+  // Only inspect that visible suffix when deciding whether the request already
+  // contains a complete environment.
+  const compactIndex = messages.findLastIndex((message) =>
+    message.parts.some(
+      (part) => part.type === "text" && prompts.isCompact(part.text),
+    ),
+  );
+  const visibleMessages = messages.slice(Math.max(compactIndex, 0));
+  const completeEnvironmentVisible =
+    hasCompleteEnvironmentPrompt(visibleMessages);
+
+  if (lastMessage.role !== "user") {
+    if (completeEnvironmentVisible) return messages;
+    return [
+      ...messages,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [createEnvironmentReminderPart(environment, "full")],
+      },
+    ];
+  }
+
+  const hasEnvironmentReminder = lastMessage.parts.some(
+    (part) =>
+      part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
+  );
+  if (!hasEnvironmentReminder) {
+    lastMessage.parts = [
+      createEnvironmentReminderPart(
+        environment,
+        completeEnvironmentVisible ? "lite" : "full",
+      ),
+      ...lastMessage.parts,
+    ];
+    return messages;
+  }
+
+  // A retry keeps the reminder from the earlier attempt even though it may be
+  // stale: rewriting it would invalidate the prompt cache that attempt wrote.
+  if (completeEnvironmentVisible) return messages;
+
+  // A compaction since the earlier attempt hid the complete environment. Add it
+  // to this message rather than a second consecutive user message.
+  lastMessage.parts = [
+    ...lastMessage.parts,
+    createEnvironmentReminderPart(environment, "full"),
+  ];
+  return messages;
+}
+
+function createEnvironmentReminderPart(
+  environment: Environment,
+  kind: "full" | "lite",
+): TextUIPart {
+  const { gitStatus } = environment.workspace;
+  const user =
+    gitStatus?.userEmail && gitStatus?.userName
+      ? {
+          name: gitStatus.userName,
+          email: gitStatus.userEmail,
+        }
+      : undefined;
+  return {
+    type: "text",
+    text: prompts.createSystemReminder(
+      kind === "full"
+        ? createEnvironmentPrompt(environment, user)
+        : createLiteEnvironmentPrompt(environment),
+    ),
+  };
+}
+
+function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (part.type !== "text") return false;
+      const systemInfo = parseSystemInfoLines(part.text);
+      return Boolean(
+        systemInfo["Operating System"] &&
+          systemInfo["Home Directory"] &&
+          systemInfo["Current Working Directory"],
+      );
+    }),
+  );
 }
 
 function getTodos(todos: Environment["todos"]) {
