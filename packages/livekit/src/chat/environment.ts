@@ -1,19 +1,12 @@
-import { type Environment, prompts } from "@getpochi/common";
-import type { TextUIPart, UIMessage } from "ai";
+import {
+  type Environment,
+  extractCompactMessages,
+  prompts,
+} from "@getpochi/common";
+import type { TextUIPart } from "ai";
+import type { Message } from "../types";
 
-function getVisibleMessages(messages: UIMessage[]): UIMessage[] {
-  // The LLM formatter discards every message before the latest compact block.
-  // Only inspect that visible suffix when deciding whether the request already
-  // contains a complete environment.
-  const compactIndex = messages.findLastIndex((message) =>
-    message.parts.some(
-      (part) => part.type === "text" && prompts.isCompact(part.text),
-    ),
-  );
-  return messages.slice(Math.max(compactIndex, 0));
-}
-
-function hasEnvironmentReminder(message: UIMessage): boolean {
+function hasEnvironmentReminder(message: Message): boolean {
   return message.parts.some(
     (part) =>
       part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
@@ -27,13 +20,18 @@ function hasEnvironmentReminder(message: UIMessage): boolean {
  * store the result before the request snapshots its messages.
  */
 export function injectEnvironment(
-  messages: UIMessage[],
+  messages: Message[],
   environment: Environment | undefined,
-): UIMessage[] {
+): Message[] {
   const lastMessage = messages.at(-1);
   if (environment === undefined || lastMessage === undefined) return messages;
-  const completeEnvironmentVisible = hasCompleteEnvironmentPrompt(
-    getVisibleMessages(messages),
+  // Only the suffix from the latest compact block reaches the model.
+  const completeEnvironmentVisible = extractCompactMessages(messages).some(
+    (message) =>
+      message.parts.some(
+        (part) =>
+          part.type === "text" && prompts.hasCompleteEnvironmentInfo(part.text),
+      ),
   );
 
   if (lastMessage.role !== "user") {
@@ -92,13 +90,4 @@ function createEnvironmentReminderPart(
         : prompts.liteEnvironment(environment),
     ),
   };
-}
-
-function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
-  return messages.some((message) =>
-    message.parts.some(
-      (part) =>
-        part.type === "text" && prompts.hasCompleteEnvironmentInfo(part.text),
-    ),
-  );
 }

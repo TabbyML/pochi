@@ -74,36 +74,45 @@ export function parseEnvironmentInfoResult(
           : [];
 
     for (const text of textParts) {
-      const systemInfo = parseSystemInfoLines(text);
-      const os = systemInfo["Operating System"];
-      const shell = systemInfo["Default Shell"];
-      const homedir = systemInfo["Home Directory"];
-      const cwd = systemInfo["Current Working Directory"];
-
-      if (os && homedir && cwd) {
-        return {
-          success: true,
-          value: {
-            os,
-            shell: shell ?? "",
-            homedir,
-            cwd,
-          },
-        };
-      }
-
-      const missingFields: EnvironmentInfoField[] = [];
-      if (!os) missingFields.push("os");
-      if (!homedir) missingFields.push("homedir");
-      if (!cwd) missingFields.push("cwd");
-
-      if (missingFields.length < closestMissingFields.length) {
-        closestMissingFields = missingFields;
+      const result = parseEnvironmentInfoText(text);
+      if (result.success) return result;
+      if (result.missingFields.length < closestMissingFields.length) {
+        closestMissingFields = result.missingFields;
       }
     }
   }
 
   return { success: false, missingFields: closestMissingFields };
+}
+
+export function hasCompleteEnvironmentInfo(text: string): boolean {
+  return parseEnvironmentInfoText(text).success;
+}
+
+function parseEnvironmentInfoText(text: string): EnvironmentInfoParseResult {
+  const systemInfo = parseSystemInfoLines(text);
+  const os = systemInfo["Operating System"];
+  const shell = systemInfo["Default Shell"];
+  const homedir = systemInfo["Home Directory"];
+  const cwd = systemInfo["Current Working Directory"];
+
+  if (os && homedir && cwd) {
+    return {
+      success: true,
+      value: {
+        os,
+        shell: shell ?? "",
+        homedir,
+        cwd,
+      },
+    };
+  }
+
+  const missingFields: EnvironmentInfoField[] = [];
+  if (!os) missingFields.push("os");
+  if (!homedir) missingFields.push("homedir");
+  if (!cwd) missingFields.push("cwd");
+  return { success: false, missingFields };
 }
 
 function parseSystemInfoLines(text: string) {
@@ -220,15 +229,6 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
   }
 
   return result;
-}
-
-export function hasCompleteEnvironmentInfo(text: string): boolean {
-  const systemInfo = parseSystemInfoLines(text);
-  return Boolean(
-    systemInfo["Operating System"] &&
-      systemInfo["Home Directory"] &&
-      systemInfo["Current Working Directory"],
-  );
 }
 
 function getTodos(todos: Environment["todos"]) {

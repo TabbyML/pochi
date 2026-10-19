@@ -574,7 +574,9 @@ function removeInvalidCharForStorage(messages: UIMessage[]): UIMessage[] {
   });
 }
 
-function extractCompactMessages(messages: UIMessage[]) {
+export function extractCompactMessages<T extends UIMessage>(
+  messages: T[],
+): T[] {
   for (let i = messages.length - 1; i >= 0; i--) {
     const message = messages[i];
     if (

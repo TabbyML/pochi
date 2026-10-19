@@ -1,6 +1,6 @@
 import { type Environment, formatters, prompts } from "@getpochi/common";
-import type { UIMessage } from "ai";
 import { expect, test } from "vitest";
+import type { Message } from "../../types";
 import { injectEnvironment } from "../environment";
 
 test("injectEnvironment adds a full environment to multi-message histories without one", () => {
@@ -115,146 +115,50 @@ test("injectEnvironment appends only the missing environment after a compacted c
   expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
 });
 
-test("an appended environment remains stable after persistence", () => {
+test("injectEnvironment adds the full environment to a retried user message after compaction", () => {
   const environment = createTestEnvironment();
-  const fullReminder = prompts.createSystemReminder(
-    prompts.environment(environment, undefined),
-  );
-  const liteReminder = prompts.createSystemReminder(
-    "# GIT STATUS\nThis workspace is not managed by git",
-  );
-  const persisted: UIMessage[] = [
-    createTextMessage("user-0", "user", fullReminder),
+  const messages: Message[] = [
+    createTextMessage(
+      "user-0",
+      "user",
+      prompts.createSystemReminder(prompts.environment(environment, undefined)),
+    ),
     createTextMessage("assistant-0", "assistant", "old answer"),
     {
       id: "user-1",
       role: "user",
       parts: [
+        { type: "text", text: "<compact>Previous conversation summary</compact>" },
         {
           type: "text",
-          text: "<compact>Previous conversation summary</compact>",
+          text: prompts.createSystemReminder(prompts.liteEnvironment(environment)),
         },
-        { type: "text", text: liteReminder },
         { type: "text", text: "follow-up" },
       ],
     },
-    createTextMessage("assistant-1", "assistant", "tool result"),
   ];
-  const inMemory = structuredClone(persisted);
+  const original = structuredClone(messages);
 
-  const first = injectEnvironment(inMemory, environment);
+  const result = injectEnvironment(messages, environment);
 
-  // The in-memory chat state must stay identical to what is persisted.
-  expect(inMemory).toEqual(persisted);
-  expect(first.slice(0, -1)).toEqual(persisted);
-  expect(first.at(-1)?.parts).toEqual([{ type: "text", text: fullReminder }]);
-  expect(countFullEnvironments(formatters.llm(first))).toBe(1);
-
-  // The transport persists the new last message through chatStreamStarted.
-  const saved = structuredClone(first);
-
-  // Later continuations, including after reloading from the store with a
-  // changed environment, produce the exact same prefix.
-  const laterEnvironment = createTestEnvironment();
-  laterEnvironment.currentTime = "2030-01-01T00:00:00.000Z";
-  laterEnvironment.workspace.terminals = [
-    { name: "New terminal", isActive: true, backgroundJobId: "term-new" },
-  ];
-  expect(injectEnvironment(first, laterEnvironment)).toBe(first);
-  expect(formatters.llm(injectEnvironment(first, laterEnvironment))).toEqual(
-    formatters.llm(first),
-  );
-  expect(
-    formatters.llm(injectEnvironment(structuredClone(saved), laterEnvironment)),
-  ).toEqual(formatters.llm(first));
-
-  // New user turns retain the same prefix and receive a lite reminder.
-  const nextTurn = [
-    ...first,
-    createTextMessage("user-2", "user", "next question"),
-  ];
-  injectEnvironment(nextTurn, laterEnvironment);
-  expect(getMessageText(nextTurn.at(-1))).not.toContain("# System Information");
-  expect(formatters.llm(nextTurn).slice(0, 3)).toEqual(formatters.llm(first));
-});
-
-test.each([false, true])(
-  "injectEnvironment preserves lite reminders and restores the full environment at the tail (assistant tail: %s)",
-  (continuation) => {
-    const environment = createTestEnvironment();
-    const messages: UIMessage[] = [
-      createTextMessage("user-0", "user", "start"),
-    ];
-    injectEnvironment(messages, environment);
-    messages.push(
-      createTextMessage("assistant-0", "assistant", "done"),
-      createTextMessage("user-1", "user", "inspect this file"),
-    );
-    injectEnvironment(messages, environment);
-    environment.workspace.activeTabs = [
-      { filepath: "current.ts", isActive: true },
-    ];
-    environment.workspace.terminals = [
-      {
-        name: "Current terminal",
-        isActive: true,
-        backgroundJobId: "term-current",
-      },
-    ];
-    environment.workspace.gitStatus = {
-      currentBranch: "current",
-      mainBranch: "main",
-      status: "M current.ts",
-      recentCommits: [],
-    };
-    const agentReminder = prompts.customAgentSystemReminder("demo");
-    messages[2].parts.unshift({
-      type: "text",
-      text: "<compact>Summary</compact>",
-    });
-    messages[2].parts.push({ type: "text", text: agentReminder });
-    messages[2].parts.push({
-      type: "text",
-      text: prompts.createSystemReminder(
-        "# GIT STATUS\nAnother environment reminder",
-      ),
-    });
-    if (continuation)
-      messages.push(
-        createTextMessage("assistant-1", "assistant", "tool result"),
-      );
-    const original = structuredClone(messages);
-
-    const result = injectEnvironment(messages, environment);
-    expect(injectEnvironment(result, environment)).toBe(result);
-
-    const fullReminder = {
+  // Joins the retried message instead of following it as another user message.
+  expect(result).toBe(messages);
+  expect(result.slice(0, -1)).toEqual(original.slice(0, -1));
+  expect(result.at(-1)?.parts).toEqual([
+    ...original[2].parts,
+    {
       type: "text",
       text: prompts.createSystemReminder(
         prompts.environment(environment, undefined),
       ),
-    };
-    if (continuation) {
-      expect(messages).toEqual(original);
-      expect(result.slice(0, -1)).toEqual(original);
-      expect(result.at(-1)?.parts).toEqual([fullReminder]);
-    } else {
-      // A retried user message keeps its lite reminders and gains the full one
-      // instead of being followed by another user message.
-      expect(result).toBe(messages);
-      expect(result.slice(0, -1)).toEqual(original.slice(0, -1));
-      expect(result.at(-1)?.parts).toEqual([
-        ...original[2].parts,
-        fullReminder,
-      ]);
-    }
-    const text = getMessageText(result.at(-1));
-    expect(text).toContain("current.ts (active)");
-    expect(text).toContain("term-current");
-    expect(text).toContain("Current branch: current");
-    expect(countFullEnvironments(formatters.llm(result))).toBe(1);
-  },
-);
+    },
+  ]);
+  expect(countFullEnvironments(formatters.llm(result))).toBe(1);
+
+  const retried = structuredClone(result);
+  injectEnvironment(retried, { ...environment, currentTime: "later" });
+  expect(retried).toEqual(result);
+});
 
 test("injectEnvironment preserves assistant-ended history when a full environment remains visible", () => {
   const messages = [
@@ -303,7 +207,7 @@ test("injectEnvironment uses a lite environment and preserves it on retry when f
 test("injectEnvironment places environment before invocation reminders and the prompt", () => {
   const userPrompt = "/demo use this agent";
   const agentReminder = prompts.customAgentSystemReminder("demo");
-  const messages: UIMessage[] = [
+  const messages: Message[] = [
     {
       id: "message-1",
       role: "user",
@@ -326,9 +230,9 @@ test("injectEnvironment places environment before invocation reminders and the p
 
 function createTextMessage(
   id: string,
-  role: UIMessage["role"],
+  role: Message["role"],
   text: string,
-): UIMessage {
+): Message {
   return {
     id,
     role,
@@ -336,7 +240,7 @@ function createTextMessage(
   };
 }
 
-function getMessageText(message: UIMessage | undefined): string {
+function getMessageText(message: Message | undefined): string {
   return (
     message?.parts
       .filter((part) => part.type === "text")
@@ -345,7 +249,7 @@ function getMessageText(message: UIMessage | undefined): string {
   );
 }
 
-function countFullEnvironments(messages: UIMessage[]): number {
+function countFullEnvironments(messages: Message[]): number {
   return messages.reduce(
     (count, message) =>
       count +

@@ -610,10 +610,7 @@ export class LiveChatKit<
         // A failure is left for the transport to rethrow, where it becomes a
         // request error instead of escaping this hook.
         const environment = await request.catch(() => undefined);
-        this.chat.messages = injectEnvironment(
-          this.chat.messages,
-          environment,
-        ) as Message[];
+        this.chat.messages = injectEnvironment(this.chat.messages, environment);
       }
 
       if (onOverrideMessages) {
