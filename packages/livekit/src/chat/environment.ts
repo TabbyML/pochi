@@ -20,23 +20,24 @@ function hasEnvironmentReminder(message: UIMessage): boolean {
   );
 }
 
-/** Whether restoring the visible environment requires a new message. */
-export function shouldAppendEnvironmentMessage(messages: UIMessage[]): boolean {
-  const lastMessage = messages.at(-1);
-  return Boolean(
-    lastMessage &&
-      (lastMessage.role !== "user" || hasEnvironmentReminder(lastMessage)) &&
-      !hasCompleteEnvironmentPrompt(getVisibleMessages(messages)),
-  );
-}
-
+/**
+ * Adds the environment to the request tail only, so the prompt prefix written
+ * by earlier requests stays cacheable. Mutates the last user message in place
+ * and returns a new array when a message has to be appended; callers must
+ * store the result before the request snapshots its messages.
+ */
 export function injectEnvironment(
   messages: UIMessage[],
   environment: Environment | undefined,
 ): UIMessage[] {
-  if (environment === undefined) return messages;
   const lastMessage = messages.at(-1);
-  if (shouldAppendEnvironmentMessage(messages)) {
+  if (environment === undefined || lastMessage === undefined) return messages;
+  const completeEnvironmentVisible = hasCompleteEnvironmentPrompt(
+    getVisibleMessages(messages),
+  );
+
+  if (lastMessage.role !== "user") {
+    if (completeEnvironmentVisible) return messages;
     return [
       ...messages,
       {
@@ -46,24 +47,28 @@ export function injectEnvironment(
       },
     ];
   }
-  if (lastMessage?.role !== "user" || hasEnvironmentReminder(lastMessage)) {
+
+  if (!hasEnvironmentReminder(lastMessage)) {
+    lastMessage.parts = [
+      createEnvironmentReminderPart(
+        environment,
+        completeEnvironmentVisible ? "lite" : "full",
+      ),
+      ...lastMessage.parts,
+    ];
     return messages;
   }
-  const completeEnvironmentVisible = hasCompleteEnvironmentPrompt(
-    getVisibleMessages(messages),
-  );
 
-  // The latest user message is persisted together with the request
-  // (`chatStreamStarted`), so mutating it keeps the in-memory chat state and
-  // the store in sync.
+  // A retry keeps the reminder from the earlier attempt even though it may be
+  // stale: rewriting it would invalidate the prompt cache that attempt wrote.
+  if (completeEnvironmentVisible) return messages;
+
+  // A compaction since the earlier attempt hid the complete environment. Add it
+  // to this message rather than a second consecutive user message.
   lastMessage.parts = [
-    createEnvironmentReminderPart(
-      environment,
-      completeEnvironmentVisible ? "lite" : "full",
-    ),
     ...lastMessage.parts,
+    createEnvironmentReminderPart(environment, "full"),
   ];
-
   return messages;
 }
 

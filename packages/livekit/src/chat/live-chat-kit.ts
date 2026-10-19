@@ -2,6 +2,7 @@ import type {
   AutoMemoryTaskState,
   BackgroundJobNotification,
   ContextWindowUsage,
+  Environment,
   MaybePromise,
   PochiRequestUseCase,
   TaskMemoryState,
@@ -59,10 +60,7 @@ import {
   getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
-import {
-  injectEnvironment,
-  shouldAppendEnvironmentMessage,
-} from "./environment";
+import { injectEnvironment } from "./environment";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -360,6 +358,7 @@ export class LiveChatKit<
   private readonly getters: PrepareRequestGetters;
   readonly chat: T;
   private readonly transport: FlexibleChatTransport;
+  private requestEnvironment: Promise<Environment> | undefined;
   readonly backgroundJobManager: BackgroundJobManager;
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
@@ -449,11 +448,23 @@ export class LiveChatKit<
         ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
         : undefined;
 
+    const { getEnvironment } = getters;
     this.transport = new FlexibleChatTransport({
       store,
       blobStore,
       onStart: this.onStart,
-      getters,
+      getters: getEnvironment
+        ? {
+            ...getters,
+            // Reuse the hook's snapshot so the reminder and the system prompt
+            // describe the same environment.
+            getEnvironment: () => {
+              const environment = this.requestEnvironment ?? getEnvironment();
+              this.requestEnvironment = undefined;
+              return environment;
+            },
+          }
+        : getters,
       isSubTask,
       requestUseCase,
       customAgent,
@@ -591,15 +602,17 @@ export class LiveChatKit<
       // the final message that this request will send and persist.
       this.attachPendingBackgroundJobNotifications();
 
-      // Append a complete reminder through the same pre-request flow as other
-      // messages. Normal user-message environment injection stays in transport.
-      if (
-        getters.getEnvironment &&
-        shouldAppendEnvironmentMessage(this.chat.messages)
-      ) {
+      // Inject before the snapshot so an appended reminder becomes part of the
+      // chat state and is persisted with the request.
+      if (getters.getEnvironment) {
+        const request = getters.getEnvironment();
+        this.requestEnvironment = request;
+        // A failure is left for the transport to rethrow, where it becomes a
+        // request error instead of escaping this hook.
+        const environment = await request.catch(() => undefined);
         this.chat.messages = injectEnvironment(
           this.chat.messages,
-          await getters.getEnvironment(),
+          environment,
         ) as Message[];
       }
 

@@ -1,10 +1,7 @@
 import { type Environment, formatters, prompts } from "@getpochi/common";
 import type { UIMessage } from "ai";
 import { expect, test } from "vitest";
-import {
-  injectEnvironment,
-  shouldAppendEnvironmentMessage,
-} from "../environment";
+import { injectEnvironment } from "../environment";
 
 test("injectEnvironment adds a full environment to multi-message histories without one", () => {
   const messages = [
@@ -103,9 +100,7 @@ test("injectEnvironment appends only the missing environment after a compacted c
   ];
   const original = structuredClone(messages);
 
-  expect(shouldAppendEnvironmentMessage(messages)).toBe(true);
   const result = injectEnvironment(messages, environment);
-  expect(shouldAppendEnvironmentMessage(result)).toBe(false);
   const modelMessages = formatters.llm(result);
 
   expect(countFullEnvironments(modelMessages)).toBe(1);
@@ -184,7 +179,7 @@ test("an appended environment remains stable after persistence", () => {
 });
 
 test.each([false, true])(
-  "injectEnvironment preserves lite reminders and restores the environment on a new reminder (assistant tail: %s)",
+  "injectEnvironment preserves lite reminders and restores the full environment at the tail (assistant tail: %s)",
   (continuation) => {
     const environment = createTestEnvironment();
     const messages: UIMessage[] = [
@@ -230,20 +225,29 @@ test.each([false, true])(
       );
     const original = structuredClone(messages);
 
-    expect(shouldAppendEnvironmentMessage(messages)).toBe(true);
     const result = injectEnvironment(messages, environment);
     expect(injectEnvironment(result, environment)).toBe(result);
 
-    expect(messages).toEqual(original);
-    expect(result.slice(0, -1)).toEqual(original);
-    expect(result.at(-1)?.parts).toEqual([
-      {
-        type: "text",
-        text: prompts.createSystemReminder(
-          prompts.environment(environment, undefined),
-        ),
-      },
-    ]);
+    const fullReminder = {
+      type: "text",
+      text: prompts.createSystemReminder(
+        prompts.environment(environment, undefined),
+      ),
+    };
+    if (continuation) {
+      expect(messages).toEqual(original);
+      expect(result.slice(0, -1)).toEqual(original);
+      expect(result.at(-1)?.parts).toEqual([fullReminder]);
+    } else {
+      // A retried user message keeps its lite reminders and gains the full one
+      // instead of being followed by another user message.
+      expect(result).toBe(messages);
+      expect(result.slice(0, -1)).toEqual(original.slice(0, -1));
+      expect(result.at(-1)?.parts).toEqual([
+        ...original[2].parts,
+        fullReminder,
+      ]);
+    }
     const text = getMessageText(result.at(-1));
     expect(text).toContain("current.ts (active)");
     expect(text).toContain("term-current");
@@ -265,7 +269,6 @@ test("injectEnvironment preserves assistant-ended history when a full environmen
   ];
   const original = structuredClone(messages);
 
-  expect(shouldAppendEnvironmentMessage(messages)).toBe(false);
   expect(injectEnvironment(messages, createTestEnvironment())).toBe(messages);
 
   expect(messages).toEqual(original);

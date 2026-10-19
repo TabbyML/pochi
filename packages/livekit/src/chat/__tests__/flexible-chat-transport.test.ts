@@ -7,10 +7,7 @@ import { MockLanguageModelV3 } from "ai/test";
 import { describe, expect, it, vi } from "vitest";
 import type { BlobStore } from "../../blob-store";
 import type { LiveKitStore, Message } from "../../types";
-import {
-  injectEnvironment,
-  shouldAppendEnvironmentMessage,
-} from "../environment";
+import { injectEnvironment } from "../environment";
 import {
   FlexibleChatTransport,
   type OnStartCallback,
@@ -221,16 +218,21 @@ describe("environment after compaction", () => {
           getEnvironment: async () => requestEnvironment,
         },
       });
-
-      await expect(
+      // Models LiveChatKit, which injects the environment before the request
+      // snapshots its messages.
+      const send = (requestMessages: Message[]) =>
         transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",
           messageId: undefined,
-          messages,
+          messages: injectEnvironment(
+            requestMessages,
+            requestEnvironment,
+          ) as Message[],
           abortSignal: undefined,
-        }),
-      ).rejects.toThrow("Persistence failed");
+        });
+
+      await expect(send(messages)).rejects.toThrow("Persistence failed");
       expect(messages.at(-1)?.parts).toEqual([
         {
           type: "text",
@@ -253,14 +255,7 @@ describe("environment after compaction", () => {
           ...environment,
           currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
         };
-        expect(shouldAppendEnvironmentMessage(requestMessages)).toBe(false);
-        const stream = await transport.sendMessages({
-          trigger: "submit-message",
-          chatId: "task-1",
-          messageId: undefined,
-          messages: requestMessages,
-          abortSignal: undefined,
-        });
+        const stream = await send(requestMessages);
         for await (const chunk of stream) {
           expect(chunk.type).not.toBe("error");
         }
@@ -287,13 +282,7 @@ describe("environment after compaction", () => {
         role: "user",
         parts: [{ type: "text", text: "next question" }],
       });
-      const stream = await transport.sendMessages({
-        trigger: "submit-message",
-        chatId: "task-1",
-        messageId: undefined,
-        messages,
-        abortSignal: undefined,
-      });
+      const stream = await send(messages);
       for await (const chunk of stream) expect(chunk.type).not.toBe("error");
       const originalPrompt = model.doStreamCalls[0].prompt;
       expect(
