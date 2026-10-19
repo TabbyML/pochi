@@ -39,6 +39,7 @@ import type z from "zod";
 import type { BlobStore } from "../blob-store";
 import { findBlob, makeDownloadFunction } from "../store-blob";
 import type { LiveKitStore, Message, RequestData } from "../types";
+import { injectEnvironment } from "./environment";
 import { makeRepairToolCall } from "./llm";
 import { parseMcpToolSet } from "./mcp-utils";
 import {
@@ -235,6 +236,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
+    messages = injectEnvironment(messages, environment) as Message[];
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
     const customAgents = this.getters.getCustomAgents?.();

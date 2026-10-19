@@ -335,28 +335,6 @@ describe("onOverrideMessages", () => {
       expect(updateChangedFiles).toHaveBeenCalledTimes(1);
     });
 
-    it.each([
-      ["a system reminder", [createReminderPart()]],
-      [
-        "a system reminder with a notification",
-        [createReminderPart(), ...createNotificationMessage().parts],
-      ],
-    ])("updates edits followed by %s", async (_, parts) => {
-      const assistant = createAssistantMessage([createFileEditPart()]);
-      const reminder: Message = { id: "reminder-1", role: "user", parts };
-
-      await override([baseline, assistant, reminder]);
-
-      expect(updateChangedFiles).toHaveBeenCalledExactlyOnceWith(
-        ["src/a.ts"],
-        "before-edit",
-      );
-      expect(reminder.parts.at(-1)).toEqual({
-        type: "data-checkpoint",
-        data: { commit: "after-edit" },
-      });
-    });
-
     it("only includes completed edits after the latest existing checkpoint", async () => {
       const assistant = createAssistantMessage([
         createFileEditPart("tool-applyDiff", "old.ts"),
@@ -467,13 +445,6 @@ function createNotificationMessage(): Message {
         },
       },
     ],
-  };
-}
-
-function createReminderPart(): Message["parts"][number] {
-  return {
-    type: "text",
-    text: "<system-reminder>environment</system-reminder>",
   };
 }
 

@@ -129,66 +129,6 @@ describe('formatters', () => {
       expect(assistantMessages[0].parts).toHaveLength(4); // reasoning, text, tool1, tool2
     });
 
-    it('keeps checkpoints from hidden user messages on the preceding assistant step', () => {
-      const messages: UIMessage[] = [
-        { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Edit' }] },
-        {
-          id: 'assistant-1',
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Step 1' }],
-        },
-        {
-          id: 'env-1',
-          role: 'user',
-          parts: [
-            { type: 'text', text: '<system-reminder>env</system-reminder>' },
-            { type: 'data-checkpoint', data: { commit: 'ckpt-1' } },
-          ],
-        },
-        {
-          id: 'reminder-1',
-          role: 'user',
-          parts: [
-            { type: 'text', text: '<system-reminder>more</system-reminder>' },
-            { type: 'data-checkpoint', data: { commit: 'ckpt-2' } },
-          ],
-        },
-        {
-          id: 'assistant-2',
-          role: 'assistant',
-          parts: [{ type: 'text', text: 'Step 2' }],
-        },
-      ];
-
-      const formatted = formatters.ui(messages);
-
-      expect(formatted.map((m) => m.id)).toEqual(['user-1', 'assistant-2']);
-      expect(formatted[1].parts).toEqual([
-        { type: 'text', text: 'Step 1' },
-        { type: 'data-checkpoint', data: { commit: 'ckpt-1' } },
-        { type: 'data-checkpoint', data: { commit: 'ckpt-2' } },
-        { type: 'text', text: 'Step 2' },
-      ]);
-    });
-
-    it('does not move hidden user message checkpoints onto a user message', () => {
-      const messages: UIMessage[] = [
-        { id: 'user-1', role: 'user', parts: [{ type: 'text', text: 'Edit' }] },
-        {
-          id: 'env-1',
-          role: 'user',
-          parts: [
-            { type: 'text', text: '<system-reminder>env</system-reminder>' },
-            { type: 'data-checkpoint', data: { commit: 'ckpt-1' } },
-          ],
-        },
-      ];
-
-      const formatted = formatters.ui(messages);
-
-      expect(formatted).toEqual([messages[0]]);
-    });
-
     it('should keep the last message id when combining consecutive assistant messages', () => {
       const formatted = formatters.ui(clone(baseMessages));
       const assistantMessages = formatted.filter((m) => m.role === 'assistant');

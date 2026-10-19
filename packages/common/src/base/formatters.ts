@@ -137,24 +137,6 @@ export function getUIUserMessageKind(message: UIMessage): UIUserMessageKind {
   return "hidden";
 }
 
-// A hidden message after an assistant step (e.g. an appended environment
-// reminder) can carry that step's checkpoint. Keep it on the assistant so the
-// inline checkpoint and tool-call diffs survive dropping the hidden message.
-function moveHiddenUserMessageCheckpoints(messages: UIMessage[]): UIMessage[] {
-  let target: UIMessage | undefined;
-  for (const message of messages) {
-    if (getUIUserMessageKind(message) !== "hidden") {
-      target = message;
-      continue;
-    }
-    if (target?.role !== "assistant") continue;
-    for (const part of message.parts) {
-      if (part.type === "data-checkpoint") target.parts.push(part);
-    }
-  }
-  return messages;
-}
-
 function removeSystemReminder(messages: UIMessage[]): UIMessage[] {
   return messages.filter((message) => {
     if (message.role !== "user") return true;
@@ -837,7 +819,6 @@ const UIFormatOps = [
   removeEmptyMessages,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,
-  moveHiddenUserMessageCheckpoints,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
   combineConsecutiveReasoningParts,
