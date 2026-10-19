@@ -6,7 +6,12 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import {
+  formatters,
+  getLogger,
+  isForkAgentUseCase,
+  prompts,
+} from "@getpochi/common";
 import {
   hasActiveTodos,
   stripOpenAIItemReferencesFromLastStep,
@@ -586,6 +591,18 @@ export class LiveChatKit<
       // Attach after compaction, but before checkpoint hooks so they update
       // the final message that this request will send and persist.
       await this.attachPendingBackgroundJobNotifications(abortSignal);
+
+      // Append a complete reminder through the same pre-request flow as other
+      // messages. Normal user-message environment injection stays in transport.
+      if (
+        getters.getEnvironment &&
+        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
+      ) {
+        this.chat.messages = prompts.injectEnvironment(
+          this.chat.messages,
+          await getters.getEnvironment(),
+        ) as Message[];
+      }
 
       if (onOverrideMessages) {
         await runSideEffectSafely({

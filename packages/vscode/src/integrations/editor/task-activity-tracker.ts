@@ -18,11 +18,23 @@ const logger = getLogger("TaskActivityTracker");
 @singleton()
 export class TaskActivityTracker implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
+  private readonly taskAbortControllers = new Map<string, AbortController>();
+  private disposed = false;
   state = signal<TaskStates>({});
 
   constructor() {
     this.state.value = createTaskStates();
     this.setupEventListeners();
+  }
+
+  getTaskAbortSignal(rootTaskId: string): AbortSignal {
+    if (!this.isTaskOpen(rootTaskId)) return AbortSignal.abort();
+    let controller = this.taskAbortControllers.get(rootTaskId);
+    if (!controller) {
+      controller = new AbortController();
+      this.taskAbortControllers.set(rootTaskId, controller);
+    }
+    return controller.signal;
   }
 
   /**
@@ -49,8 +61,18 @@ export class TaskActivityTracker implements vscode.Disposable {
     this.disposables.push(TerminalJob.onDidCreate(this.stopIfTaskClosed));
   }
 
+  private isTaskOpen(rootTaskId: string): boolean {
+    // Late task notifications can restore state after the last tab closes.
+    return (
+      !this.disposed &&
+      vscode.window.tabGroups.all.some((group) =>
+        group.tabs.some((tab) => getTaskUri(tab)?.uid === rootTaskId),
+      )
+    );
+  }
+
   private stopIfTaskClosed = (job: TerminalJob) => {
-    if (job.rootTaskId && !this.state.value[job.rootTaskId]) job.kill();
+    if (job.rootTaskId && !this.isTaskOpen(job.rootTaskId)) job.kill();
   };
 
   private onTabChanged = () => {
@@ -92,6 +114,14 @@ export class TaskActivityTracker implements vscode.Disposable {
     }
 
     this.saveState(newState);
+    // Foreground commands have no TerminalJob yet, but belong to the same
+    // root task and must stop when its last tab closes too.
+    for (const [rootTaskId, controller] of this.taskAbortControllers) {
+      if (!newState[rootTaskId]) {
+        this.taskAbortControllers.delete(rootTaskId);
+        controller.abort();
+      }
+    }
     for (const job of TerminalJob.list()) this.stopIfTaskClosed(job);
   };
 
@@ -166,6 +196,11 @@ export class TaskActivityTracker implements vscode.Disposable {
    * Release all resources held by this class
    */
   dispose() {
+    this.disposed = true;
+    for (const controller of this.taskAbortControllers.values()) {
+      controller.abort();
+    }
+    this.taskAbortControllers.clear();
     for (const disposable of this.disposables) {
       disposable.dispose();
     }

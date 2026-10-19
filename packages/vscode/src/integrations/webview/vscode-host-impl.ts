@@ -638,7 +638,24 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       };
     }
 
-    const abortSignal = new ThreadAbortSignal(options.abortSignal);
+    // ThreadAbortSignal is a proxy, so deserialize to a native signal before
+    // combining caller cancellation with the root task's tab lifetime.
+    const controller = new AbortController();
+    if (options.abortSignal.aborted) {
+      controller.abort();
+    } else {
+      options.abortSignal.start?.((aborted) => {
+        if (aborted) controller.abort();
+      });
+    }
+    const rootTaskId = decodeStoreId(options.storeId).taskId;
+    const abortSignal = rootTaskId
+      ? AbortSignal.any([
+          controller.signal,
+          this.taskActivityTracker.getTaskAbortSignal(rootTaskId),
+        ])
+      : controller.signal;
+    if (abortSignal.aborted) return { error: "Tool call aborted." };
     let envs: Record<string, string> | undefined;
     const toolCallStart = Date.now();
     try {
@@ -673,7 +690,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         contentType: options.contentType,
         envs,
         taskId,
-        rootTaskId: decodeStoreId(options.storeId).taskId,
+        rootTaskId,
         fileStateCache,
         allowBackground: options.allowBackground,
       }),

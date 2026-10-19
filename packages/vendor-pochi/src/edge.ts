@@ -5,3 +5,4 @@ import { VendorId } from "./types";
 registerModel(VendorId, createPochiModel);
 
 export { PochiApiErrors, WebhookEventPayload } from "./pochi-api";
+export type { ModelAccessResponse } from "./pochi-api";

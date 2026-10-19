@@ -1,11 +1,8 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
-import type { UIMessage } from "ai";
 import { expect, test } from "vitest";
 import type { Environment } from "../../environment";
-import { formatters } from "../../formatters";
 import {
   createEnvironmentPrompt,
-  injectEnvironment,
   parseEnvironmentInfo,
   parseEnvironmentInfoResult,
 } from "../environment";
@@ -198,160 +195,6 @@ test("environment", () => {
   ).toMatchSnapshot();
 });
 
-test("injectEnvironment adds a full environment to multi-message histories without one", () => {
-  const messages = [
-    createTextMessage("user-1", "user", "legacy question"),
-    createTextMessage("assistant-1", "assistant", "legacy answer"),
-    createTextMessage("user-2", "user", "follow-up"),
-  ];
-
-  const result = injectEnvironment(messages, createTestEnvironment());
-
-  expect(countFullEnvironments(result)).toBe(1);
-});
-
-test("injectEnvironment adds a full environment when compaction hides the historical one", () => {
-  const fullEnvironment = createEnvironmentPrompt(
-    createTestEnvironment(),
-    undefined,
-  );
-  const messages = [
-    createTextMessage("user-1", "user", fullEnvironment),
-    createTextMessage("assistant-1", "assistant", "old answer"),
-    createTextMessage(
-      "user-2",
-      "user",
-      "<compact>Previous conversation summary</compact>",
-    ),
-    createTextMessage("assistant-2", "assistant", "recent answer"),
-    createTextMessage("user-3", "user", "follow-up"),
-  ];
-
-  const result = injectEnvironment(messages, createTestEnvironment());
-  const modelMessages = formatters.llm(result);
-
-  expect(modelMessages[0]?.id).toBe("user-2");
-  expect(countFullEnvironments(modelMessages)).toBe(1);
-});
-
-test("injectEnvironment preserves a full environment when regenerating a request", () => {
-  const messages = [
-    createTextMessage("user-1", "user", "legacy question"),
-    createTextMessage("assistant-1", "assistant", "legacy answer"),
-    {
-      id: "user-2",
-      role: "user" as const,
-      parts: [
-        {
-          type: "text" as const,
-          text: `<system-reminder>${createEnvironmentPrompt(
-            createTestEnvironment(),
-            undefined,
-          )}</system-reminder>`,
-        },
-        { type: "text" as const, text: "follow-up" },
-      ],
-    },
-  ];
-
-  const result = injectEnvironment(messages, createTestEnvironment());
-
-  expect(countFullEnvironments(result)).toBe(1);
-});
-
-test("injectEnvironment restores a compacted environment before an assistant continuation", () => {
-  const environment = createTestEnvironment();
-  const messages = [
-    createTextMessage(
-      "user-0",
-      "user",
-      createEnvironmentPrompt(environment, undefined),
-    ),
-    createTextMessage(
-      "user-1",
-      "user",
-      "<compact>Previous conversation summary</compact>",
-    ),
-    createTextMessage("assistant-1", "assistant", "tool result"),
-  ];
-  const original = structuredClone(messages);
-
-  const result = injectEnvironment(messages, environment);
-  const modelMessages = formatters.llm(result);
-
-  expect(countFullEnvironments(modelMessages)).toBe(1);
-  expect(result.map((message) => message.id)).toEqual(
-    original.map((message) => message.id),
-  );
-  expect(result[0]).toEqual(original[0]);
-  expect(result[2]).toEqual(original[2]);
-
-  const restored = structuredClone(result);
-  injectEnvironment(restored, { ...environment, currentTime: "later" });
-  expect(restored).toEqual(result);
-  expect(countFullEnvironments(formatters.llm(restored))).toBe(1);
-});
-
-test("injectEnvironment preserves assistant-ended history when a full environment remains visible", () => {
-  const messages = [
-    createTextMessage(
-      "user-1",
-      "user",
-      createEnvironmentPrompt(createTestEnvironment(), undefined),
-    ),
-    createTextMessage("assistant-1", "assistant", "answer"),
-    createTextMessage("user-2", "user", "follow-up"),
-    createTextMessage("assistant-2", "assistant", "tool result"),
-  ];
-  const original = structuredClone(messages);
-
-  injectEnvironment(messages, createTestEnvironment());
-
-  expect(messages).toEqual(original);
-});
-
-test("injectEnvironment uses a lite environment when a full one remains visible", () => {
-  const messages = [
-    createTextMessage(
-      "user-1",
-      "user",
-      createEnvironmentPrompt(createTestEnvironment(), undefined),
-    ),
-    createTextMessage("assistant-1", "assistant", "answer"),
-    createTextMessage("user-2", "user", "follow-up"),
-  ];
-
-  const result = injectEnvironment(messages, createTestEnvironment());
-
-  expect(countFullEnvironments(result)).toBe(1);
-  expect(getMessageText(result.at(-1))).not.toContain("# System Information");
-  expect(getMessageText(result.at(-1))).toContain("# GIT STATUS");
-});
-
-test("injectEnvironment places environment before invocation reminders and the prompt", () => {
-  const userPrompt = "/demo use this agent";
-  const agentReminder = prompts.customAgentSystemReminder("demo");
-  const messages: UIMessage[] = [
-    {
-      id: "message-1",
-      role: "user",
-      parts: [
-        { type: "text", text: agentReminder },
-        { type: "text", text: userPrompt },
-      ],
-    },
-  ];
-
-  injectEnvironment(messages, createTestEnvironment());
-
-  expect(messages[0].parts[0]).toMatchObject({
-    type: "text",
-    text: expect.stringContaining("# System Information"),
-  });
-  expect(messages[0].parts[1]).toEqual({ type: "text", text: agentReminder });
-  expect(messages[0].parts[2]).toEqual({ type: "text", text: userPrompt });
-});
-
 test("parseEnvironmentInfo from system message content", () => {
   const prompt = [
     {
@@ -458,43 +301,6 @@ test("parseEnvironmentInfo ignores missing or incomplete environment prompt", ()
     ]),
   ).toBeUndefined();
 });
-
-function createTextMessage(
-  id: string,
-  role: UIMessage["role"],
-  text: string,
-): UIMessage {
-  return {
-    id,
-    role,
-    parts: [{ type: "text", text }],
-  };
-}
-
-function getMessageText(message: UIMessage | undefined): string {
-  return (
-    message?.parts
-      .filter((part) => part.type === "text")
-      .map((part) => part.text)
-      .join("\n") ?? ""
-  );
-}
-
-function countFullEnvironments(messages: UIMessage[]): number {
-  return messages.reduce(
-    (count, message) =>
-      count +
-      message.parts.filter(
-        (part) =>
-          part.type === "text" &&
-          part.text.includes("# System Information") &&
-          part.text.includes("Operating System: darwin") &&
-          part.text.includes("Home Directory: /Users/pochi") &&
-          part.text.includes("Current Working Directory: /Users/pochi/project"),
-      ).length,
-    0,
-  );
-}
 
 function createTestEnvironment(): Environment {
   return {

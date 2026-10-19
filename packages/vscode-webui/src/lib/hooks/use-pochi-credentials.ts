@@ -23,12 +23,27 @@ export const usePochiCredentials = () => {
     () => ({
       token: data?.token || null,
       jwt: data?.jwt || null,
+      sessionKey: data?.sessionKey ?? null,
       isPending,
     }),
-    [data?.token, data?.jwt, isPending],
+    [data?.token, data?.jwt, data?.sessionKey, isPending],
   );
 };
 
 async function fetchPochiCredentials() {
-  return vscodeHost.readPochiCredentials();
+  const credentials = await vscodeHost.readPochiCredentials();
+  if (!credentials) return null;
+  // Scope access caches to the session without putting the token in query keys.
+  const digest = credentials.token
+    ? await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(credentials.token),
+      )
+    : null;
+  const sessionKey = digest
+    ? Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("")
+    : null;
+  return { ...credentials, sessionKey };
 }

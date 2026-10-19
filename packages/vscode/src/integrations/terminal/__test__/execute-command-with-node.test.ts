@@ -26,6 +26,29 @@ function createMockChildProcess(options?: { withStdin?: boolean }) {
 }
 
 describe("execute-command-with-node", () => {
+  it("does not spawn a command when it was aborted before streaming starts", async () => {
+    const spawn = sinon.stub();
+    const exec = sinon.stub();
+    const { executeCommandWithNode } = proxyquire.noCallThru().load(
+      "../execute-command-with-node",
+      { "node:child_process": { spawn, exec } },
+    ) as typeof import("../execute-command-with-node");
+    const controller = new AbortController();
+    controller.abort();
+
+    await assert.rejects(
+      executeCommandWithNode({
+        command: "sleep 60",
+        cwd: process.cwd(),
+        timeout: 0,
+        abortSignal: controller.signal,
+      }),
+      /aborted by user/,
+    );
+    assert.ok(spawn.notCalled);
+    assert.ok(exec.notCalled);
+  });
+
   it("should enforce non-interactive terminal env precedence", () => {
     const env = buildExecuteCommandEnv({
       color: true,

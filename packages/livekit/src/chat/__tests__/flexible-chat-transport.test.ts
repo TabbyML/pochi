@@ -9,6 +9,7 @@ import type { BlobStore } from "../../blob-store";
 import type { LiveKitStore, Message } from "../../types";
 import {
   FlexibleChatTransport,
+  type OnStartCallback,
   convertDataPartToText,
   extractContentFilterMetadata,
   getNumCompacts,
@@ -92,7 +93,7 @@ describe("subtask delegation", () => {
 
 describe("environment after compaction", () => {
   it.each(["llm", "task-memory"])(
-    "restores the environment on repeated and reloaded %s compacted tool continuations",
+    "appends the environment on repeated and reloaded %s compacted tool continuations",
     async (summarySource) => {
       const environment: Environment = {
         currentTime: "2026-09-16",
@@ -138,7 +139,7 @@ describe("environment after compaction", () => {
           }),
         }),
       });
-      const messages: Message[] = [
+      let messages: Message[] = [
         {
           id: "user-1",
           role: "user",
@@ -188,26 +189,67 @@ describe("environment after compaction", () => {
           ? { store, taskMemoryBoundaryMessageId: "assistant-2" }
           : {}),
       });
-      const assistant = structuredClone(messages.at(-1));
+      const original = structuredClone(messages);
       const savedMessages = structuredClone(messages);
+      let requestEnvironment = environment;
+      let failPersistence = true;
+      const onStart = vi.fn<OnStartCallback>(
+        ({ messages: requestMessages }) => {
+          messages = requestMessages;
+          if (failPersistence) throw new Error("Persistence failed");
+          // chatStreamStarted only saves the final message.
+          const updated = messages.at(-1)!;
+          const index = savedMessages.findIndex(({ id }) => id === updated.id);
+          if (index === -1) savedMessages.push(structuredClone(updated));
+          else savedMessages[index] = structuredClone(updated);
+        },
+      );
       const transport = new FlexibleChatTransport({
         store,
         blobStore: {} as BlobStore,
+        onStart,
         getters: {
           getLLM: () => ({
             type: "vendor",
             id: "test-model",
             getModel: () => model,
           }),
-          getEnvironment: async () => environment,
+          getEnvironment: async () => requestEnvironment,
         },
       });
 
-      for (const [attempt, requestMessages] of [
-        messages,
-        messages,
-        savedMessages,
-      ].entries()) {
+      await expect(
+        transport.sendMessages({
+          trigger: "submit-message",
+          chatId: "task-1",
+          messageId: undefined,
+          messages,
+          abortSignal: undefined,
+        }),
+      ).rejects.toThrow("Persistence failed");
+      expect(messages.at(-1)?.parts).toEqual([
+        {
+          type: "text",
+          text: prompts.createSystemReminder(
+            prompts.environment(environment, undefined),
+          ),
+        },
+      ]);
+      expect(messages.slice(0, -1)).toEqual(original);
+      expect(savedMessages).toEqual(original);
+      expect(model.doStreamCalls).toHaveLength(0);
+      failPersistence = false;
+      onStart.mockClear();
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const requestMessages =
+          attempt === 2 ? structuredClone(savedMessages) : messages;
+        // Volatile fields change between requests; the prompt must not.
+        requestEnvironment = {
+          ...environment,
+          currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
+        };
+        expect(prompts.shouldAppendEnvironmentMessage(requestMessages)).toBe(false);
         const stream = await transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",
@@ -221,10 +263,39 @@ describe("environment after compaction", () => {
         expect(
           parseEnvironmentInfo(model.doStreamCalls[attempt].prompt),
         ).toEqual(environment.info);
-        expect(requestMessages.at(-1)).toEqual(assistant);
+        expect(requestMessages.slice(0, -1)).toEqual(original);
+        expect(requestMessages.at(-1)?.role).toBe("user");
+        expect(requestMessages).toEqual(savedMessages);
       }
 
-      expect(model.doStreamCalls[1].prompt).toEqual(model.doStreamCalls[0].prompt);
+      expect(model.doStreamCalls[1].prompt).toEqual(
+        model.doStreamCalls[0].prompt,
+      );
+      // Reloading from the store must not change the cached prompt prefix.
+      expect(model.doStreamCalls[2].prompt).toEqual(
+        model.doStreamCalls[0].prompt,
+      );
+      expect(onStart).toHaveBeenCalledTimes(3);
+      expect(messages).toEqual(savedMessages);
+
+      messages.push({
+        id: "user-3",
+        role: "user",
+        parts: [{ type: "text", text: "next question" }],
+      });
+      const stream = await transport.sendMessages({
+        trigger: "submit-message",
+        chatId: "task-1",
+        messageId: undefined,
+        messages,
+        abortSignal: undefined,
+      });
+      for await (const chunk of stream) expect(chunk.type).not.toBe("error");
+      const originalPrompt = model.doStreamCalls[0].prompt;
+      expect(
+        model.doStreamCalls[3].prompt.slice(0, originalPrompt.length),
+      ).toEqual(originalPrompt);
+      expect(messages).toEqual(savedMessages);
     },
   );
 });
