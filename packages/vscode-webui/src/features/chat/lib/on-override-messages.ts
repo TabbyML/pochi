@@ -1,4 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
+import { prompts } from "@getpochi/common";
 import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
 import { unique } from "remeda";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
@@ -24,8 +25,8 @@ export async function onOverrideMessages({
     .map((p) => p.data.commit);
   const lastMessage = messages.at(-1);
   if (lastMessage) {
-    // Select before appendCheckpoint adds a part to a notification message.
-    const summaryMessage = isBackgroundJobNotificationMessage(lastMessage)
+    // Select before appendCheckpoint adds a part to a synthetic message.
+    const summaryMessage = isSyntheticUserMessage(lastMessage)
       ? messages.at(-2)
       : lastMessage;
     const ckpt = await appendCheckpoint(lastMessage);
@@ -44,12 +45,16 @@ export async function onOverrideMessages({
   }
 }
 
-function isBackgroundJobNotificationMessage(message: Message): boolean {
+// Notifications and reminders such as the appended environment snapshot are
+// not user turns; the edits before them still belong to the preceding step.
+function isSyntheticUserMessage(message: Message): boolean {
   return (
     message.role === "user" &&
     message.parts.length > 0 &&
     message.parts.every(
-      (part) => part.type === "data-background-job-notification",
+      (part) =>
+        part.type === "data-background-job-notification" ||
+        (part.type === "text" && prompts.isSystemReminder(part.text)),
     )
   );
 }
