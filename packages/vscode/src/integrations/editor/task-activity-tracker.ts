@@ -19,6 +19,7 @@ const logger = getLogger("TaskActivityTracker");
 export class TaskActivityTracker implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private readonly taskAbortControllers = new Map<string, AbortController>();
+  private disposed = false;
   state = signal<TaskStates>({});
 
   constructor() {
@@ -27,7 +28,7 @@ export class TaskActivityTracker implements vscode.Disposable {
   }
 
   getTaskAbortSignal(rootTaskId: string): AbortSignal {
-    if (!this.state.value[rootTaskId]) return AbortSignal.abort();
+    if (!this.isTaskOpen(rootTaskId)) return AbortSignal.abort();
     let controller = this.taskAbortControllers.get(rootTaskId);
     if (!controller) {
       controller = new AbortController();
@@ -60,8 +61,18 @@ export class TaskActivityTracker implements vscode.Disposable {
     this.disposables.push(TerminalJob.onDidCreate(this.stopIfTaskClosed));
   }
 
+  private isTaskOpen(rootTaskId: string): boolean {
+    // Late task notifications can restore state after the last tab closes.
+    return (
+      !this.disposed &&
+      vscode.window.tabGroups.all.some((group) =>
+        group.tabs.some((tab) => getTaskUri(tab)?.uid === rootTaskId),
+      )
+    );
+  }
+
   private stopIfTaskClosed = (job: TerminalJob) => {
-    if (job.rootTaskId && !this.state.value[job.rootTaskId]) job.kill();
+    if (job.rootTaskId && !this.isTaskOpen(job.rootTaskId)) job.kill();
   };
 
   private onTabChanged = () => {
@@ -185,6 +196,7 @@ export class TaskActivityTracker implements vscode.Disposable {
    * Release all resources held by this class
    */
   dispose() {
+    this.disposed = true;
     for (const controller of this.taskAbortControllers.values()) {
       controller.abort();
     }

@@ -655,6 +655,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
           this.taskActivityTracker.getTaskAbortSignal(rootTaskId),
         ])
       : controller.signal;
+    if (abortSignal.aborted) return { error: "Tool call aborted." };
     let envs: Record<string, string> | undefined;
     const toolCallStart = Date.now();
     try {

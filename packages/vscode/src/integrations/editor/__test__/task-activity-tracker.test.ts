@@ -10,15 +10,20 @@ function createHarness() {
   const created = new vscode.EventEmitter<Job>();
   const jobs: Job[] = [];
   const stopped: string[] = [];
+  const notifications = {
+    taskUpdated: new vscode.EventEmitter<{ event: unknown }>(),
+    taskRunning: new vscode.EventEmitter<{ taskId: string }>(),
+    taskPendingApproval: new vscode.EventEmitter<{ taskId: string }>(),
+  };
   const noopEvent = () => ({ dispose() {} });
   const { TaskActivityTracker } = proxyquire
     .noCallThru()
     .load("../task-activity-tracker", {
       tsyringe: { injectable: () => () => {}, singleton: () => () => {} },
       "@/lib/task-events": {
-        taskUpdated: { event: noopEvent },
-        taskRunning: { event: noopEvent },
-        taskPendingApproval: { event: noopEvent },
+        taskUpdated: { event: notifications.taskUpdated.event },
+        taskRunning: { event: notifications.taskRunning.event },
+        taskPendingApproval: { event: notifications.taskPendingApproval.event },
       },
       "../terminal/terminal-job": {
         TerminalJob: { list: () => jobs, onDidCreate: created.event },
@@ -62,7 +67,7 @@ function createHarness() {
     jobs.push(job);
     created.fire(job);
   }
-  return { open, createJob, stopped, tracker };
+  return { open, createJob, stopped, tracker, notifications };
 }
 
 describe("TaskActivityTracker task cleanup", () => {
@@ -136,9 +141,49 @@ describe("TaskActivityTracker task cleanup", () => {
     const h = createHarness();
     h.open("parent");
     const signal = h.tracker.getTaskAbortSignal("parent");
+    signal.addEventListener("abort", () => {
+      assert.strictEqual(h.tracker.getTaskAbortSignal("parent").aborted, true);
+    });
     h.tracker.dispose();
     assert.strictEqual(signal.aborted, true);
+    assert.strictEqual(h.tracker.getTaskAbortSignal("parent").aborted, true);
   });
+
+  for (const event of [
+    "taskUpdated",
+    "taskRunning",
+    "taskPendingApproval",
+  ] as const) {
+    it(`rejects late tool calls and jobs after a ${event} notification`, () => {
+      const h = createHarness();
+      try {
+        const close = h.open("parent");
+        const previousSignal = h.tracker.getTaskAbortSignal("parent");
+        close();
+        h.notifications[event].fire({
+          taskId: "parent",
+          event: { id: "parent", cwd: "/workspace", status: "pending-tool" },
+        });
+        assert.ok(h.tracker.state.value.parent);
+        assert.strictEqual(previousSignal.aborted, true);
+        assert.strictEqual(
+          h.tracker.getTaskAbortSignal("parent").aborted,
+          true,
+        );
+        h.createJob("late-command", "parent");
+        assert.deepStrictEqual(h.stopped, ["late-command"]);
+
+        h.open("parent");
+        const nextSignal = h.tracker.getTaskAbortSignal("parent");
+        assert.strictEqual(nextSignal.aborted, false);
+        assert.notStrictEqual(nextSignal, previousSignal);
+        h.createJob("new-command", "parent");
+        assert.deepStrictEqual(h.stopped, ["late-command"]);
+      } finally {
+        h.tracker.dispose();
+      }
+    });
+  }
 
   it("kills late registrations from startup or foreground promotion after close", () => {
     const h = createHarness();
