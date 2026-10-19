@@ -1,10 +1,13 @@
-import { type Environment, formatters, prompts } from "@getpochi/common";
 import type { UIMessage } from "ai";
 import { expect, test } from "vitest";
+import type { Environment } from "../../environment";
+import { formatters } from "../../formatters";
 import {
+  createEnvironmentPrompt,
   injectEnvironment,
   shouldAppendEnvironmentMessage,
 } from "../environment";
+import { prompts } from "../index";
 
 test("injectEnvironment adds a full environment to multi-message histories without one", () => {
   const messages = [
@@ -19,7 +22,7 @@ test("injectEnvironment adds a full environment to multi-message histories witho
 });
 
 test("injectEnvironment adds a full environment when compaction hides the historical one", () => {
-  const fullEnvironment = prompts.environment(
+  const fullEnvironment = createEnvironmentPrompt(
     createTestEnvironment(),
     undefined,
   );
@@ -51,7 +54,7 @@ test("injectEnvironment preserves a full environment when regenerating a request
       backgroundJobId: "term-original",
     },
   ];
-  const originalReminder = `<system-reminder>${prompts.environment(
+  const originalReminder = `<system-reminder>${createEnvironmentPrompt(
     originalEnvironment,
     undefined,
   )}</system-reminder>`;
@@ -92,7 +95,7 @@ test("injectEnvironment appends only the missing environment after a compacted c
     createTextMessage(
       "user-0",
       "user",
-      prompts.createSystemReminder(prompts.environment(environment, undefined)),
+      prompts.createSystemReminder(createEnvironmentPrompt(environment, undefined)),
     ),
     createTextMessage(
       "user-1",
@@ -123,7 +126,7 @@ test("injectEnvironment appends only the missing environment after a compacted c
 test("an appended environment remains stable after persistence", () => {
   const environment = createTestEnvironment();
   const fullReminder = prompts.createSystemReminder(
-    prompts.environment(environment, undefined),
+    createEnvironmentPrompt(environment, undefined),
   );
   const liteReminder = prompts.createSystemReminder(
     "# GIT STATUS\nThis workspace is not managed by git",
@@ -240,7 +243,7 @@ test.each([false, true])(
       {
         type: "text",
         text: prompts.createSystemReminder(
-          prompts.environment(environment, undefined),
+          createEnvironmentPrompt(environment, undefined),
         ),
       },
     ]);
@@ -257,7 +260,7 @@ test("injectEnvironment preserves assistant-ended history when a full environmen
     createTextMessage(
       "user-1",
       "user",
-      prompts.environment(createTestEnvironment(), undefined),
+      createEnvironmentPrompt(createTestEnvironment(), undefined),
     ),
     createTextMessage("assistant-1", "assistant", "answer"),
     createTextMessage("user-2", "user", "follow-up"),
@@ -276,7 +279,7 @@ test("injectEnvironment uses a lite environment and preserves it on retry when f
     createTextMessage(
       "user-1",
       "user",
-      prompts.environment(createTestEnvironment(), undefined),
+      createEnvironmentPrompt(createTestEnvironment(), undefined),
     ),
     createTextMessage("assistant-1", "assistant", "answer"),
     createTextMessage("user-2", "user", "follow-up"),

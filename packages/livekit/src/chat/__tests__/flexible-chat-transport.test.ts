@@ -8,10 +8,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { BlobStore } from "../../blob-store";
 import type { LiveKitStore, Message } from "../../types";
 import {
-  injectEnvironment,
-  shouldAppendEnvironmentMessage,
-} from "../environment";
-import {
   FlexibleChatTransport,
   type OnStartCallback,
   convertDataPartToText,
@@ -150,7 +146,7 @@ describe("environment after compaction", () => {
           parts: [{ type: "text", text: "start" }],
         },
       ];
-      injectEnvironment(messages, environment);
+      prompts.injectEnvironment(messages, environment);
       messages.push(
         {
           id: "assistant-1",
@@ -163,7 +159,7 @@ describe("environment after compaction", () => {
           parts: [{ type: "text", text: "continue" }],
         },
       );
-      injectEnvironment(messages, environment);
+      prompts.injectEnvironment(messages, environment);
       messages.push({
         id: "assistant-2",
         role: "assistant",
@@ -253,7 +249,7 @@ describe("environment after compaction", () => {
           ...environment,
           currentTime: `2026-09-16T00:00:0${attempt}.000Z`,
         };
-        expect(shouldAppendEnvironmentMessage(requestMessages)).toBe(false);
+        expect(prompts.shouldAppendEnvironmentMessage(requestMessages)).toBe(false);
         const stream = await transport.sendMessages({
           trigger: "submit-message",
           chatId: "task-1",

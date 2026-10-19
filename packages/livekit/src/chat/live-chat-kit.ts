@@ -6,7 +6,12 @@ import type {
   PochiRequestUseCase,
   TaskMemoryState,
 } from "@getpochi/common";
-import { formatters, getLogger, isForkAgentUseCase } from "@getpochi/common";
+import {
+  formatters,
+  getLogger,
+  isForkAgentUseCase,
+  prompts,
+} from "@getpochi/common";
 import {
   hasActiveTodos,
   stripOpenAIItemReferencesFromLastStep,
@@ -59,10 +64,6 @@ import {
   getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
 } from "./background-job-notification";
-import {
-  injectEnvironment,
-  shouldAppendEnvironmentMessage,
-} from "./environment";
 import { filterCompletionTools } from "./filter-completion-tools";
 import {
   type FinishedRequestSnapshot,
@@ -595,9 +596,9 @@ export class LiveChatKit<
       // messages. Normal user-message environment injection stays in transport.
       if (
         getters.getEnvironment &&
-        shouldAppendEnvironmentMessage(this.chat.messages)
+        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
       ) {
-        this.chat.messages = injectEnvironment(
+        this.chat.messages = prompts.injectEnvironment(
           this.chat.messages,
           await getters.getEnvironment(),
         ) as Message[];

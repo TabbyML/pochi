@@ -1,5 +1,7 @@
 import type { LanguageModelV3CallOptions } from "@ai-sdk/provider";
+import type { TextUIPart, UIMessage } from "ai";
 import type { Environment, GitStatus } from "../environment";
+import { prompts } from "./index";
 
 type User = { name: string; email: string };
 export type EnvironmentInfo = Pick<
@@ -222,12 +224,105 @@ function getGitStatus(gitStatus: GitStatus | undefined) {
   return result;
 }
 
-export function hasCompleteEnvironmentInfo(text: string): boolean {
-  const systemInfo = parseSystemInfoLines(text);
+function getVisibleMessages(messages: UIMessage[]): UIMessage[] {
+  // The LLM formatter discards every message before the latest compact block.
+  // Only inspect that visible suffix when deciding whether the request already
+  // contains a complete environment.
+  const compactIndex = messages.findLastIndex((message) =>
+    message.parts.some(
+      (part) => part.type === "text" && prompts.isCompact(part.text),
+    ),
+  );
+  return messages.slice(Math.max(compactIndex, 0));
+}
+
+function hasEnvironmentReminder(message: UIMessage): boolean {
+  return message.parts.some(
+    (part) =>
+      part.type === "text" && prompts.isEnvironmentSystemReminder(part.text),
+  );
+}
+
+/** Whether restoring the visible environment requires a new message. */
+export function shouldAppendEnvironmentMessage(messages: UIMessage[]): boolean {
+  const lastMessage = messages.at(-1);
   return Boolean(
-    systemInfo["Operating System"] &&
-      systemInfo["Home Directory"] &&
-      systemInfo["Current Working Directory"],
+    lastMessage &&
+      (lastMessage.role !== "user" || hasEnvironmentReminder(lastMessage)) &&
+      !hasCompleteEnvironmentPrompt(getVisibleMessages(messages)),
+  );
+}
+
+export function injectEnvironment(
+  messages: UIMessage[],
+  environment: Environment | undefined,
+): UIMessage[] {
+  if (environment === undefined) return messages;
+  const lastMessage = messages.at(-1);
+  if (shouldAppendEnvironmentMessage(messages)) {
+    return [
+      ...messages,
+      {
+        id: crypto.randomUUID(),
+        role: "user",
+        parts: [createEnvironmentReminderPart(environment, "full")],
+      },
+    ];
+  }
+  if (lastMessage?.role !== "user" || hasEnvironmentReminder(lastMessage)) {
+    return messages;
+  }
+  const completeEnvironmentVisible = hasCompleteEnvironmentPrompt(
+    getVisibleMessages(messages),
+  );
+
+  // The latest user message is persisted together with the request
+  // (`chatStreamStarted`), so mutating it keeps the in-memory chat state and
+  // the store in sync.
+  lastMessage.parts = [
+    createEnvironmentReminderPart(
+      environment,
+      completeEnvironmentVisible ? "lite" : "full",
+    ),
+    ...lastMessage.parts,
+  ];
+
+  return messages;
+}
+
+function createEnvironmentReminderPart(
+  environment: Environment,
+  kind: "full" | "lite",
+): TextUIPart {
+  const { gitStatus } = environment.workspace;
+  const user =
+    gitStatus?.userEmail && gitStatus?.userName
+      ? {
+          name: gitStatus.userName,
+          email: gitStatus.userEmail,
+        }
+      : undefined;
+  return {
+    type: "text",
+    text: prompts.createSystemReminder(
+      kind === "full"
+        ? createEnvironmentPrompt(environment, user)
+        : createLiteEnvironmentPrompt(environment),
+    ),
+  };
+}
+
+function hasCompleteEnvironmentPrompt(messages: UIMessage[]): boolean {
+  return messages.some((message) =>
+    message.parts.some((part) => {
+      if (part.type !== "text") return false;
+      const systemInfo = parseSystemInfoLines(part.text);
+      return Boolean(
+        systemInfo["Operating System"] &&
+          systemInfo["Home Directory"] &&
+          systemInfo["Current Working Directory"],
+      );
+    }),
   );
 }
 

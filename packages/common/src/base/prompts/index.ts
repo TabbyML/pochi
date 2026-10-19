@@ -20,8 +20,8 @@ import { renderBashOutputs } from "./bash-outputs";
 import { createCompactPrompt } from "./compact";
 import {
   createEnvironmentPrompt,
-  createLiteEnvironmentPrompt,
-  hasCompleteEnvironmentInfo,
+  injectEnvironment,
+  shouldAppendEnvironmentMessage,
 } from "./environment";
 import { fixMermaidError } from "./fix-mermaid-error";
 import { generateTitle } from "./generate-title";
@@ -46,10 +46,10 @@ export {
 
 export const prompts = {
   system: createSystemPrompt,
+  injectEnvironment,
+  shouldAppendEnvironmentMessage,
   injectAutoMemory,
   environment: createEnvironmentPrompt,
-  liteEnvironment: createLiteEnvironmentPrompt,
-  hasCompleteEnvironmentInfo,
   createSystemReminder,
   isSystemReminder,
   isEnvironmentSystemReminder,
