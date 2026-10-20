@@ -8,6 +8,7 @@
     "./edge": "./src/edge.ts"
   },
   "scripts": {
+    "test": "bun vitest --run",
     "tsc": "tsc --noEmit"
   },
   "dependencies": {
