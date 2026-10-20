@@ -51,6 +51,13 @@ const ContentType = {
     // https://platform.openai.com/docs/guides/pdf-files#base64-encoded-files
     "application/pdf",
   ],
+  deepseek: [
+    // https://api-docs.deepseek.com/guides/vision/
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ],
 
   // other pochi models only support text input, e.g., kimi-k2, glm-4.6, qwen3-coder and grok-code-fask-1
 };
@@ -66,5 +73,9 @@ export const getContentTypesForModel = (
   }
   if (modelId.includes("openai/gpt")) {
     return ContentType.gpt;
+  }
+  // Match the model ID exposed by Pochi /api/models; DeepSeek V4 Pro is text-only.
+  if (modelId === "deepseek/deepseek-4.1-flash") {
+    return ContentType.deepseek;
   }
 };
