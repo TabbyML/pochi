@@ -7,15 +7,21 @@ import { readFileContent } from "@/lib/fs";
 import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskHistoryStore } from "@/lib/task-history-store";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { constants, toErrorMessage } from "@getpochi/common";
-import { getWorktreeNameFromWorktreePath } from "@getpochi/common/git-utils";
+import {
+  getWorktreeNameFromWorktreePath,
+  normalizePathForComparison,
+} from "@getpochi/common/git-utils";
 import { isPlainText } from "@getpochi/common/tool-utils";
 import type {
   CreateWorktreeOptions,
   GitWorktree,
 } from "@getpochi/common/vscode-webui-bridge";
 import { signal } from "@preact/signals-core";
+import * as runExclusive from "run-exclusive";
 import simpleGit, { CheckRepoActions } from "simple-git";
 import { injectable, singleton } from "tsyringe";
 import * as vscode from "vscode";
@@ -28,6 +34,7 @@ import {
 import { createTerminal, getViewColumnForTerminal } from "../layout";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GitWorktreeInfoProvider } from "./git-worktree-info-provider";
+import { readWorktreeOwner, writeWorktreeOwner } from "./worktree-owner";
 
 const logger = getLogger("WorktreeManager");
 
@@ -50,7 +57,13 @@ export class WorktreeManager implements vscode.Disposable {
     private readonly gitState: GitState,
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly pochiConfiguration: PochiConfiguration,
+    private readonly taskHistoryStore: TaskHistoryStore,
   ) {
+    // Serialized so a stale update (e.g. a watcher event fired before the
+    // owner marker is written) cannot finish after a newer one.
+    this.updateWorktrees = runExclusive
+      .buildMethod(this.updateWorktrees)
+      .bind(this);
     this.workspacePath = this.workspaceScope.workspacePath;
     this.git = simpleGit(this.workspacePath, {
       timeout: { block: constants.GitOperationTimeoutMs },
@@ -174,9 +187,7 @@ export class WorktreeManager implements vscode.Disposable {
     if ((await this.isGitRepository()) === false) {
       return null;
     }
-    const worktrees = [...this.worktrees.value];
-
-    if (worktrees.length >= this.maxWorktrees) {
+    if (this.worktrees.value.length >= this.maxWorktrees) {
       vscode.window.showErrorMessage(
         `Cannot create more than ${this.maxWorktrees} worktrees.`,
       );
@@ -190,6 +201,10 @@ export class WorktreeManager implements vscode.Disposable {
       );
       return null;
     }
+
+    const existingPaths = new Set(
+      (await this.listGitWorktrees()).map((wt) => wt.path),
+    );
 
     if (options?.generateBranchName) {
       // Generate branch name and create worktree
@@ -211,16 +226,15 @@ export class WorktreeManager implements vscode.Disposable {
       await vscode.commands.executeCommand("git.createWorktree");
     }
 
-    // Get worktrees again to find the new one
-    const updatedWorktrees = await this.getWorktrees();
-    // Find the new worktree by comparing with previous worktrees
-    const newWorktree: GitWorktree | undefined = updatedWorktrees.findLast(
-      (updated) =>
-        !worktrees.some((original) => original.path === updated.path),
+    const newWorktree = (await this.listGitWorktrees()).findLast(
+      (wt) => !existingPaths.has(wt.path),
     );
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
-      this.updateWorktrees(newWorktree.path);
+      await writeWorktreeOwner(newWorktree.path, "user").catch((error) => {
+        logger.warn(`Failed to write worktree owner: ${toErrorMessage(error)}`);
+      });
+      await this.updateWorktrees(newWorktree.path);
       await copyWorktreeIncludeFiles(mainWorktreePath, newWorktree.path).catch(
         (error) => {
           logger.warn(
@@ -337,33 +351,72 @@ export class WorktreeManager implements vscode.Disposable {
     );
   }
 
-  private async getWorktrees(): Promise<GitWorktree[]> {
+  /** All live worktrees known to git, including ones not created by Pochi. */
+  private async listGitWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      const parsedWorktrees = this.parseWorktreePorcelain(result)
-        .filter((wt) => wt.prunable === undefined)
-        .slice(0, this.maxWorktrees);
+      return this.parseWorktreePorcelain(result).filter(
+        (wt) => wt.prunable === undefined,
+      );
+    } catch (error) {
+      logger.error(`Failed to list worktrees: ${toErrorMessage(error)}`);
+      return [];
+    }
+  }
 
-      const worktrees = await Promise.all(
-        parsedWorktrees.map<Promise<GitWorktree>>(async (wt) => {
+  private async getWorktrees(): Promise<GitWorktree[]> {
+    try {
+      const gitWorktrees = await this.listGitWorktrees();
+
+      const workspaceWorktree = gitWorktrees.find(
+        (x) => x.path === this.workspacePath,
+      );
+      const worktrees =
+        workspaceWorktree && !workspaceWorktree.isMain
+          ? // If the current workspace is a non-main worktree, only return the current worktree
+            [workspaceWorktree]
+          : (await this.filterUserWorktrees(gitWorktrees)).slice(
+              0,
+              this.maxWorktrees,
+            );
+
+      return await Promise.all(
+        worktrees.map<Promise<GitWorktree>>(async (wt) => {
           const storedData = await this.worktreeInfoProvider.get(wt.path);
           return { ...wt, data: storedData };
         }),
       );
-
-      const workspaceWorktree = worktrees.find(
-        (x) => x.path === this.workspacePath,
-      );
-      if (workspaceWorktree && !workspaceWorktree.isMain) {
-        // If the current workspace is a non-main worktree, only return the current worktree
-        return [workspaceWorktree];
-      }
-
-      return worktrees;
     } catch (error) {
       logger.error(`Failed to get worktrees: ${toErrorMessage(error)}`);
       return [];
     }
+  }
+
+  /**
+   * Keeps the main worktree, worktrees Pochi created for the user, and
+   * unmarked worktrees that already have top-level Pochi tasks (created
+   * before owner markers existed). Hides sub-agent and foreign worktrees.
+   */
+  private async filterUserWorktrees(
+    worktrees: GitWorktree[],
+  ): Promise<GitWorktree[]> {
+    await this.taskHistoryStore.ready;
+    const taskCwds = new Set(
+      Object.values(this.taskHistoryStore.tasks.value)
+        .filter((task) => task.parentId === null && task.cwd)
+        .map((task) => normalizePathForComparison(task.cwd)),
+    );
+    const owners = await Promise.all(
+      worktrees.map((wt) =>
+        wt.isMain ? undefined : readWorktreeOwner(wt.path),
+      ),
+    );
+    return worktrees.filter((wt, i) => {
+      if (wt.isMain) return true;
+      const owner = owners[i];
+      if (owner) return owner === "user";
+      return taskCwds.has(normalizePathForComparison(wt.path));
+    });
   }
 
   private parseWorktreePorcelain(output: string): GitWorktree[] {
