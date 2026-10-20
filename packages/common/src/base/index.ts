@@ -42,6 +42,12 @@ export {
   shouldRunSubAgentInBackground,
 } from "./subagent";
 
+export {
+  parseTaskReferences,
+  serializeTaskReference,
+  type TaskReference,
+} from "./task-reference";
+
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
 
@@ -79,6 +85,7 @@ export type {
   AutoMemoryManager,
   AutoMemoryReadContextOptions,
   AutoMemoryTaskState,
+  AutoMemoryTranscriptEntry,
   AutoMemoryTranscriptInfo,
   TaskMemoryState,
 } from "./memory";

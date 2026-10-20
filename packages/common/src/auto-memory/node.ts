@@ -13,6 +13,7 @@ import {
   type AutoMemoryManifestEntry,
   AutoMemoryProjectInfoName,
   type AutoMemoryReadContextOptions,
+  type AutoMemoryTranscriptEntry,
   AutoMemoryTypeValues,
   getLogger,
   renderAutoMemoryIndex,
@@ -141,6 +142,40 @@ export class AutoMemoryManager {
       return undefined;
     }
     return { transcriptDir: context.transcriptDir, filename };
+  }
+
+  /**
+   * Lists the task transcripts of the repo containing `cwd`, newest first.
+   * Never creates directories; a missing transcript directory yields `[]`.
+   */
+  async listTranscripts({
+    cwd,
+    excludeTaskId,
+  }: {
+    cwd?: string;
+    excludeTaskId?: string;
+  }): Promise<AutoMemoryTranscriptEntry[]> {
+    const context = await this.readContext(cwd, { ensure: false });
+    if (!context) return [];
+
+    let candidates: AutoMemoryDreamCandidate[];
+    try {
+      candidates = await collectDreamCandidates(context.transcriptDir);
+    } catch {
+      return [];
+    }
+    return candidates
+      .filter((candidate) => candidate.taskId !== excludeTaskId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map((candidate) => ({
+        taskId: candidate.taskId,
+        title: candidate.title,
+        updatedAt: candidate.updatedAt,
+        filePath: path.join(
+          context.transcriptDir,
+          candidate.transcriptFilename,
+        ),
+      }));
   }
 
   async beginDreamRun({

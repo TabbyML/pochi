@@ -365,3 +365,59 @@ describe("AutoMemoryManager project info file", () => {
     expect(info.repoPath).toBe(path.resolve(cwd));
   });
 });
+
+describe("AutoMemoryManager.listTranscripts", () => {
+  let projectsRoot: string;
+  let cwd: string;
+
+  beforeEach(async () => {
+    projectsRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "pochi-transcripts-projects-"),
+    );
+    cwd = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-transcripts-repo-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(projectsRoot, { recursive: true, force: true });
+    await fs.rm(cwd, { recursive: true, force: true });
+  });
+
+  it("returns an empty list when no transcripts exist", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    expect(await manager.listTranscripts({ cwd })).toEqual([]);
+    // Listing must not create the memory directories.
+    expect(await fs.readdir(projectsRoot)).toEqual([]);
+  });
+
+  it("lists transcripts newest first and excludes the given task", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    for (const [taskId, updatedAt] of [
+      ["old", 1_000],
+      ["new", 3_000],
+      ["current", 2_000],
+    ] as const) {
+      await manager.writeTaskTranscript({
+        taskId,
+        cwd,
+        title: `Title ${taskId}`,
+        updatedAt,
+        transcript: "### 1. user\nhello\n",
+      });
+    }
+
+    const result = await manager.listTranscripts({
+      cwd,
+      excludeTaskId: "current",
+    });
+
+    expect(result.map((item) => item.taskId)).toEqual(["new", "old"]);
+    expect(result[0]).toMatchObject({ title: "Title new", updatedAt: 3_000 });
+    expect(path.basename(result[0].filePath)).toBe("new.md");
+    expect(await fs.readFile(result[0].filePath, "utf8")).toContain("hello");
+  });
+
+  it("returns nothing without a cwd", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    expect(await manager.listTranscripts({})).toEqual([]);
+  });
+});

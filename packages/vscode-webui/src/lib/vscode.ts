@@ -166,6 +166,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readContextWindowUsage",
         "readTaskMemoryState",
         "readAutoMemory",
+        "listReferenceableTasks",
         "readAutoMemoryEnabled",
         "readAutoMemoryState",
         "readEffectiveContextWindow",

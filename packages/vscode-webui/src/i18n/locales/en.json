@@ -489,7 +489,10 @@
     "typeToSearch": "Type to search...",
     "agent": "Agent",
     "skill": "Skill",
-    "useHashForIssues": "Use # to search for GitHub issues."
+    "useHashForIssues": "Use # to search for GitHub issues.",
+    "files": "Files",
+    "tasks": "Tasks",
+    "untitledTask": "Untitled task"
   },
   "subtask": {
     "back": "Back",

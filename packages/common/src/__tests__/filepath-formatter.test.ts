@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatPochiFileDisplayPath,
   parseBackgroundJobOutputFilePath,
+  parseTaskTranscriptFilePath,
 } from "../pochi-file-system";
 
 describe("formatPochiFileDisplayPath", () => {
@@ -203,5 +204,29 @@ describe("parseBackgroundJobOutputFilePath", () => {
     expect(
       parseBackgroundJobOutputFilePath("logs/bgjob-cmd-abc.log"),
     ).toBeUndefined();
+  });
+});
+
+describe("parseTaskTranscriptFilePath", () => {
+  it("extracts the task id from real and display transcript paths", () => {
+    for (const path of [
+      "/Users/me/.pochi/projects/repo-abc123/transcripts/task-1.md",
+      "C:\\Users\\me\\.pochi\\projects\\repo-abc123\\transcripts\\task-1.md",
+      "~/.pochi/projects/repo-abc123/transcripts/task-1.md",
+      "pochi://$/transcripts/task-1.md",
+    ]) {
+      expect(parseTaskTranscriptFilePath(path)).toEqual({ taskId: "task-1" });
+    }
+  });
+
+  it("ignores other markdown files", () => {
+    for (const path of [
+      "/work/repo/docs/transcripts/intro.md",
+      "/Users/me/.pochi/projects/repo-abc123/memory/MEMORY.md",
+      "/Users/me/.pochi/projects/repo-abc123/transcripts/sub/task-1.md",
+      "pochi://$/transcripts",
+    ]) {
+      expect(parseTaskTranscriptFilePath(path)).toBeUndefined();
+    }
   });
 });

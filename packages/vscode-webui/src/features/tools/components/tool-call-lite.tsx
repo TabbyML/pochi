@@ -1,5 +1,9 @@
+import { useTaskReference } from "@/components/message/task-reference-badge";
 import { cn } from "@/lib/utils";
-import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
+import {
+  formatPochiFileDisplayPath,
+  parseTaskTranscriptFilePath,
+} from "@getpochi/common/pochi-file-system";
 import { getStaticToolName } from "ai";
 import type { TFunction } from "i18next";
 import { Loader2, Pause } from "lucide-react";
@@ -154,13 +158,33 @@ const LabelAndFilePathView = ({
   "readFile" | "applyDiff" | "writeToFile" | "multiApplyDiff" | "createReview"
 >) => {
   const { path } = tool.input || {};
+  const taskTranscript =
+    tool.type === "tool-readFile" && path
+      ? parseTaskTranscriptFilePath(path)
+      : undefined;
 
   return (
     <>
       <span className="ml-2" />
       <span className="truncate whitespace-nowrap">{label}</span>
-      {path && <FilePathText className="ml-1" path={path} />}
+      {path &&
+        (taskTranscript ? (
+          <TaskTranscriptText className="ml-1" taskId={taskTranscript.taskId} />
+        ) : (
+          <FilePathText className="ml-1" path={path} />
+        ))}
     </>
+  );
+};
+
+/** A task transcript shown as the task title instead of the stored file path. */
+const TaskTranscriptText = ({
+  taskId,
+  className,
+}: { taskId: string; className?: string }) => {
+  const { displayTitle } = useTaskReference(taskId);
+  return (
+    <HighlightedText className={className}>{displayTitle}</HighlightedText>
   );
 };
 

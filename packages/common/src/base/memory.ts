@@ -72,6 +72,14 @@ export interface AutoMemoryTranscriptInfo {
   filename: string;
 }
 
+/** A stored task transcript that can be referenced from another task. */
+export interface AutoMemoryTranscriptEntry {
+  taskId: string;
+  title?: string;
+  updatedAt: number;
+  filePath: string;
+}
+
 export interface AutoMemoryManager {
   readContext(
     cwdOrOptions?: string | AutoMemoryReadContextOptions,

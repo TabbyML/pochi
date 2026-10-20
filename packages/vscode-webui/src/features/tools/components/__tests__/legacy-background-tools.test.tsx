@@ -11,6 +11,11 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("@/components/message/task-reference-badge", () => ({
+  TaskReferenceBadge: () => null,
+  useTaskReference: () => ({ task: undefined, displayTitle: "" }),
+}));
+
 vi.mock("../use-background-job-running-status", () => ({
   useBackgroundJobRunningStatus: () => undefined,
 }));

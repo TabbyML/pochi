@@ -33,6 +33,12 @@ export function parseMarkdown(content: string) {
             _child.value = `/${child.properties.id}`;
             child.children = [];
           }
+          if (child.type === "element" && child.tagName === "task") {
+            const _child = child as unknown as Text;
+            _child.type = "text";
+            _child.value = String(child.properties.title ?? "");
+            child.children = [];
+          }
           if (
             child.type === "element" &&
             (child.tagName === "file" || child.tagName === "issue")

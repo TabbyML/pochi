@@ -42,6 +42,21 @@ export function parseBackgroundJobOutputFilePath(
   return undefined;
 }
 
+/**
+ * Extracts the task id from the path of a task transcript, i.e.
+ * `~/.pochi/projects/<repoKey>/transcripts/<taskId>.md` or its pochi://$/
+ * display form.
+ */
+export function parseTaskTranscriptFilePath(
+  path: string,
+): { taskId: string } | undefined {
+  const match = normalizePath(path).match(
+    /^pochi:\/\/\$\/transcripts\/([^/]+)\.md$|(?:^|\/)\.pochi\/projects\/[^/]+\/transcripts\/([^/]+)\.md$/,
+  );
+  const taskId = match?.[1] ?? match?.[2];
+  return taskId ? { taskId } : undefined;
+}
+
 export function formatPochiFileDisplayPath(
   path: string,
   options?: PochiFileDisplayPathOptions,

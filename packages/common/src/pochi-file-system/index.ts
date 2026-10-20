@@ -1,6 +1,7 @@
 export {
   formatPochiFileDisplayPath,
   parseBackgroundJobOutputFilePath,
+  parseTaskTranscriptFilePath,
   type BackgroundJobOutputFileInfo,
   type PochiFileDisplayPathOptions,
 } from "./filepath-formatter";

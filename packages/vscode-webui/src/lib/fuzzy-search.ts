@@ -21,8 +21,12 @@ const uf = new uFuzzy({
 /**
  * Generic fuzzy search function that works with any string array
  */
-export function fuzzySearchStrings(needle: string, haystack: string[]) {
-  const [idxs, info, order] = uf.search(haystack, needle);
+export function fuzzySearchStrings(
+  needle: string,
+  haystack: string[],
+  outOfOrder = 0,
+) {
+  const [idxs, info, order] = uf.search(haystack, needle, outOfOrder);
   if (!order) {
     if (idxs !== null) {
       return idxs.map((idx) => ({ idx, range: null }));
@@ -113,4 +117,29 @@ function mergeUniqueFileItems(...items: FileItem[][]): FileItem[] {
   }
 
   return result;
+}
+
+const MaxTaskResult = 10;
+// Task titles are sentences: let the words of the needle match in any order.
+const MaxTaskOutOfOrderTerms = 5;
+
+/**
+ * Fuzzy search past tasks by title. Without a needle the most recent tasks are
+ * returned; `tasks` is expected to be sorted by recency already.
+ */
+export function fuzzySearchTasks<T extends { title?: string }>(
+  needle: string | undefined,
+  tasks: T[],
+  limit = MaxTaskResult,
+): T[] {
+  const trimmed = needle?.trim();
+  if (!trimmed) return tasks.slice(0, limit);
+
+  return fuzzySearchStrings(
+    trimmed,
+    tasks.map((task) => task.title ?? ""),
+    MaxTaskOutOfOrderTerms,
+  )
+    .map(({ idx }) => tasks[idx])
+    .slice(0, limit);
 }

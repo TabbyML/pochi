@@ -5,6 +5,7 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  AutoMemoryTranscriptEntry,
   BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
@@ -552,6 +553,14 @@ export interface VSCodeHostApi {
   }>;
 
   readAutoMemory(): Promise<AutoMemoryManager>;
+
+  /**
+   * List past tasks of the current repo that have a stored transcript and can be
+   * referenced from another task, newest first.
+   */
+  listReferenceableTasks(
+    excludeTaskId?: string,
+  ): Promise<AutoMemoryTranscriptEntry[]>;
 
   readBackgroundTaskState(taskId: string): Promise<{
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;

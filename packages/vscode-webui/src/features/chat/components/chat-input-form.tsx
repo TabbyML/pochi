@@ -44,6 +44,7 @@ interface ChatInputFormProps {
   onFileDrop?: (files: File[]) => boolean;
   messageContent?: string;
   isSubTask: boolean;
+  currentTaskId?: string;
   children?: ReactNode;
   reviews: Review[];
   userEdits?: FileDiff[];
@@ -91,6 +92,7 @@ export const ChatInputForm = forwardRef<
     onFileDrop,
     messageContent,
     isSubTask,
+    currentTaskId,
     reviews,
     userEdits = [],
     lastCheckpointHash,
@@ -179,6 +181,7 @@ export const ChatInputForm = forwardRef<
       onFileDrop={onFileDrop}
       messageContent={messageContent}
       isSubTask={isSubTask}
+      currentTaskId={currentTaskId}
       onFocus={onFocus}
       onSwitchSubmitMode={onSwitchSubmitMode}
       className={className}

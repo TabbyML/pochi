@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuzzySearchFiles } from "./fuzzy-search";
+import { fuzzySearchFiles, fuzzySearchTasks } from "./fuzzy-search";
 
 // Non-ASCII fixtures are written as escape sequences to keep this file ASCII-only.
 const ChineseFile = "docs/\u4ea7\u54c1\u9700\u6c42\u6587\u6863.md";
@@ -40,5 +40,38 @@ describe("fuzzySearchFiles", () => {
     expect(search("vscode/tools")).toEqual([
       "packages/vscode/src/tools/list-files.ts",
     ]);
+  });
+});
+
+describe("fuzzySearchTasks", () => {
+  const tasks = [
+    { title: "Fix login bug" },
+    { title: "Refactor payment module" },
+    { title: undefined },
+  ];
+
+  it("returns the most recent tasks without a query", () => {
+    expect(fuzzySearchTasks("", tasks, 2)).toEqual(tasks.slice(0, 2));
+  });
+
+  it("matches tasks by title", () => {
+    expect(fuzzySearchTasks("payment", tasks)).toEqual([tasks[1]]);
+  });
+
+  it("returns nothing when no title matches", () => {
+    expect(fuzzySearchTasks("zzzzzz", tasks)).toEqual([]);
+  });
+
+  it("matches a query made of several words", () => {
+    expect(fuzzySearchTasks("fix login", tasks)).toEqual([tasks[0]]);
+  });
+
+  it("matches words typed in a different order", () => {
+    expect(fuzzySearchTasks("bug login", tasks)).toEqual([tasks[0]]);
+  });
+
+  it("ignores surrounding whitespace in the query", () => {
+    expect(fuzzySearchTasks("fix login ", tasks)).toEqual([tasks[0]]);
+    expect(fuzzySearchTasks("   ", tasks, 2)).toEqual(tasks.slice(0, 2));
   });
 });

@@ -67,6 +67,10 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
     });
   }
 
+  async listHostTranscripts(excludeTaskId?: string) {
+    return this.listTranscripts({ cwd: this.cwd, excludeTaskId });
+  }
+
   async beginHostDreamRun(options: {
     cwd?: string;
     currentTaskId?: string;

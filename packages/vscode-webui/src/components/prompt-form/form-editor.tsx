@@ -2,9 +2,11 @@ import { asyncDebounce, debounceWithCachedValue } from "@/lib/debounce";
 import {
   fuzzySearchFiles,
   fuzzySearchSlashCandidates,
+  fuzzySearchTasks,
 } from "@/lib/fuzzy-search";
 import { useActiveTabs } from "@/lib/hooks/use-active-tabs";
 import { vscodeHost } from "@/lib/vscode";
+import type { AutoMemoryTranscriptEntry } from "@getpochi/common";
 import type { GithubIssue } from "@getpochi/common/vscode-webui-bridge";
 import Document from "@tiptap/extension-document";
 import History from "@tiptap/extension-history";
@@ -25,6 +27,7 @@ import {
   PromptFormIssueMentionExtension,
   issueMentionPluginKey,
 } from "./issue-mention/extension";
+import { PromptFormTaskMentionExtension } from "./task-mention/extension";
 
 import "./prompt-form.css";
 import type { ChatInput } from "@/features/chat";
@@ -130,6 +133,8 @@ interface FormEditorProps {
   onFocus?: (event: FocusEvent) => void;
   messageContent?: string;
   isSubTask: boolean;
+  /** Id of the task being edited; excluded from the task references list. */
+  currentTaskId?: string;
   onSwitchSubmitMode?: () => void;
   className?: string;
 }
@@ -152,6 +157,7 @@ export function FormEditor({
   onFileDrop,
   messageContent = "",
   isSubTask,
+  currentTaskId,
   onSwitchSubmitMode,
   className,
 }: FormEditorProps) {
@@ -196,6 +202,27 @@ export function FormEditor({
     });
   }, []);
 
+  const currentTaskIdRef = useLatest(currentTaskId);
+  // Last fetched tasks, so the mention can decide synchronously whether a query
+  // with spaces still matches a task title.
+  const taskCacheRef = useRef<AutoMemoryTranscriptEntry[]>([]);
+  const fetchTaskMentionItems = useCallback(
+    async (query = "") => {
+      const tasks = await vscodeHost.listReferenceableTasks(
+        currentTaskIdRef.current,
+      );
+      taskCacheRef.current = tasks;
+      return fuzzySearchTasks(query, tasks);
+    },
+    [currentTaskIdRef],
+  );
+  const hasTaskMatch = useCallback(
+    (query: string) =>
+      query.trim() !== "" &&
+      fuzzySearchTasks(query, taskCacheRef.current, 1).length > 0,
+    [],
+  );
+
   const editor = useEditor(
     {
       extensions: [
@@ -211,12 +238,15 @@ export function FormEditor({
         PromptFormMentionExtension.configure(
           createFileMentionConfig({
             fetchItems: fetchFileMentionItems,
+            fetchTasks: fetchTaskMentionItems,
+            hasTaskMatch,
             checkHasIssues: async () => {
               const issues = await debouncedQueryGithubIssues();
               return !!(issues && issues.length > 0);
             },
           }),
         ),
+        PromptFormTaskMentionExtension,
         // Use the already configured PromptFormIssueMentionExtension for issue mentions
         PromptFormIssueMentionExtension.configure({
           suggestion: {

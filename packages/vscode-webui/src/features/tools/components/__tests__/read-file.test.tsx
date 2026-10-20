@@ -78,6 +78,14 @@ vi.mock("../file-badge", () => ({
   ),
 }));
 
+vi.mock("@/components/message/task-reference-badge", () => ({
+  TaskReferenceBadge: ({ id }: { id: string }) => (
+    <span data-testid="task-reference-badge" data-task-id={id}>
+      Task title
+    </span>
+  ),
+}));
+
 interface ReadFileInput {
   path: string;
   startLine?: number;
@@ -121,6 +129,18 @@ const renderReadFileTool = (
   );
 
 describe("readFileTool", () => {
+  it("shows a task transcript as the task instead of its file path", () => {
+    const { container, getByTestId, queryByTestId } = renderReadFileTool({
+      path: "/Users/me/.pochi/projects/repo-abc/transcripts/task-1.md",
+      offset: 1,
+      limit: 40,
+    });
+
+    expect(getByTestId("task-reference-badge").dataset.taskId).toBe("task-1");
+    expect(queryByTestId("file-badge")).toBeNull();
+    expect(container.textContent).toBe("Reading Task title");
+  });
+
   it("shows the standard reading label with the requested file path", () => {
     const path = "packages/vscode-webui/src/main.tsx";
     const { container } = renderReadFileTool({ path });
