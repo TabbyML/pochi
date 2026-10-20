@@ -617,6 +617,16 @@ export class CommandManager implements vscode.Disposable {
       ),
 
       vscode.commands.registerCommand(
+        "pochi.comments.addFromEditor",
+        async () => {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            await this.reviewController.startThreadFromEditor(editor);
+          }
+        },
+      ),
+
+      vscode.commands.registerCommand(
         "pochi.comments.addComment",
         async (commentReply?: vscode.CommentReply | undefined) => {
           if (commentReply) {
