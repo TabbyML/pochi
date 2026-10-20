@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { getContentTypesForModel } from "./content-type";
 
 describe("getContentTypesForModel", () => {
-  it("supports the documented image formats for DeepSeek Flash", () => {
-    expect(getContentTypesForModel("deepseek/deepseek-flash")).toEqual([
+  it("supports image formats for the DeepSeek V4.1 Flash ID from /api/models", () => {
+    expect(getContentTypesForModel("deepseek/deepseek-4.1-flash")).toEqual([
       "image/jpeg",
       "image/png",
       "image/gif",
@@ -16,9 +16,16 @@ describe("getContentTypesForModel", () => {
     "deepseek/deepseek-v4-pro",
     "deepseek/deepseek-r1",
     "deepseek/unknown-model",
-    "deepseek/deepseek-flash-unknown",
-    "other/deepseek/deepseek-flash",
+    "deepseek/deepseek-4.1-flash-unknown",
+    "other/deepseek/deepseek-4.1-flash",
   ])("does not enable media for unverified DeepSeek model %s", (modelId) => {
+    expect(getContentTypesForModel(modelId)).toBeUndefined();
+  });
+
+  it.each([
+    "deepseek/deepseek-flash",
+    "deepseek/deepseek-v4.1-flash-1017",
+  ])("does not treat upstream model names as Pochi model IDs: %s", (modelId) => {
     expect(getContentTypesForModel(modelId)).toBeUndefined();
   });
 

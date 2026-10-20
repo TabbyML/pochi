@@ -74,8 +74,8 @@ export const getContentTypesForModel = (
   if (modelId.includes("openai/gpt")) {
     return ContentType.gpt;
   }
-  // DeepSeek V4 Pro is text-only; enable images only for the known vision model.
-  if (modelId === "deepseek/deepseek-flash") {
+  // Match the model ID exposed by Pochi /api/models; DeepSeek V4 Pro is text-only.
+  if (modelId === "deepseek/deepseek-4.1-flash") {
     return ContentType.deepseek;
   }
 };
