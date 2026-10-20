@@ -74,7 +74,8 @@ export const getContentTypesForModel = (
   if (modelId.includes("openai/gpt")) {
     return ContentType.gpt;
   }
-  if (modelId.includes("deepseek/")) {
+  // DeepSeek V4 Pro is text-only; enable images only for the known vision model.
+  if (modelId === "deepseek/deepseek-flash") {
     return ContentType.deepseek;
   }
 };
