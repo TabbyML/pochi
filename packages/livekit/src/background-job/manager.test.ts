@@ -834,6 +834,41 @@ describe("BackgroundJobManager", () => {
     await manager.dispose();
   });
 
+  it("appends the adaptor's finish note to the subagent result", async () => {
+    const { manager, tasks } = setup();
+    manager.initialize({
+      blobStore: {} as never,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+        onTaskFinished: async (taskId) =>
+          taskId === "child" ? "Worktree note." : undefined,
+      },
+    });
+    const { executor } = manager as unknown as {
+      executor: { options: { adaptor: RunningTaskAdaptor } };
+    };
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: true,
+      status: "completed",
+    } as Task);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    try {
+      await manager.watchTask("parent");
+      await executor.options.adaptor.onTaskFinished?.("child");
+      expect(manager.getPendingNotifications("parent")).toEqual([
+        expect.objectContaining({
+          kind: "subagent",
+          result: "Subagent finished without an explicit result.\n\nWorktree note.",
+        }),
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
   it("keeps fork results out of the parent's notification queue", async () => {
     const { manager, tasks } = setup();
     tasks.set("fork", {

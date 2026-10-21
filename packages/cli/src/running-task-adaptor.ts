@@ -11,6 +11,7 @@ import {
   acknowledgeBackgroundJobNotification,
   createBackgroundJobNotification,
   enqueueBackgroundJobNotification,
+  formatSubagentWorktreeNote,
   getLogger,
   getPendingBackgroundJobNotifications,
   snapshotPendingBackgroundJobNotifications,
@@ -316,7 +317,11 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       catalog.queries.makeTaskQuery(taskId),
     );
     if (!task?.parentId || !task.cwd || task.cwd === this.cwd) return;
-    await finalizeSubagentWorktree(this.cwd, taskId);
+    const finalized = await finalizeSubagentWorktree(this.cwd, taskId);
+    return (
+      finalized &&
+      formatSubagentWorktreeNote(finalized.worktree, finalized.removed)
+    );
   }
 
   clearFileStateCache(taskId: string) {

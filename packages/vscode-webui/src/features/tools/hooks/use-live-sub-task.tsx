@@ -109,6 +109,7 @@ export function useLiveSubTask(
     omitCustomRules: customAgent?.omitAgentsMd === true,
     modelOverride: customAgentModel,
     taskId: uid,
+    cwd: task?.cwd,
   });
 
   // FIXME: handle auto retry for output without task.
@@ -180,6 +181,7 @@ export function useLiveSubTask(
           toolCall,
           uid,
           storeId: store.storeId,
+          cwd: task.cwd ?? undefined,
           abortSignal: abortController.current.signal,
           contentType: customAgentModel?.contentType,
           builtinSubAgentInfo,
@@ -328,6 +330,9 @@ export function useLiveSubTask(
       !background &&
       tool.state === "input-available" &&
       isExecuting &&
+      // Wait for the lifecycle to finish preparing the task (e.g. creating
+      // its isolated worktree) so the first request sees the final cwd.
+      !!ensureNewTaskStreamingResult(lifecycle.streamingResult) &&
       !(agentType && isCustomAgentLoading) &&
       currentStepCount <= SubtaskMaxStep &&
       !abortController.current.signal.aborted &&

@@ -4,7 +4,9 @@ import {
   APICallError,
   type FinishReason,
   InvalidToolInputError,
+  JSONParseError,
   NoSuchToolError,
+  TypeValidationError,
   isStaticToolUIPart,
 } from "ai";
 import type { tables } from "./livestore/default-schema";
@@ -116,8 +118,18 @@ export function toTaskError(
   };
 
   if (InvalidToolInputError.isInstance(error)) {
+    const { cause } = error;
+    // Schema and JSON errors are noisy; other causes explain the rejection.
+    const reason =
+      cause instanceof Error &&
+      !TypeValidationError.isInstance(cause) &&
+      !JSONParseError.isInstance(cause)
+        ? cause.message
+        : undefined;
     return internalError(
-      `Invalid arguments provided to tool "${error.toolName}". Please try again.`,
+      reason
+        ? `Invalid arguments provided to tool "${error.toolName}": ${reason}`
+        : `Invalid arguments provided to tool "${error.toolName}". Please try again.`,
     );
   }
 

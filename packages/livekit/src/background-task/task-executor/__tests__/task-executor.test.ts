@@ -460,8 +460,9 @@ describe("TaskExecutor", () => {
         makeToolPart("readFile", "read", { path: "a.ts" }),
       ]),
     ]);
-    const onTaskFinished = vi.fn(() => {
+    const onTaskFinished = vi.fn((): string | undefined => {
       expect(store.readTask("task")?.status).toBe("completed");
+      return undefined;
     });
     const adaptor = {
       ...makeAdaptor({ executeToolCall: vi.fn(async () => ({})) }),

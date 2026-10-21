@@ -25,6 +25,8 @@ vi.mock("./vscode", () => ({
     readCustomAgents: vi.fn(),
     readSkills: vi.fn(),
     readEffectiveContextWindow: vi.fn(),
+    readEnvironment: vi.fn(),
+    finalizeSubagentWorktree: vi.fn(),
   },
 }));
 vi.mock("./remote-blob-store", () => ({
@@ -179,5 +181,61 @@ describe("VscodeRunningTaskAdaptor media", () => {
   it("leaves text results unchanged without creating a blob", async () => {
     expect(await readFile()).toEqual({ content: "hello", isTruncated: false });
     expect(blobStore.put).not.toHaveBeenCalled();
+  });
+});
+
+describe("VscodeRunningTaskAdaptor task cwd", () => {
+  let adaptor: VscodeRunningTaskAdaptor;
+  const worktree = "/repo.worktree/subagent-1";
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    // Never initializes: these tests don't depend on models or agents.
+    const pending = () => new Promise<never>(() => {});
+    vi.mocked(vscodeHost.readModelList).mockImplementation(pending);
+    vi.mocked(vscodeHost.readMcpStatus).mockImplementation(pending);
+    vi.mocked(vscodeHost.readCustomAgents).mockImplementation(pending);
+    vi.mocked(vscodeHost.readSkills).mockImplementation(pending);
+    vi.mocked(vscodeHost.readEffectiveContextWindow).mockImplementation(
+      pending,
+    );
+    vi.mocked(vscodeHost.executeToolCall).mockResolvedValue({ ok: true });
+    adaptor = new VscodeRunningTaskAdaptor();
+  });
+
+  afterEach(() => adaptor.dispose());
+
+  it("runs a task's environment and tools in the task's cwd", async () => {
+    await adaptor
+      .getRequestGetters({ taskId: "child", cwd: worktree })
+      .getEnvironment();
+    await adaptor.executeToolCall({
+      taskId: "child",
+      storeId: "store",
+      toolName: "readFile",
+      toolCallId: "read",
+      input: { path: "a.txt" },
+      abortSignal: new AbortController().signal,
+      toolPolicies: undefined,
+      cwd: worktree,
+    });
+    expect(vi.mocked(vscodeHost.readEnvironment).mock.calls[0][0]).toMatchObject(
+      { taskId: "child", cwd: worktree },
+    );
+    expect(vi.mocked(vscodeHost.executeToolCall).mock.calls[0][2]).toMatchObject(
+      { taskId: "child", cwd: worktree },
+    );
+  });
+
+  it("reports the fate of the task's worktree when it finishes", async () => {
+    vi.mocked(vscodeHost.finalizeSubagentWorktree)
+      .mockResolvedValueOnce({ path: worktree, branch: "b", removed: true })
+      .mockResolvedValueOnce({ path: worktree, branch: "b", removed: false })
+      .mockResolvedValueOnce(undefined);
+    expect(await adaptor.onTaskFinished("child")).toContain("was removed");
+    expect(await adaptor.onTaskFinished("child")).toContain(
+      "not applied to the current workspace",
+    );
+    expect(await adaptor.onTaskFinished("child")).toBeUndefined();
   });
 });

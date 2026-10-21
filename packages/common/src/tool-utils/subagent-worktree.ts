@@ -42,18 +42,13 @@ async function tryGit(
   }
 }
 
-export async function getMainWorktreePath(
-  cwd: string,
-): Promise<string | undefined> {
+async function getMainWorktreePath(cwd: string): Promise<string | undefined> {
   const output = await tryGit(cwd, ["worktree", "list", "--porcelain"]);
   const line = output?.split("\n").find((x) => x.startsWith("worktree "));
   return line?.slice("worktree ".length).trim() || undefined;
 }
 
-export function getSubagentWorktreeLocation(
-  mainWorktreePath: string,
-  taskId: string,
-) {
+function getSubagentWorktreeLocation(mainWorktreePath: string, taskId: string) {
   const id = taskId
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 8)
@@ -112,7 +107,7 @@ async function resolveDefaultBranchCommit(mainWorktreePath: string) {
   throw new Error("Failed to resolve the default branch for the worktree.");
 }
 
-export async function findSubagentWorktree(
+async function findSubagentWorktree(
   mainWorktreePath: string,
   taskId: string,
 ): Promise<SubagentWorktree | undefined> {

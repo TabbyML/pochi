@@ -84,9 +84,7 @@ import {
   GitStatusReader,
   createSubagentWorktree as createSubagentWorktreeImpl,
   finalizeSubagentWorktree as finalizeSubagentWorktreeImpl,
-  findSubagentWorktree,
-  getMainWorktreePath,
-  getSubagentWorktreeLocation,
+  getSubagentWorktreePath,
   ignoreWalk,
   maybePersistToolResult,
   persistPastedTextFiles as writePastedTextFiles,
@@ -231,38 +229,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.workspaceScope.cwd;
   }
 
-  /** Isolated worktree per subagent task; null when the task has none. */
-  private readonly subagentWorktreePaths = new Map<string, string | null>();
-
-  private async resolveMainWorktreePath(cwd: string) {
-    return (
-      this.worktreeManager.worktrees.value.find((wt) => wt.isMain)?.path ??
-      (await getMainWorktreePath(cwd))
-    );
-  }
-
-  /** The cwd a task's tools and environment run in. */
-  private async resolveTaskCwd(taskId: string | undefined) {
-    const cwd = this.cwd;
-    if (!cwd || !taskId) return cwd;
-    let worktreePath = this.subagentWorktreePaths.get(taskId);
-    if (worktreePath === undefined) {
-      const mainWorktreePath = await this.resolveMainWorktreePath(cwd);
-      const worktree = mainWorktreePath
-        ? await findSubagentWorktree(mainWorktreePath, taskId)
-        : undefined;
-      worktreePath = worktree?.path ?? null;
-      this.subagentWorktreePaths.set(taskId, worktreePath);
-    }
-    return worktreePath ?? cwd;
-  }
-
   readSubagentWorktreePath = async (taskId: string) => {
-    const mainWorktreePath =
-      this.cwd && (await this.resolveMainWorktreePath(this.cwd));
-    return mainWorktreePath
-      ? getSubagentWorktreeLocation(mainWorktreePath, taskId).path
-      : undefined;
+    return this.cwd ? getSubagentWorktreePath(this.cwd, taskId) : undefined;
   };
 
   createSubagentWorktree = async (taskId: string) => {
@@ -270,19 +238,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       throw new Error("No workspace folder found.");
     }
     const worktree = await createSubagentWorktreeImpl(this.cwd, taskId);
-    this.subagentWorktreePaths.set(taskId, worktree.path);
     return { path: worktree.path, branch: worktree.branch };
   };
 
   finalizeSubagentWorktree = async (taskId: string) => {
-    if (!this.cwd || this.subagentWorktreePaths.get(taskId) === null) {
-      return undefined;
-    }
+    if (!this.cwd) return undefined;
     const result = await finalizeSubagentWorktreeImpl(this.cwd, taskId);
     if (!result) return undefined;
-    if (result.removed) {
-      this.subagentWorktreePaths.delete(taskId);
-    }
     return {
       path: result.worktree.path,
       branch: result.worktree.branch,
@@ -433,16 +395,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.browserSessionStore.unregisterBrowserSession(taskId);
   };
 
-  /**
-   * @param options.taskId - The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-   */
   readEnvironment = async (options: {
     omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
+    cwd?: string;
   }): Promise<Environment> => {
     const webviewKind = options.webviewKind;
-    const cwd = await this.resolveTaskCwd(options.taskId);
+    const cwd = options.cwd || this.cwd;
     const customRules =
       cwd && !options.omitCustomRules
         ? await collectCustomRules(cwd)
@@ -679,6 +639,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       storeId: string;
       taskId: string;
       allowBackground?: boolean;
+      cwd?: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -696,7 +657,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       };
     }
 
-    const cwd = await this.resolveTaskCwd(options.taskId);
+    const cwd = options.cwd || this.cwd;
     if (!cwd) {
       return {
         error: "No workspace folder found.",

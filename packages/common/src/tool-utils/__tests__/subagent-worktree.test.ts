@@ -14,8 +14,7 @@ import {
 import {
   createSubagentWorktree,
   finalizeSubagentWorktree,
-  findSubagentWorktree,
-  getMainWorktreePath,
+  getSubagentWorktreePath,
 } from "../subagent-worktree";
 import * as worktreeInclude from "../worktree-include";
 import { readWorktreeOwnerInfo } from "../worktree-owner";
@@ -126,10 +125,14 @@ describe("subagent worktree", () => {
     expect(await createSubagentWorktree(worktree.path, taskId)).toEqual(
       worktree,
     );
-    expect(await getMainWorktreePath(worktree.path)).toBe(repo);
-    expect(await findSubagentWorktree(repo, taskId)).toEqual(worktree);
+    expect(await getSubagentWorktreePath(worktree.path, taskId)).toBe(
+      worktree.path,
+    );
     expect(
-      await findSubagentWorktree(repo, "ffffffff-0000-4000-8000-000000000000"),
+      await finalizeSubagentWorktree(
+        repo,
+        "ffffffff-0000-4000-8000-000000000000",
+      ),
     ).toBeUndefined();
   });
 

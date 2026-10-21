@@ -182,6 +182,43 @@ describe("useLiveSubTask", () => {
     );
   });
 
+  it("reads the environment in the subtask's own cwd", () => {
+    storeMock.useQuery.mockReturnValueOnce({
+      id: "subtask-1",
+      parentId: "parent-1",
+      status: "pending-model",
+      cwd: "/repo.worktree/subagent-1",
+    } as never);
+    renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: false },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+
+    expect(useLiveChatKitGettersMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: "/repo.worktree/subagent-1" }),
+    );
+  });
+
+  it("starts only after the lifecycle has prepared the subtask", () => {
+    const { rerender } = renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: true },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+    expect(retryImplMock).not.toHaveBeenCalled();
+
+    streamingResultMock.current = {
+      toolName: "newTask",
+      abortSignal: new AbortController().signal,
+      throws: vi.fn(),
+    };
+    rerender();
+    expect(retryImplMock).toHaveBeenCalledOnce();
+  });
+
   it("does not automatically retry a content-filtered subtask", async () => {
     vi.useFakeTimers();
     retryErrorMock.current = new ReadyForRetryError("content-filter");

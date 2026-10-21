@@ -254,6 +254,42 @@ describe("subagent stop notification", () => {
   });
 });
 
+describe("subagent notification note", () => {
+  it("appends the note to completed and failed results", () => {
+    const store = { query: () => [] } as unknown as Parameters<
+      typeof createBackgroundSubagentNotification
+    >[0];
+    const task = { id: "child", title: null, error: null };
+    expect(
+      createBackgroundSubagentNotification(
+        store,
+        { ...task, status: "completed" },
+        [],
+        "Worktree note.",
+      ).result,
+    ).toBe("Subagent finished without an explicit result.\n\nWorktree note.");
+    expect(
+      createBackgroundSubagentNotification(
+        store,
+        {
+          ...task,
+          status: "failed",
+          error: { kind: "InternalError", message: "Boom" },
+        },
+        [],
+        "Worktree note.",
+      ).result,
+    ).toBe("Boom\n\nWorktree note.");
+    expect(
+      createBackgroundSubagentNotification(
+        store,
+        { ...task, status: "completed" },
+        [],
+      ).result,
+    ).toBe("Subagent finished without an explicit result.");
+  });
+});
+
 describe("subagent notification identity", () => {
   it("matches explore calls by task ID and preserves their descriptions", () => {
     const messages = [

@@ -82,8 +82,12 @@ export interface RunningTaskAdaptor {
   }): Promise<RequestData["llm"] | undefined>;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   onTaskError?(taskId: string, error: Error): MaybePromise<void>;
-  /** Runs once a task completes or fails, before its result is delivered. */
-  onTaskFinished?(taskId: string): MaybePromise<void>;
+  /**
+   * Runs once a task completes or fails, before its result is delivered. It
+   * may return a note to append to that result, e.g. the fate of the task's
+   * isolated worktree.
+   */
+  onTaskFinished?(taskId: string): MaybePromise<string | undefined>;
 }
 
 type TaskToolOutput = {

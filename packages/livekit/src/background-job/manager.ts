@@ -147,6 +147,8 @@ export class BackgroundJobManager {
   private adaptor?: BackgroundJobManagerOptions["adaptor"];
   private forkFileStateCache?: BackgroundJobManagerOptions["forkFileStateCache"];
   private readonly taskStates = new Map<string, BackgroundTaskState>();
+  /** Notes the adaptor appends to a finished subagent's result. */
+  private readonly taskResultNotes = new Map<string, string>();
   private taskStateStore: BackgroundTaskStateStore = {
     read: (taskId) => this.taskStates.get(taskId),
     set: (taskId, state) => {
@@ -201,7 +203,11 @@ export class BackgroundJobManager {
           Promise.resolve(undefined),
         onTaskError: (taskId, error) =>
           options.adaptor.onTaskError?.(taskId, error),
-        onTaskFinished: (taskId) => options.adaptor.onTaskFinished?.(taskId),
+        onTaskFinished: async (taskId) => {
+          const note = await options.adaptor.onTaskFinished?.(taskId);
+          if (note) this.taskResultNotes.set(taskId, note);
+          return note;
+        },
         executeToolCall: (args) =>
           args.toolName === "killBackgroundJob"
             ? this.kill(
@@ -816,7 +822,12 @@ export class BackgroundJobManager {
       const task = this.store.query(catalog.queries.makeTaskQuery(job.taskId));
       if (task)
         notifications.push(
-          createBackgroundSubagentNotification(this.store, task, messages),
+          createBackgroundSubagentNotification(
+            this.store,
+            task,
+            messages,
+            this.taskResultNotes.get(task.id),
+          ),
         );
     }
     return {

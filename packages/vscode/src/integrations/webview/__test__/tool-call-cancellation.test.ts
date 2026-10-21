@@ -28,16 +28,13 @@ describe("tool-call cancellation", () => {
     >;
     Object.assign(host, {
       workspaceScope: { cwd: "/workspace" },
-      worktreeManager: {
-        worktrees: { value: [{ path: "/workspace", isMain: true }] },
-      },
       taskActivityTracker: { getTaskAbortSignal: () => task.signal },
       mcpHub: { executeFns: { value: { testTool: tool } } },
       fileStateCacheRegistry: { get: () => undefined },
       capture: () => {},
     });
     const prepare = sinon.stub(host, "resolveToolCallEnvs").resolves(undefined);
-    const execute = (taskId = "parent") =>
+    const execute = (taskId = "parent", cwd?: string) =>
       host.executeToolCall(
         "testTool",
         {},
@@ -45,6 +42,7 @@ describe("tool-call cancellation", () => {
           toolCallId: "call1",
           storeId: "test-store",
           taskId,
+          cwd,
           abortSignal: {
             aborted: caller.signal.aborted,
             start: (listener) => {
@@ -58,13 +56,10 @@ describe("tool-call cancellation", () => {
     return { host, caller, task, tool, prepare, execute };
   }
 
-  it("runs a subagent task's tools in its isolated worktree", async () => {
+  it("runs a task's tools in the task's own cwd", async () => {
     const h = createHarness();
-    (
-      h.host as unknown as { subagentWorktreePaths: Map<string, string> }
-    ).subagentWorktreePaths.set("subagent", "/workspace.worktree/subagent-1");
 
-    await h.execute("subagent");
+    await h.execute("subagent", "/workspace.worktree/subagent-1");
     await h.execute("parent");
 
     assert.strictEqual(

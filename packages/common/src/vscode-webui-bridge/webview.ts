@@ -95,11 +95,12 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
-    /**
-     * The task the environment is read for. A subagent task with an isolated
-     * worktree gets that worktree as its cwd.
-     */
     taskId?: string;
+    /**
+     * The task's own cwd (`task.cwd` in the store), e.g. the isolated worktree
+     * of a subagent. Defaults to the workspace cwd.
+     */
+    cwd?: string;
   }): Promise<Environment>;
 
   /**
@@ -123,6 +124,11 @@ export interface VSCodeHostApi {
       storeId: string;
       taskId: string;
       allowBackground?: boolean;
+      /**
+       * The task's own cwd (`task.cwd` in the store), e.g. the isolated
+       * worktree of a subagent. Defaults to the workspace cwd.
+       */
+      cwd?: string;
     },
   ): Promise<unknown>;
 
@@ -194,10 +200,7 @@ export interface VSCodeHostApi {
    */
   readSubagentWorktreePath(taskId: string): Promise<string | undefined>;
 
-  /**
-   * Create the isolated worktree a subagent task runs in. Once created, the
-   * host runs that task's tools and environment in the worktree.
-   */
+  /** Create the isolated worktree a subagent task runs in. */
   createSubagentWorktree(
     taskId: string,
   ): Promise<{ path: string; branch: string }>;
