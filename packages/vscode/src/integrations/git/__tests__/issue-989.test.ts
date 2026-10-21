@@ -52,6 +52,7 @@ describe("WorktreeManager Repro #989", () => {
         gitStateStub,
         worktreeDataStoreStub,
         pochiConfigurationStub,
+        { ready: Promise.resolve(), tasks: { value: {} } },
       );
     });
 
