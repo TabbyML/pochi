@@ -48,7 +48,7 @@ type CreateLifecycleToolCallAdapterOptions = {
 type CreateExecutorToolCallAdapterOptions = {
   toolCall: ToolCall;
   uid: string;
-  store?: LiveKitStore;
+  store: LiveKitStore;
   storeId: string;
   abortSignal: AbortSignal;
   contentType?: string[];
@@ -174,7 +174,7 @@ export function createSubtaskBatchedToolCall({
             taskId: uid,
           });
         const result =
-          toolCall.toolName === "killBackgroundJob" && store
+          toolCall.toolName === "killBackgroundJob"
             ? await BackgroundJobManager.forStore(store).kill(
                 (toolCall.input as { backgroundJobId: string }).backgroundJobId,
                 uid,

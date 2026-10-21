@@ -6,6 +6,7 @@ import {
   getLogger,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
+  parseBackgroundJobId,
   withTimeout,
 } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
@@ -1027,6 +1028,11 @@ export class BackgroundJobManager {
         ? job.ownerTaskId !== taskId
         : !(child?.background && child.parentId === taskId)
     ) {
+      if (parseBackgroundJobId(backgroundJobId) === "terminal") {
+        throw new Error(
+          `"${backgroundJobId}" is a user-opened terminal and cannot be killed. Managed commands ("bgjob-cmd-") and monitors ("bgjob-monitor-") can be killed.`,
+        );
+      }
       throw new Error(`Background job with ID "${backgroundJobId}" not found.`);
     }
     // Claimed before the job can finish, so its notification cannot slip out.

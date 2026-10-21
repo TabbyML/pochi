@@ -48,7 +48,6 @@ import { createReview } from "@/tools/create-review";
 import { editNotebook } from "@/tools/edit-notebook";
 import { executeCommand } from "@/tools/execute-command";
 import { globFiles } from "@/tools/glob-files";
-import { killBackgroundJob } from "@/tools/kill-background-job";
 import { listFiles as listFilesTool } from "@/tools/list-files";
 import { startMonitor } from "@/tools/monitor";
 import { readFile } from "@/tools/read-file";
@@ -1601,7 +1600,6 @@ const ToolMap: Record<
 > = {
   readFile,
   executeCommand,
-  killBackgroundJob,
   startMonitor,
   searchFiles,
   listFiles: listFilesTool,
