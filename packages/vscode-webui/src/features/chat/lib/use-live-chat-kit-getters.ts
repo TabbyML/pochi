@@ -138,6 +138,11 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(skillsRef.current): skillsRef is ref.
     getSkills: useCallback(() => skillsRef.current, []),
+
+    getSubagentWorktreePath: useCallback(
+      (taskId: string) => vscodeHost.readSubagentWorktreePath(taskId),
+      [],
+    ),
   };
 }
 

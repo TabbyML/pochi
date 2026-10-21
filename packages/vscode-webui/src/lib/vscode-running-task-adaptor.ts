@@ -137,6 +137,8 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       }),
       getCustomAgents: () => this.customAgents.filter(isValidCustomAgentFile),
       getSkills: () => this.skills.filter(isValidSkillFile),
+      getSubagentWorktreePath: (taskId: string) =>
+        vscodeHost.readSubagentWorktreePath(taskId),
     };
   }
 
@@ -219,6 +221,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
 
   onTaskError(taskId: string, error: Error) {
     logger.warn({ taskId, error }, "Task execution failed");
+  }
+
+  async onTaskFinished(taskId: string) {
+    await vscodeHost.finalizeSubagentWorktree(taskId);
   }
 
   private async init() {

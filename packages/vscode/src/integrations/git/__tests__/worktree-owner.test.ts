@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, it } from "mocha";
 import proxyquire from "proxyquire";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { readWorktreeOwner, writeWorktreeOwner } from "../worktree-owner";
+import {
+  readWorktreeOwner,
+  writeWorktreeOwner,
+} from "@getpochi/common/tool-utils";
 
 const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
   "@/lib/generate-branch-name": { generateBranchName: sinon.stub() },

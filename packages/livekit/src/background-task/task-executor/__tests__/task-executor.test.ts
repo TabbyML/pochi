@@ -451,6 +451,33 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("runs tools in the task's cwd and finishes the task once it completes", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool", cwd: "/repo.worktree/a" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        makeToolPart("readFile", "read", { path: "a.ts" }),
+      ]),
+    ]);
+    const onTaskFinished = vi.fn(() => {
+      expect(store.readTask("task")?.status).toBe("completed");
+    });
+    const adaptor = {
+      ...makeAdaptor({ executeToolCall: vi.fn(async () => ({})) }),
+      onTaskFinished,
+    };
+    const executor = makeExecutor(store, adaptor, { tools: ["readFile"] });
+
+    await executor.drain();
+
+    expect(adaptor.executeToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: "/repo.worktree/a" }),
+    );
+    expect(onTaskFinished).toHaveBeenCalledExactlyOnceWith("task");
+    await executor.dispose();
+  });
+
   it("resumes saved unfinished tasks on startup without rerunning saved tool results or cancelled tasks", async () => {
     // These are the persisted records left when a Webview disappears without
     // issuing an explicit cancellation. The new executor has no old chat state.

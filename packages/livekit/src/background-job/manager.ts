@@ -201,6 +201,7 @@ export class BackgroundJobManager {
           Promise.resolve(undefined),
         onTaskError: (taskId, error) =>
           options.adaptor.onTaskError?.(taskId, error),
+        onTaskFinished: (taskId) => options.adaptor.onTaskFinished?.(taskId),
         executeToolCall: (args) =>
           args.toolName === "killBackgroundJob"
             ? this.kill(

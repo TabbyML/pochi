@@ -8,8 +8,10 @@ import { makeJobStore } from "@getpochi/livekit/testing";
 import type { Todo } from "@getpochi/tools";
 import { ManagedToolCallLifeCycle } from "../tool-call-life-cycle";
 
+const vscodeHostMock = vi.hoisted(() => ({}) as Record<string, unknown>);
+
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: {},
+  vscodeHost: vscodeHostMock,
 }));
 
 function makeStore() {
@@ -52,6 +54,57 @@ async function makeStreamingNewTaskLifecycle(
 }
 
 describe("ManagedToolCallLifeCycle", () => {
+  it("runs an isolated foreground newTask in a worktree and reports kept changes", async () => {
+    const worktree = { path: "/repo.worktree/subagent-1", branch: "subagent/1" };
+    vscodeHostMock.createSubagentWorktree = vi.fn(async () => worktree);
+    vscodeHostMock.finalizeSubagentWorktree = vi.fn(async () => ({
+      ...worktree,
+      removed: false,
+    }));
+    const { store, completeSubtask } = makeCompletingStore({
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        {
+          type: "tool-attemptCompletion",
+          toolCallId: "attempt-tool-1",
+          state: "output-available",
+          input: { result: "Fixed." },
+        },
+      ],
+    } as Message);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "newTask", toolCallId: "tool-call-1" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute({
+      background: false,
+      isolation: "worktree",
+      _meta: { uid: "subtask-1" },
+    });
+    await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
+    expect(vscodeHostMock.createSubagentWorktree).toHaveBeenCalledWith(
+      "subtask-1",
+    );
+
+
+
+    completeSubtask();
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.finalizeSubagentWorktree).toHaveBeenCalledWith(
+      "subtask-1",
+    );
+    const { result } = lifecycle.complete.result as { result: string };
+    expect(result).toMatch(/^Fixed\./);
+    expect(result).toContain(
+      `isolated worktree at ${worktree.path} (branch ${worktree.branch})`,
+    );
+  });
+
   it("resolves attemptTodoCompletion newTask results with full todos", async () => {
     const todo: Todo = {
       id: "todo-1",

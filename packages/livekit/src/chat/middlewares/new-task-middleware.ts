@@ -13,6 +13,7 @@ export function createNewTaskMiddleware(
   cwd: string | undefined,
   parentTaskId: string,
   customAgents?: CustomAgent[],
+  getSubagentWorktreePath?: (taskId: string) => Promise<string | undefined>,
 ): LanguageModelV3Middleware {
   return {
     specificationVersion: "v3",
@@ -91,14 +92,33 @@ export function createNewTaskMiddleware(
                 });
               }
 
+              const isolation = args.isolation ?? agent?.isolation;
+              if (isolation) {
+                args.isolation = isolation;
+              }
+
               const uid = crypto.randomUUID();
+              let taskCwd = cwd;
+              if (args.isolation === "worktree") {
+                taskCwd = await getSubagentWorktreePath?.(uid);
+                if (!taskCwd) {
+                  throw new InvalidToolInputError({
+                    toolName: chunk.toolName,
+                    toolInput: chunk.input,
+                    cause: new Error(
+                      "Worktree isolation requires a git repository.",
+                    ),
+                  });
+                }
+              }
+
               args._meta = {
                 uid,
               };
               store.commit(
                 events.taskInited({
                   id: uid,
-                  cwd,
+                  cwd: taskCwd,
                   parentId: parentTaskId,
                   createdAt: new Date(),
                   initMessages: [

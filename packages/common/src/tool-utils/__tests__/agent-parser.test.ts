@@ -277,6 +277,38 @@ Agent content.`;
     expect(validResult.omitAgentsMd).toBe(true);
   });
 
+  it("should parse isolation from frontmatter", async () => {
+    const content = `---
+name: isolated-agent
+description: Agent that runs in a worktree
+isolation: worktree
+---
+
+Agent content.`;
+
+    const result = await parseAgentFile("isolated-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    expect((result as ValidCustomAgentFile).isolation).toBe("worktree");
+  });
+
+  it("should reject an unknown isolation mode", async () => {
+    const content = `---
+name: bad-isolation-agent
+description: Agent with an unknown isolation mode
+isolation: container
+---
+
+Agent content.`;
+
+    const result = await parseAgentFile("bad-isolation-agent.md", () =>
+      Promise.resolve(content),
+    );
+
+    expect(result).toHaveProperty("error", "validationError");
+  });
+
   it("should return an error for invalid frontmatter", async () => {
     const content = `---
 name: missing-description

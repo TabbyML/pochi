@@ -101,6 +101,7 @@ export interface ToolCallOptions {
 }
 
 export interface CreateSubTaskRunnerOverrideOptions {
+  cwd?: string;
   customAgent?: CustomAgent;
   llm?: LLMRequestData;
   maxSteps?: number;

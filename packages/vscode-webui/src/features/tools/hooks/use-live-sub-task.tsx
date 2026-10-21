@@ -108,6 +108,7 @@ export function useLiveSubTask(
     isSubTask: true,
     omitCustomRules: customAgent?.omitAgentsMd === true,
     modelOverride: customAgentModel,
+    taskId: uid,
   });
 
   // FIXME: handle auto retry for output without task.

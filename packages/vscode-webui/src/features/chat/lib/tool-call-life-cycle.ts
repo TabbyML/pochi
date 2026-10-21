@@ -3,6 +3,7 @@ import { vscodeHost } from "@/lib/vscode";
 import {
   constants,
   createBackgroundSubAgentStartedResult,
+  formatSubagentWorktreeNote,
   getLogger,
   getSubAgentBackgroundJobId,
   shouldRunSubAgentInBackground,
@@ -48,6 +49,7 @@ type NewTaskReturnType = {
   /** The subtask was converted to a background subagent task. */
   background?: boolean;
 };
+type SubagentWorktree = { path: string; branch: string };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
 export type StreamingResult =
@@ -300,6 +302,11 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
+    if (args.isolation === "worktree") {
+      this.subagentWorktree = await vscodeHost.createSubagentWorktree(uid);
+      options.abortSignal.throwIfAborted();
+    }
+
     if (shouldRunSubAgentInBackground(args)) {
       await BackgroundJobManager.forStore(this.store).backgroundSubTask(
         {
@@ -344,6 +351,22 @@ export class ManagedToolCallLifeCycle
 
   private backgroundHandoff: Promise<void> | undefined;
 
+  private subagentWorktree: SubagentWorktree | undefined;
+
+  private withWorktreeNote(result: unknown, removed?: boolean): unknown {
+    if (!this.subagentWorktree) return result;
+    const text = typeof result === "string" ? result : JSON.stringify(result);
+    return `${text}\n\n${formatSubagentWorktreeNote(this.subagentWorktree, removed)}`;
+  }
+
+  private finalizeSubagentWorktree(taskId: string) {
+    if (!this.subagentWorktree) return Promise.resolve(undefined);
+    return vscodeHost.finalizeSubagentWorktree(taskId).catch((error) => {
+      logger.warn("Failed to finalize the subagent worktree", error);
+      return undefined;
+    });
+  }
+
   moveToBackground(
     taskId: string,
     agentType: string | undefined,
@@ -374,7 +397,9 @@ export class ManagedToolCallLifeCycle
         streaming.abortSignal,
       );
       this.detach({
-        result: createBackgroundSubAgentStartedResult(uid),
+        result: this.withWorktreeNote(
+          createBackgroundSubAgentStartedResult(uid),
+        ),
         backgroundJobId: getSubAgentBackgroundJobId(uid),
       });
     };
@@ -495,7 +520,9 @@ export class ManagedToolCallLifeCycle
       this.transitTo("execute", {
         type: "complete",
         result: {
-          result: createBackgroundSubAgentStartedResult(uid),
+          result: this.withWorktreeNote(
+            createBackgroundSubAgentStartedResult(uid),
+          ),
           backgroundJobId: getSubAgentBackgroundJobId(uid),
         },
         reason: "execute-finish",
@@ -528,6 +555,7 @@ export class ManagedToolCallLifeCycle
             reason: "execute-finish",
           });
           cleanup();
+          void this.finalizeSubagentWorktree(uid);
         },
       },
       abort,
@@ -539,6 +567,9 @@ export class ManagedToolCallLifeCycle
         error: abortSignal.reason,
       });
       cleanup();
+      if (abortSignal.reason !== "detached") {
+        void this.finalizeSubagentWorktree(uid);
+      }
     };
     if (abortSignal.aborted) {
       onAbort();
@@ -579,6 +610,23 @@ export class ManagedToolCallLifeCycle
         }
 
         const rawResult = extractTaskResult(this.store, uid);
+        if (this.subagentWorktree) {
+          cleanup();
+          void this.finalizeSubagentWorktree(uid).then((finalized) => {
+            if (this.state.type !== "execute:streaming") return;
+            this.transitTo("execute:streaming", {
+              type: "complete",
+              result: {
+                result: this.withWorktreeNote(
+                  rawResult,
+                  finalized?.removed ?? false,
+                ),
+              },
+              reason: "execute-finish",
+            });
+          });
+          return;
+        }
         const result = {
           result: rawResult,
         };

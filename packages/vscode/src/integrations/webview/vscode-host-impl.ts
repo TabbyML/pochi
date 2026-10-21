@@ -82,6 +82,11 @@ import { McpHub } from "@getpochi/common/mcp-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
+  createSubagentWorktree as createSubagentWorktreeImpl,
+  finalizeSubagentWorktree as finalizeSubagentWorktreeImpl,
+  findSubagentWorktree,
+  getMainWorktreePath,
+  getSubagentWorktreeLocation,
   ignoreWalk,
   maybePersistToolResult,
   persistPastedTextFiles as writePastedTextFiles,
@@ -225,6 +230,65 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   private get cwd() {
     return this.workspaceScope.cwd;
   }
+
+  /** Isolated worktree per subagent task; null when the task has none. */
+  private readonly subagentWorktreePaths = new Map<string, string | null>();
+
+  private async resolveMainWorktreePath(cwd: string) {
+    return (
+      this.worktreeManager.worktrees.value.find((wt) => wt.isMain)?.path ??
+      (await getMainWorktreePath(cwd))
+    );
+  }
+
+  /** The cwd a task's tools and environment run in. */
+  private async resolveTaskCwd(taskId: string | undefined) {
+    const cwd = this.cwd;
+    if (!cwd || !taskId) return cwd;
+    let worktreePath = this.subagentWorktreePaths.get(taskId);
+    if (worktreePath === undefined) {
+      const mainWorktreePath = await this.resolveMainWorktreePath(cwd);
+      const worktree = mainWorktreePath
+        ? await findSubagentWorktree(mainWorktreePath, taskId)
+        : undefined;
+      worktreePath = worktree?.path ?? null;
+      this.subagentWorktreePaths.set(taskId, worktreePath);
+    }
+    return worktreePath ?? cwd;
+  }
+
+  readSubagentWorktreePath = async (taskId: string) => {
+    const mainWorktreePath =
+      this.cwd && (await this.resolveMainWorktreePath(this.cwd));
+    return mainWorktreePath
+      ? getSubagentWorktreeLocation(mainWorktreePath, taskId).path
+      : undefined;
+  };
+
+  createSubagentWorktree = async (taskId: string) => {
+    if (!this.cwd) {
+      throw new Error("No workspace folder found.");
+    }
+    const worktree = await createSubagentWorktreeImpl(this.cwd, taskId);
+    this.subagentWorktreePaths.set(taskId, worktree.path);
+    return { path: worktree.path, branch: worktree.branch };
+  };
+
+  finalizeSubagentWorktree = async (taskId: string) => {
+    if (!this.cwd || this.subagentWorktreePaths.get(taskId) === null) {
+      return undefined;
+    }
+    const result = await finalizeSubagentWorktreeImpl(this.cwd, taskId);
+    if (!result) return undefined;
+    if (result.removed) {
+      this.subagentWorktreePaths.delete(taskId);
+    }
+    return {
+      path: result.worktree.path,
+      branch: result.worktree.branch,
+      removed: result.removed,
+    };
+  };
 
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
@@ -378,17 +442,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     taskId?: string;
   }): Promise<Environment> => {
     const webviewKind = options.webviewKind;
+    const cwd = await this.resolveTaskCwd(options.taskId);
     const customRules =
-      this.cwd && !options.omitCustomRules
-        ? await collectCustomRules(this.cwd)
+      cwd && !options.omitCustomRules
+        ? await collectCustomRules(cwd)
         : undefined;
 
-    const systemInfo = getSystemInfo(this.cwd);
+    const systemInfo = getSystemInfo(cwd);
 
     let gitStatus: GitStatus | undefined;
-    if (this.cwd) {
+    if (cwd) {
       const gitStatusReader = new GitStatusReader({
-        cwd: this.cwd,
+        cwd,
         webviewKind,
       });
       gitStatus = await gitStatusReader.readGitStatus();
@@ -631,7 +696,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       };
     }
 
-    if (!this.cwd) {
+    const cwd = await this.resolveTaskCwd(options.taskId);
+    if (!cwd) {
       return {
         error: "No workspace folder found.",
       };
@@ -658,9 +724,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     let envs: Record<string, string> | undefined;
     const toolCallStart = Date.now();
     try {
-      validateToolPolicy(toolName, args, options.toolPolicies, {
-        cwd: this.cwd,
-      });
+      validateToolPolicy(toolName, args, options.toolPolicies, { cwd });
       envs = await this.resolveToolCallEnvs(
         toolName,
         options.builtinSubAgentInfo,
@@ -685,7 +749,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         abortSignal,
         messages: [],
         toolCallId: options.toolCallId,
-        cwd: this.cwd,
+        cwd,
         contentType: options.contentType,
         envs,
         taskId,

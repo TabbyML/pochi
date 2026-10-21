@@ -75,6 +75,23 @@ export {
   type ReadFileRangeInput,
 } from "./read-file-range";
 export {
+  type WorktreeOwner,
+  type WorktreeOwnerInfo,
+  readWorktreeOwner,
+  readWorktreeOwnerInfo,
+  writeWorktreeOwner,
+} from "./worktree-owner";
+export { copyWorktreeIncludeFiles } from "./worktree-include";
+export {
+  type SubagentWorktree,
+  createSubagentWorktree,
+  finalizeSubagentWorktree,
+  findSubagentWorktree,
+  getMainWorktreePath,
+  getSubagentWorktreeLocation,
+  getSubagentWorktreePath,
+} from "./subagent-worktree";
+export {
   BackgroundCommandRunningHint,
   prependBackgroundCommandRunningHint,
   parseBackgroundCommandOutputFilePath,

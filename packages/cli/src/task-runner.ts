@@ -19,6 +19,7 @@ import {
 } from "@getpochi/common/message-utils";
 import {
   FileStateCache,
+  getSubagentWorktreePath,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import {
@@ -373,6 +374,8 @@ export class TaskRunner {
         },
         getCustomAgents: () => this.toolCallOptions.customAgents || [],
         getSkills: () => this.toolCallOptions.skills || [],
+        getSubagentWorktreePath: (taskId: string) =>
+          getSubagentWorktreePath(this.cwd, taskId),
         ...(options.getAutoMemory
           ? {
               getAutoMemory: options.getAutoMemory,

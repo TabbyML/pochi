@@ -149,6 +149,15 @@ const VSCodeHostStub = {
   clearFileStateCache: (_taskId: string): Promise<void> => {
     return Promise.resolve();
   },
+  readSubagentWorktreePath: async (_taskId: string) => {
+    return undefined;
+  },
+  createSubagentWorktree: async (_taskId: string) => {
+    return { path: "", branch: "" };
+  },
+  finalizeSubagentWorktree: async (_taskId: string) => {
+    return undefined;
+  },
   forkFileStateCache: (
     _sourceTaskId: string,
     _targetTaskId: string,

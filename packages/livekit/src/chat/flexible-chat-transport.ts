@@ -165,6 +165,8 @@ export type PrepareRequestGetters = {
   };
   getCustomAgents?: () => CustomAgent[] | undefined;
   getSkills?: () => Skill[] | undefined;
+  /** The cwd of a subagent task under worktree isolation. */
+  getSubagentWorktreePath?: (taskId: string) => Promise<string | undefined>;
 };
 
 export type ChatTransportOptions = {
@@ -267,6 +269,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
           environment?.info.cwd,
           chatId,
           customAgents,
+          this.getters.getSubagentWorktreePath,
         ),
       );
     }
