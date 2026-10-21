@@ -322,6 +322,15 @@ describe("BackgroundJobManager", () => {
     }
   });
 
+  it("refuses to kill user-opened terminals", async () => {
+    const { manager, source } = setup();
+    await expect(manager.kill("term-abc", "parent")).rejects.toThrow(
+      "user-opened terminal",
+    );
+    expect(source.kill).not.toHaveBeenCalled();
+    await manager.dispose();
+  });
+
   it("shares one manager across main, subagent and fork handles", () => {
     const { store, manager } = setup();
     expect(BackgroundJobManager.forStore(store)).toBe(manager);
