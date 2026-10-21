@@ -18,6 +18,6 @@ export const ModelRegistry = {
    * agent file doesn't declare a `model` in its frontmatter.
    */
   builtinAgents: {
-    explore: "google/gemini-3.1-flash-lite",
+    explore: "deepseek/deepseek-4.1-flash",
   } as Partial<Record<string, string>>,
 } as const;
