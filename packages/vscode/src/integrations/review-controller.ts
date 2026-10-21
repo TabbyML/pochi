@@ -242,18 +242,22 @@ export class ReviewController implements vscode.Disposable {
 
   /**
    * Opens an empty comment thread (with reply input) on the editor's current
-   * selection. The thread only becomes a review once the first comment is added.
+   * selection, or on the whole line `lineNumber` (0-based) when it is given and
+   * not covered by the selection. The thread only becomes a review once the
+   * first comment is added.
    */
-  async startThreadFromEditor(editor: vscode.TextEditor) {
+  async startThreadFromEditor(editor: vscode.TextEditor, lineNumber?: number) {
     if (this.draftThread && this.draftThread.comments.length === 0) {
       this.draftThread.dispose();
     }
     const { selection, document } = editor;
-    const thread = this.controller.createCommentThread(
-      document.uri,
-      new vscode.Range(selection.start, selection.end),
-      [],
-    );
+    const range =
+      lineNumber !== undefined &&
+      lineNumber < document.lineCount &&
+      (lineNumber < selection.start.line || lineNumber > selection.end.line)
+        ? document.lineAt(lineNumber).range
+        : new vscode.Range(selection.start, selection.end);
+    const thread = this.controller.createCommentThread(document.uri, range, []);
     thread.contextValue = "canDelete";
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
     this.draftThread = thread;

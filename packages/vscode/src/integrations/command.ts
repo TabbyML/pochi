@@ -618,10 +618,16 @@ export class CommandManager implements vscode.Disposable {
 
       vscode.commands.registerCommand(
         "pochi.comments.addFromEditor",
-        async () => {
+        // From `editor/lineNumber/context` the argument is `{ uri, lineNumber }`
+        // (1-based line); from other entry points it is a Uri or nothing.
+        async (arg?: { lineNumber?: number }) => {
           const editor = vscode.window.activeTextEditor;
           if (editor) {
-            await this.reviewController.startThreadFromEditor(editor);
+            const line =
+              typeof arg?.lineNumber === "number"
+                ? arg.lineNumber - 1
+                : undefined;
+            await this.reviewController.startThreadFromEditor(editor, line);
           }
         },
       ),

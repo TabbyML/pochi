@@ -206,8 +206,7 @@
       },
       {
         "command": "pochi.comments.addFromEditor",
-        "title": "Add Pochi Comment",
-        "category": "Pochi"
+        "title": "Pochi: Add Comment"
       },
       {
         "command": "pochi.comments.addComment",
@@ -279,6 +278,12 @@
         {
           "command": "pochi.comments.addFromEditor",
           "when": "editorTextFocus",
+          "group": "1_modification@100"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "pochi.comments.addFromEditor",
           "group": "1_modification@100"
         }
       ],
