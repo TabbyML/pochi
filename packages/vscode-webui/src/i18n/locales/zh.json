@@ -484,7 +484,10 @@
   },
   "subtask": {
     "back": "返回",
-    "complete": "完成"
+    "complete": "完成",
+    "isolatedWorktree": "独立 worktree",
+    "worktreeBranch": "分支",
+    "worktreePath": "路径"
   },
   "errorMessageView": {
     "contentFilter": "安全过滤阻止了此次回答。请尝试换一种方式表达，或重试。",

@@ -485,7 +485,10 @@
   },
   "subtask": {
     "back": "뒤로",
-    "complete": "완료"
+    "complete": "완료",
+    "isolatedWorktree": "격리된 worktree",
+    "worktreeBranch": "브랜치",
+    "worktreePath": "경로"
   },
   "errorMessageView": {
     "contentFilter": "안전 필터로 인해 응답이 중단되었습니다. 메시지를 바꿔 표현하거나 다시 시도해 보세요.",

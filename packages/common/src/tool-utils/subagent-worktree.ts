@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { constants } from "../base";
+import { constants, getSubagentWorktreeId } from "../base";
 import { copyWorktreeIncludeFiles } from "./worktree-include";
 import { readWorktreeOwnerInfo, writeWorktreeOwner } from "./worktree-owner";
 
@@ -49,11 +49,7 @@ async function getMainWorktreePath(cwd: string): Promise<string | undefined> {
 }
 
 function getSubagentWorktreeLocation(mainWorktreePath: string, taskId: string) {
-  const id = taskId
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .slice(0, 8)
-    .toLowerCase();
-  if (!id) throw new Error(`Invalid task id for a worktree: ${taskId}`);
+  const id = getSubagentWorktreeId(taskId);
   const parent = `${mainWorktreePath.replace(/[/\\]+$/, "")}.worktree`;
   return {
     path: path.join(parent, `subagent-${id}`),

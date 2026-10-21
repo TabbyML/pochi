@@ -39,6 +39,7 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  getSubagentWorktreeId,
   isBackgroundSubAgentRequested,
   shouldRunSubAgentInBackground,
 } from "./subagent";

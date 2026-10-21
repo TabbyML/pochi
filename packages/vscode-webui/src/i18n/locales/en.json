@@ -493,7 +493,10 @@
   },
   "subtask": {
     "back": "Back",
-    "complete": "Complete"
+    "complete": "Complete",
+    "isolatedWorktree": "Isolated worktree",
+    "worktreeBranch": "Branch",
+    "worktreePath": "Path"
   },
   "errorMessageView": {
     "contentFilter": "A safety filter stopped the response. Try rephrasing your message or retry.",

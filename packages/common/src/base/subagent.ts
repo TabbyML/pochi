@@ -47,6 +47,19 @@ export function getSubAgentNotificationId(task: {
 }
 
 /**
+ * Names a subagent task's isolated worktree: directory `subagent-<id>` on
+ * branch `subagent/<id>`.
+ */
+export function getSubagentWorktreeId(taskId: string): string {
+  const id = taskId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toLowerCase();
+  if (!id) throw new Error(`Invalid task id for a worktree: ${taskId}`);
+  return id;
+}
+
+/**
  * Tells the parent where an isolated subagent works. `removed` is undefined
  * while the subagent has not finished yet.
  */
