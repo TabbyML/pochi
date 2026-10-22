@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import type { PastedTextFile } from "@getpochi/common";
+import type { PendingApproval } from "@/features/approval";
+import { type PastedTextFile, formatters } from "@getpochi/common";
 import type {
   ActiveSelection,
   Review,
@@ -7,6 +8,7 @@ import type {
   ValidCustomAgentFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
+import type { Message, Task } from "@getpochi/livekit";
 import { act, renderHook } from "@testing-library/react";
 import type { JSONContent } from "@tiptap/react";
 import type { FileUIPart } from "ai";
@@ -14,12 +16,35 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatInput } from "./use-chat-input-state";
+import { useChatStatus } from "./use-chat-status";
 import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
 
 const chatStateMocks = vi.hoisted(() => ({
   autoApproveGuard: { current: "auto" },
   batchAbort: vi.fn(),
   isExecuting: false,
+}));
+const autoApproveMocks = vi.hoisted(() => ({
+  active: false,
+  settings: { read: false, write: false, execute: false, mcp: false },
+}));
+
+vi.mock("@/features/settings", async () => {
+  const { useToolAutoApproval } = await import(
+    "../../settings/hooks/use-tool-auto-approval"
+  );
+  return { useToolAutoApproval };
+});
+
+vi.mock("../../settings/hooks/use-auto-approve", () => ({
+  useAutoApprove: ({ autoApproveGuard }: { autoApproveGuard?: boolean }) => ({
+    autoApproveActive: autoApproveMocks.active && (autoApproveGuard ?? true),
+    autoApproveSettings: autoApproveMocks.settings,
+  }),
+}));
+
+vi.mock("@/lib/hooks/use-mcp", () => ({
+  useMcp: () => ({ toolset: {} }),
 }));
 const messageUtilsMocks = vi.hoisted(() => ({
   prepareMessageParts: vi.fn(
@@ -88,7 +113,10 @@ vi.mock("@/lib/vscode", () => ({
 vi.mock("../lib/chat-state", () => ({
   useAutoApproveGuard: () => chatStateMocks.autoApproveGuard,
   useBatchExecuteManager: () => ({ abort: chatStateMocks.batchAbort }),
-  useToolCallLifeCycle: () => ({ isExecuting: chatStateMocks.isExecuting }),
+  useToolCallLifeCycle: () => ({
+    isExecuting: chatStateMocks.isExecuting,
+    completeToolCalls: [],
+  }),
 }));
 
 describe("useChatSubmit", () => {
@@ -96,6 +124,13 @@ describe("useChatSubmit", () => {
     chatStateMocks.autoApproveGuard.current = "auto";
     chatStateMocks.batchAbort.mockReset();
     chatStateMocks.isExecuting = false;
+    autoApproveMocks.active = false;
+    autoApproveMocks.settings = {
+      read: false,
+      write: false,
+      execute: false,
+      mcp: false,
+    };
     messageUtilsMocks.prepareMessageParts.mockClear();
     vscodeMocks.deleteReviews.mockReset();
     vscodeMocks.persistPastedTextFiles.mockReset();
@@ -109,6 +144,115 @@ describe("useChatSubmit", () => {
     vscodeMocks.showWarningMessage.mockClear();
     userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
+  });
+
+  describe.each([
+    "handleSubmit",
+    "handleSteerSubmit",
+    "handleSteerQueuedMessage",
+  ] as const)("%s while waiting for tool approval", (method) => {
+    it.each([
+      { name: "manual approval", autoApproveActive: false, batch: false },
+      { name: "disabled tool category", autoApproveActive: true, batch: false },
+      { name: "batch approval", autoApproveActive: false, batch: true },
+    ])(
+      "cancels pending tools and sends immediately with $name",
+      async ({ autoApproveActive, batch }) => {
+        autoApproveMocks.active = autoApproveActive;
+        autoApproveMocks.settings.read = true;
+        const tool = {
+          type: "tool-executeCommand",
+          toolCallId: "command-1",
+          state: "input-available",
+          input: { command: "echo pending" },
+        } as const;
+        const tools = batch
+          ? [tool, { ...tool, toolCallId: "command-2" }]
+          : [tool];
+        const pendingApproval: PendingApproval = batch
+          ? { name: "batchCall", tools }
+          : { name: "executeCommand", tool };
+        const parts: Message["parts"] = [
+          { type: "text", text: "do this instead" },
+        ];
+        if (method !== "handleSteerQueuedMessage") {
+          messageUtilsMocks.prepareMessageParts.mockReturnValueOnce(
+            parts as never,
+          );
+        }
+        const queued = { parts, raw: { text: "do this instead" } };
+        const remaining = draftMessage({ text: "another queued message" });
+        const context = setup({
+          isLoading: false,
+          pendingApproval,
+          taskStatus: "pending-tool",
+          queuedMessages:
+            method === "handleSteerQueuedMessage" ? [queued, remaining] : [],
+        });
+
+        expect(context.result.current.isRunning).toBe(false);
+        expect(context.result.current.allowSendMessage).toBe(true);
+
+        await act(async () => {
+          if (method === "handleSteerQueuedMessage") {
+            void context.result.current.handleSteerQueuedMessage(0);
+          } else {
+            void context.result.current[method]();
+          }
+        });
+
+        expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({ parts });
+        expect(context.queuedMessages).toEqual(
+          method === "handleSteerQueuedMessage" ? [remaining] : [],
+        );
+        expect(context.stopChat).not.toHaveBeenCalled();
+        expect(chatStateMocks.batchAbort).not.toHaveBeenCalled();
+
+        // Both the model request and UI resolve the old calls when the new
+        // user message follows them, without a separate tool-result turn.
+        const messages: Message[] = [
+          { id: "assistant-1", role: "assistant", parts: tools },
+          { id: "user-2", role: "user", parts },
+        ];
+        for (const format of [formatters.llm, formatters.ui]) {
+          expect(format(messages)[0].parts).toEqual(
+            tools.map((pendingTool) => ({
+              ...pendingTool,
+              state: "output-available",
+              output: { error: "User cancelled the tool call." },
+            })),
+          );
+        }
+      },
+    );
+  });
+
+  it("keeps Enter submissions queued when the pending tool is auto-approved", async () => {
+    autoApproveMocks.active = true;
+    autoApproveMocks.settings.execute = true;
+    const context = setup({
+      isLoading: false,
+      taskStatus: "pending-tool",
+      pendingApproval: {
+        name: "executeCommand",
+        tool: {
+          type: "tool-executeCommand",
+          toolCallId: "command-1",
+          state: "input-available",
+          input: { command: "echo pending" },
+        },
+      },
+    });
+
+    await act(async () => {
+      await context.result.current.handleSubmit();
+    });
+
+    expect(context.queuedMessages).toEqual([
+      draftMessage({ text: "follow up" }),
+    ]);
+    expect(context.sendMessage).not.toHaveBeenCalled();
+    expect(context.stopChat).not.toHaveBeenCalled();
   });
 
   describe.each(["handleSubmit", "handleSteerSubmit"] as const)(
@@ -1238,6 +1382,8 @@ function setup({
   onTodoModeSubmitted,
   onBeforeSendText,
   flushBackgroundJobNotifications,
+  pendingApproval,
+  taskStatus,
 }: {
   isLoading: boolean;
   inputText?: string;
@@ -1256,6 +1402,8 @@ function setup({
   onTodoModeSubmitted?: () => void;
   onBeforeSendText?: (text: string) => void;
   flushBackgroundJobNotifications?: () => boolean;
+  pendingApproval?: PendingApproval;
+  taskStatus?: Task["status"];
 }) {
   const sendMessage = vi.fn(() => Promise.resolve());
   const stopChat = vi.fn();
@@ -1281,24 +1429,29 @@ function setup({
         setQueuedMessages(props.queuedMessages);
       }, [props.queuedMessages]);
 
-      // Mirrors the derivation performed by `useChatStatus` for a
-      // model-valid, non-blocking scenario, so these tests can focus on
-      // `useChatSubmit`'s own behavior without re-deriving all of the
-      // underlying blocking/model-loading state.
-      const isExecuting = chatStateMocks.isExecuting;
-      const isRunning = props.isLoading || isExecuting;
-      const isInputEmpty = !initialInputText.trim() && pastedTexts.length === 0;
-      const isFilesEmpty = files.length === 0;
-      const isReviewsEmpty = reviews.length === 0;
-      const isTerminalContextEmpty = terminalContextSelections.length === 0;
-      const isSubmitEnabled =
-        !isInputEmpty ||
-        !isFilesEmpty ||
-        !isReviewsEmpty ||
-        !isTerminalContextEmpty;
-      const isStopEnabled = isRunning;
-      const allowSendMessage = !isRunning;
-      const allowSteer = true;
+      const {
+        isRunning,
+        isSubmitEnabled,
+        isStopEnabled,
+        allowSendMessage,
+        allowSteer,
+      } = useChatStatus({
+        isModelValid: true,
+        isLoading: props.isLoading,
+        isInputEmpty: !initialInputText.trim() && pastedTexts.length === 0,
+        isFilesEmpty: files.length === 0,
+        isReviewsEmpty: reviews.length === 0,
+        isTerminalContextEmpty: terminalContextSelections.length === 0,
+        isUploadingAttachments: false,
+        blockingState: {
+          isBusy: false,
+          busyLabel: undefined,
+          activeOperation: undefined,
+        },
+        taskStatus,
+        pendingApproval,
+        isSubTask: false,
+      });
 
       const result = useChatSubmit({
         chat: {
@@ -1320,7 +1473,7 @@ function setup({
         isStopEnabled,
         allowSendMessage,
         allowSteer,
-        pendingApproval: undefined,
+        pendingApproval,
         queuedMessages,
         setQueuedMessages,
         reviews,
@@ -1337,7 +1490,7 @@ function setup({
         flushBackgroundJobNotifications,
       });
 
-      return { ...result, queuedMessages };
+      return { ...result, queuedMessages, isRunning, allowSendMessage };
     },
     {
       initialProps: {

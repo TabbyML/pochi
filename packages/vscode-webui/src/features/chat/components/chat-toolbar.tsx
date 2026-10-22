@@ -286,6 +286,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isUploadingAttachments,
     blockingState,
     taskStatus: task?.status,
+    pendingApproval,
+    isSubTask,
   });
 
   const canSubmit =
