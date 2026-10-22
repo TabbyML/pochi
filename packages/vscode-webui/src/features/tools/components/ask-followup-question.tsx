@@ -145,11 +145,8 @@ interface OptionRowProps {
   isFocused: boolean;
   isInteractive: boolean;
   multiSelect: boolean;
-  totalOptions: number;
   onSelect: () => void;
   onMouseEnter: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
 }
 
 function OptionRow({
@@ -159,11 +156,8 @@ function OptionRow({
   isFocused,
   isInteractive,
   multiSelect,
-  totalOptions,
   onSelect,
   onMouseEnter,
-  onMoveUp,
-  onMoveDown,
 }: OptionRowProps) {
   const active = isSelected || isFocused;
 
@@ -172,7 +166,7 @@ function OptionRow({
       type="button"
       disabled={!isInteractive}
       className={cn(
-        "group flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 text-left transition-colors",
+        "flex w-full items-center gap-3 border-l-2 py-1.5 pr-3 text-left transition-colors",
         isFocused ? "pl-[10px]" : "pl-3",
         isSelected
           ? "bg-muted"
@@ -234,42 +228,6 @@ function OptionRow({
           </Tooltip>
         )}
       </span>
-
-      {/* Multi-select reorder arrows */}
-      {isSelected && multiSelect && (
-        <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
-            disabled={index === 0 || !isInteractive}
-            className={cn(
-              "rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground",
-              index === 0 && "cursor-not-allowed opacity-30",
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveUp();
-            }}
-            aria-label="Move up"
-          >
-            <ArrowUp className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            disabled={index === totalOptions - 1 || !isInteractive}
-            className={cn(
-              "rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground",
-              index === totalOptions - 1 && "cursor-not-allowed opacity-30",
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoveDown();
-            }}
-            aria-label="Move down"
-          >
-            <ArrowDown className="h-3 w-3" />
-          </button>
-        </span>
-      )}
 
       {/* Keyboard navigation hint for focused row */}
       {isFocused && (
@@ -515,8 +473,6 @@ interface QuestionCardProps {
   onSelectOption: (oi: number) => void;
   onFocus: (idx: number) => void;
   onMouseLeave: () => void;
-  onMoveUp: (oi: number) => void;
-  onMoveDown: (oi: number) => void;
   onUpdateOther: (val: string) => void;
   onOpenOther: () => void;
   onCloseOther: () => void;
@@ -541,8 +497,6 @@ function QuestionCard({
   onSelectOption,
   onFocus,
   onMouseLeave,
-  onMoveUp,
-  onMoveDown,
   onUpdateOther,
   onOpenOther,
   onCloseOther,
@@ -618,11 +572,8 @@ function QuestionCard({
             isFocused={focusedIndex === oi}
             isInteractive={isInteractive}
             multiSelect={question.multiSelect}
-            totalOptions={question.options.length}
             onSelect={() => onSelectOption(oi)}
             onMouseEnter={() => onFocus(oi)}
-            onMoveUp={() => onMoveUp(oi)}
-            onMoveDown={() => onMoveDown(oi)}
           />
         ))}
 
@@ -959,39 +910,6 @@ export const AskFollowupQuestionTool: React.FC<
     ],
   );
 
-  const handleMoveUp = useCallback(
-    (oi: number) => {
-      if (!isInteractive || oi === 0) return;
-      updateSelection(currentPage, (prev) => {
-        const indices = [...prev.optionIndices];
-        const pos = indices.indexOf(oi);
-        if (pos > 0)
-          [indices[pos - 1], indices[pos]] = [indices[pos], indices[pos - 1]];
-        return { ...prev, optionIndices: indices };
-      });
-    },
-    [isInteractive, currentPage, updateSelection],
-  );
-
-  const handleMoveDown = useCallback(
-    (oi: number) => {
-      if (
-        !currentQuestion ||
-        !isInteractive ||
-        oi === currentQuestion.options.length - 1
-      )
-        return;
-      updateSelection(currentPage, (prev) => {
-        const indices = [...prev.optionIndices];
-        const pos = indices.indexOf(oi);
-        if (pos !== -1 && pos < indices.length - 1)
-          [indices[pos], indices[pos + 1]] = [indices[pos + 1], indices[pos]];
-        return { ...prev, optionIndices: indices };
-      });
-    },
-    [isInteractive, currentPage, currentQuestion, updateSelection],
-  );
-
   if (toolCall.state === "input-streaming") return null;
 
   if (
@@ -1025,8 +943,6 @@ export const AskFollowupQuestionTool: React.FC<
       onSelectOption={selectOption}
       onFocus={setFocusedIndex}
       onMouseLeave={() => setFocusedIndex(-1)}
-      onMoveUp={handleMoveUp}
-      onMoveDown={handleMoveDown}
       onUpdateOther={(val) =>
         updateSelection(currentPage, (prev) => ({
           optionIndices: currentQuestion.multiSelect ? prev.optionIndices : [],
