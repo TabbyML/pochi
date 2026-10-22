@@ -656,24 +656,54 @@ export function FormEditor({
 
   // Auto focus when document is focused.
   useEffect(() => {
+    let isPointerDown = false;
+    let focusOnPointerUp = false;
+    const maybeFocusEditor = () => {
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === "BUTTON" ||
+          activeElement.tagName === "A" ||
+          activeElement.closest('[data-slot="tooltip-trigger"]') ||
+          activeElement.closest('[data-slot="popover-trigger"]'))
+      ) {
+        return;
+      }
+      focusEditor();
+    };
     const handleFocus = () => {
       setTimeout(() => {
-        const activeElement = document.activeElement;
-        if (
-          activeElement &&
-          (activeElement.tagName === "BUTTON" ||
-            activeElement.tagName === "A" ||
-            activeElement.closest('[data-slot="tooltip-trigger"]') ||
-            activeElement.closest('[data-slot="popover-trigger"]'))
-        ) {
+        // Focusing the editor mid-drag would wipe the text selection the
+        // user is making, so wait for the pointer to be released.
+        if (isPointerDown) {
+          focusOnPointerUp = true;
           return;
         }
-        focusEditor();
+        maybeFocusEditor();
+      }, 0);
+    };
+    const handlePointerDown = () => {
+      isPointerDown = true;
+    };
+    const handlePointerUp = () => {
+      isPointerDown = false;
+      if (!focusOnPointerUp) return;
+      focusOnPointerUp = false;
+      setTimeout(() => {
+        if (window.getSelection()?.isCollapsed !== false) {
+          maybeFocusEditor();
+        }
       }, 0);
     };
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointerup", handlePointerUp, true);
+    window.addEventListener("pointercancel", handlePointerUp, true);
     return () => {
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointerup", handlePointerUp, true);
+      window.removeEventListener("pointercancel", handlePointerUp, true);
     };
   }, [focusEditor]);
 
