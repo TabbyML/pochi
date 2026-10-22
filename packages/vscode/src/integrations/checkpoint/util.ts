@@ -162,7 +162,9 @@ async function getSingleFolderWorkspaceIdentifier(
     .digest("hex");
 }
 
-function getWorkspaceStorageHome(context: vscode.ExtensionContext): string {
+export function getWorkspaceStorageHome(
+  context: vscode.ExtensionContext,
+): string {
   // Go up two levels from globalStorageUri:
   // 1. .../User/globalStorage
   // 2. .../User

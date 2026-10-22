@@ -30,6 +30,12 @@ const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 /** Timeout (ms) for saving a checkpoint, excluding time waiting for the index lock. */
 const SaveCheckpointTimeoutMs = 10_000;
 
+/** Checkpoints older than this are deleted. Matches the task history retention. */
+const CheckpointRetentionMs = 90 * 24 * 60 * 60 * 1000;
+
+/** How often to look for checkpoints to delete. */
+const PruneIntervalMs = 24 * 60 * 60 * 1000;
+
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
 export class CheckpointService implements vscode.Disposable {
@@ -76,6 +82,15 @@ export class CheckpointService implements vscode.Disposable {
         checkpointCommitPrefix(this.cwd),
       );
       this.readyDefer.resolve();
+      // gc is safe to run alongside checkpoint saves, so it does not take the
+      // index lock and does not delay the first save.
+      this.shadowGit
+        .pruneCheckpoints(CheckpointRetentionMs, PruneIntervalMs)
+        .catch((error) => {
+          logger.warn(
+            `Failed to prune old checkpoints: ${toErrorMessage(error)}`,
+          );
+        });
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error("Failed to initialize Shadow Git repository:", errorMessage);
@@ -120,15 +135,14 @@ export class CheckpointService implements vscode.Disposable {
       }
 
       try {
-        const status = await this.shadowGit.status();
-        if (status.isClean && !options.force) {
+        await this.shadowGit.stageAll();
+        if (!options.force && !(await this.shadowGit.hasStagedChanges())) {
           const duration = performance.now() - startTime;
           logger.trace(
             `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
           );
           return null;
         }
-        await this.shadowGit.stageAll();
         const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
         const commitHash = await this.shadowGit.commit(commitMessage);
         const duration = performance.now() - startTime;

@@ -18,9 +18,8 @@ describe("CheckpointService", () => {
     });
     shadowGit = sinon.createStubInstance(ShadowGitRepo);
     shadowGit.getLatestCommitHash.resolves("old-checkpoint");
-    shadowGit.status.resolves({ isClean: false } as Awaited<
-      ReturnType<ShadowGitRepo["status"]>
-    >);
+    shadowGit.hasStagedChanges.resolves(true);
+    shadowGit.pruneCheckpoints.resolves(false);
     shadowGit.stageAll.resolves(true);
     shadowGit.commit.resolves("new-checkpoint");
     shadowGit.getDiff.resolves([]);
@@ -52,7 +51,7 @@ describe("CheckpointService", () => {
     await clock.tickAsync(20_000);
 
     assert.strictEqual(settled, false);
-    sinon.assert.notCalled(shadowGit.status);
+    sinon.assert.calledOnce(shadowGit.stageAll);
     sinon.assert.notCalled(shadowGit.commit);
 
     diff.resolve([]);
@@ -87,11 +86,35 @@ describe("CheckpointService", () => {
   });
 
   it("rejects a failed save and releases the index lock", async () => {
-    shadowGit.status.rejects(new Error("status failed"));
+    shadowGit.hasStagedChanges.rejects(new Error("diff failed"));
 
-    await assert.rejects(service.saveCheckpoint("failed-save"), /status failed/);
+    await assert.rejects(service.saveCheckpoint("failed-save"), /diff failed/);
     assert.strictEqual(clock.countTimers(), 0);
     assert.strictEqual(await service.saveUserEditBaseline(), "new-checkpoint");
     sinon.assert.calledOnce(shadowGit.commit);
+  });
+
+  it("skips the commit when staging records no change", async () => {
+    shadowGit.hasStagedChanges.resolves(false);
+
+    assert.strictEqual(await service.saveCheckpoint("no-change"), null);
+    sinon.assert.calledOnce(shadowGit.stageAll);
+    sinon.assert.notCalled(shadowGit.commit);
+
+    assert.strictEqual(
+      await service.saveCheckpoint("forced", { force: true }),
+      "new-checkpoint",
+    );
+    sinon.assert.calledOnce(shadowGit.commit);
+  });
+
+  it("prunes old checkpoints after initializing", async () => {
+    await service.ensureInitialized();
+
+    sinon.assert.calledOnceWithExactly(
+      shadowGit.pruneCheckpoints,
+      90 * 24 * 60 * 60 * 1000,
+      24 * 60 * 60 * 1000,
+    );
   });
 });
