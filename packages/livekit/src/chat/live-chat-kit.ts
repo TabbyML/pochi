@@ -43,6 +43,12 @@ import type { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
 import type { MemoryStateStore } from "../background-task/state-store";
 import type { BlobStore } from "../blob-store";
 import {
+  type TaskEvent,
+  forkTaskInitEvents,
+  taskEvents,
+  taskInitEvents,
+} from "../livestore";
+import {
   makeAllDataQuery,
   makeMessagesQuery,
   makeTaskQuery,
@@ -273,6 +279,8 @@ export type LiveChatKitOptions<T> = {
 
   isSubTask?: boolean;
   requestUseCase?: PochiRequestUseCase;
+  /** Persist task and message events locally only. Shared file writes are unaffected. */
+  persistLocallyOnly?: boolean;
   enableAutoCompact?: boolean;
 
   store: LiveKitStore;
@@ -357,6 +365,7 @@ export class LiveChatKit<
 > {
   protected readonly taskId: string;
   protected readonly store: LiveKitStore;
+  private readonly persistLocallyOnly: boolean;
   protected readonly blobStore: BlobStore;
   private readonly getters: PrepareRequestGetters;
   readonly chat: T;
@@ -412,6 +421,7 @@ export class LiveChatKit<
     getters,
     isSubTask,
     requestUseCase,
+    persistLocallyOnly = false,
     enableAutoCompact,
     customAgent,
     attemptCompletionSchema,
@@ -429,6 +439,7 @@ export class LiveChatKit<
   }: LiveChatKitOptions<T>) {
     this.taskId = taskId;
     this.store = store;
+    this.persistLocallyOnly = persistLocallyOnly;
     this.blobStore = blobStore;
     this.getters = getters;
     this.backgroundJobNotifications = backgroundJobNotifications;
@@ -566,6 +577,7 @@ export class LiveChatKit<
             abortSignal,
             inline: true,
             store: this.store,
+            persistLocallyOnly: this.persistLocallyOnly,
             useCase: isAutoCompact ? "auto-compact-task" : "compact-task",
           });
           this.updateTotalTokensEstimate(messages);
@@ -652,6 +664,7 @@ export class LiveChatKit<
           ),
           taskMemoryBoundaryMessageId,
           store: this.store,
+          persistLocallyOnly: this.persistLocallyOnly,
         });
 
         if (!summary) {
@@ -670,7 +683,8 @@ export class LiveChatKit<
         taskId: this.taskId,
       });
       await repairMermaid({
-        store,
+        store: this.store,
+        persistLocallyOnly: this.persistLocallyOnly,
         taskId: this.taskId,
         model,
         messages: this.chat.messages,
@@ -680,6 +694,10 @@ export class LiveChatKit<
 
       this.chat.messages = this.messages;
     };
+  }
+
+  private commitTaskEvents(...batch: TaskEvent[]) {
+    this.store.commit(...taskEvents(this.persistLocallyOnly, batch));
   }
 
   init(cwd: string | undefined, options?: InitOptions | undefined) {
@@ -706,8 +724,8 @@ export class LiveChatKit<
       }
     }
 
-    this.store.commit(
-      events.taskInited({
+    this.commitTaskEvents(
+      ...taskInitEvents({
         id: this.taskId,
         cwd,
         createdAt: new Date(),
@@ -729,8 +747,8 @@ export class LiveChatKit<
   ensureInited(cwd: string | undefined) {
     if (this.inited) return;
 
-    this.store.commit(
-      events.taskInited({
+    this.commitTaskEvents(
+      ...taskInitEvents({
         id: this.taskId,
         cwd,
         createdAt: new Date(),
@@ -930,7 +948,7 @@ export class LiveChatKit<
   };
 
   updateIsPublicShared = (isPublicShared: boolean) => {
-    this.store.commit(
+    this.commitTaskEvents(
       events.updateIsPublicShared({
         id: this.taskId,
         isPublicShared,
@@ -940,7 +958,7 @@ export class LiveChatKit<
   };
 
   markAsFailed = (error: Error) => {
-    this.store.commit(
+    this.commitTaskEvents(
       events.taskFailed({
         id: this.taskId,
         error: toTaskError(error),
@@ -978,7 +996,7 @@ export class LiveChatKit<
         )
       : messages.findLast((message) => message.role === "assistant");
     if (message)
-      this.store.commit(
+      this.commitTaskEvents(
         events.toolsExecutionFinished({
           id: message.id,
           parts: message.parts,
@@ -1013,7 +1031,7 @@ export class LiveChatKit<
               } as Message)
             : message,
         );
-        this.store.commit(
+        this.commitTaskEvents(
           events.toolsExecutionFinished({
             id: toolsExecution.messageId,
             parts: messageToUpdate.parts,
@@ -1054,7 +1072,8 @@ export class LiveChatKit<
       newTaskTitle: forkTaskParams.title,
     });
 
-    this.store.commit(events.forkTaskInited(data));
+    // A user fork also imports shared files, so it bypasses task-only persistence.
+    this.store.commit(...forkTaskInitEvents(data));
     this.chat.messages = this.messages;
   };
 
@@ -1083,7 +1102,7 @@ export class LiveChatKit<
           parentMessages,
         )?.description;
         if (description) {
-          store.commit(
+          this.commitTaskEvents(
             events.updateTitle({
               id: this.taskId,
               title: description,
@@ -1103,7 +1122,7 @@ export class LiveChatKit<
         });
       }
 
-      store.commit(
+      this.commitTaskEvents(
         events.chatStreamStarted({
           id: this.taskId,
           data: lastMessage,
@@ -1160,7 +1179,6 @@ export class LiveChatKit<
         ? [...this.chat.messages.slice(0, -1), message]
         : [...this.chat.messages, message];
 
-    const { store } = this;
     if (message.metadata?.kind !== "assistant") {
       return this.onError(abortError);
     }
@@ -1191,7 +1209,7 @@ export class LiveChatKit<
       );
     }
 
-    store.commit(
+    this.commitTaskEvents(
       events.chatStreamFinished({
         id: this.taskId,
         status,
@@ -1331,7 +1349,7 @@ export class LiveChatKit<
   }
 
   private updateTotalTokensEstimate(messages: Message[]) {
-    this.store.commit(
+    this.commitTaskEvents(
       events.updateTotalTokens({
         id: this.taskId,
         totalTokens: estimateTotalTokens(
@@ -1375,7 +1393,7 @@ export class LiveChatKit<
       );
     }
 
-    this.store.commit(
+    this.commitTaskEvents(
       events.chatStreamFailed({
         id: this.taskId,
         error: toTaskError(error),

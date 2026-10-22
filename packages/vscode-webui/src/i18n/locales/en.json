@@ -257,7 +257,15 @@
     "ok": "OK",
     "setPublic": "Anyone with link",
     "setPrivate": "Only you",
-    "shareFirst": "(Share first)"
+    "shareFirst": "(Share first)",
+    "sync": {
+      "synced": "Synced",
+      "syncing": "Syncing…",
+      "offline": "Offline",
+      "failed": "Sync failed",
+      "toRemote": "Sync to remote",
+      "description": "Sync pending changes to remote, or re-upload all messages if there are none."
+    }
   },
   "signInPage": {
     "welcome": "Welcome to Pochi",

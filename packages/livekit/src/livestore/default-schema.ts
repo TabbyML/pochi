@@ -113,7 +113,7 @@ export const tables = {
   }),
 };
 
-export const events = {
+const baseEvents = {
   taskInited: Events.synced({
     name: "v1.TaskInited",
     schema: Schema.Struct({
@@ -345,9 +345,28 @@ export const events = {
       ),
     }),
   }),
+  messageUpserted: Events.synced({
+    name: "v1.MessageUpserted",
+    schema: Schema.Struct({
+      taskId: Schema.String,
+      data: DBMessage,
+    }),
+  }),
 };
 
-const materializers = State.SQLite.materializers(events, {
+export const events = {
+  forkAgentLocalEvent: Events.clientOnly({
+    name: "v1.ForkAgentLocalEvent",
+    schema: Schema.Struct({
+      name: Schema.String,
+      // Encoded using the original event schema, including dates and durations.
+      args: Schema.Unknown,
+    }),
+  }),
+  ...baseEvents,
+};
+
+const baseMaterializers = State.SQLite.materializers(baseEvents, {
   "v1.TaskInited": ({
     id,
     parentId,
@@ -628,6 +647,32 @@ const materializers = State.SQLite.materializers(events, {
     ...messages.map((message) => tables.messages.insert(message)),
     ...files.map((file) => tables.files.insert(file)),
   ],
+  "v1.MessageUpserted": ({ taskId, data }) =>
+    tables.messages
+      .insert({ id: data.id, taskId, data })
+      .onConflict("id", "update", { taskId, data }),
+});
+
+const materializers = State.SQLite.materializers(events, {
+  ...baseMaterializers,
+  "v1.ForkAgentLocalEvent": ({ name, args }, context) => {
+    // The envelope is absent from baseEvents, so nested envelopes are rejected.
+    const eventDef = Object.values(baseEvents).find(
+      (event) => event.name === name,
+    );
+    if (!eventDef) throw new Error(`Invalid fork agent event: ${name}`);
+    const argsSchema: Schema.Schema.AnyNoContext = eventDef.schema;
+    // The schema and handler are selected by the same validated event name.
+    const materialize = baseMaterializers[
+      eventDef.name
+    ] as State.SQLite.Materializer;
+    const decoded = Schema.decodeUnknownSync(argsSchema)(args);
+    return materialize(decoded, {
+      ...context,
+      eventDef,
+      event: { ...context.event, name, args: decoded },
+    });
+  },
 });
 
 const state = State.SQLite.makeState({ tables, materializers });

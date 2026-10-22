@@ -72,8 +72,12 @@ it.each([
       subscribe: vi.fn(
         (_query: { label?: string }, _callback: () => void) => unsubscribe,
       ),
-      commit: vi.fn((event: { name: string }) => {
-        if (event.name === "v1.TaskFailed") child.status = "failed";
+      commit: vi.fn((event: { name: string; args?: { name?: string } }) => {
+        const name =
+          event.name === "v1.ForkAgentLocalEvent"
+            ? event.args?.name
+            : event.name;
+        if (name === "v1.TaskFailed") child.status = "failed";
       }),
     };
     let ready!: () => void;
@@ -126,13 +130,16 @@ it.each([
       await waitFor(() => expect(child.status).toBe("failed"));
       expect(store.commit).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: "v1.TaskFailed",
+          name: "v1.ForkAgentLocalEvent",
           args: expect.objectContaining({
-            id: "child",
-            error: {
-              kind: "AbortError",
-              message: "Interrupted fork agent is not resumed.",
-            },
+            name: "v1.TaskFailed",
+            args: expect.objectContaining({
+              id: "child",
+              error: {
+                kind: "AbortError",
+                message: "Interrupted fork agent is not resumed.",
+              },
+            }),
           }),
         }),
       );

@@ -10,6 +10,7 @@ import {
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import { convertToModelMessages, generateText } from "ai";
 import type { BlobStore } from "../../blob-store";
+import { taskEvents } from "../../livestore";
 import { makeStoreFileQuery } from "../../livestore/default-queries";
 import { events } from "../../livestore/default-schema";
 import { makeDownloadFunction } from "../../store-blob";
@@ -33,6 +34,7 @@ export async function compactTask({
   inline,
   store,
   useCase = "compact-task",
+  persistLocallyOnly = false,
 }: {
   blobStore: BlobStore;
   taskId: string;
@@ -45,6 +47,7 @@ export async function compactTask({
   abortSignal?: AbortSignal;
   inline?: boolean;
   store?: LiveKitStore;
+  persistLocallyOnly?: boolean;
   useCase?: Extract<PochiRequestUseCase, "compact-task" | "auto-compact-task">;
 }): Promise<string | undefined> {
   const lastMessage = messages.at(-1);
@@ -119,7 +122,12 @@ export async function compactTask({
           { verbatimTail: true },
         );
         memoryAttachMessage.parts.unshift({ type: "text", text });
-        persistInlineCompactMessage(store, memoryAttachMessage.id, text);
+        persistInlineCompactMessage(
+          store,
+          memoryAttachMessage.id,
+          text,
+          persistLocallyOnly,
+        );
         logger.debug(
           `Inline compact attached at index ${memoryAttachIndex}; preserving ${
             messages.length - memoryAttachIndex
@@ -139,7 +147,12 @@ export async function compactTask({
         attachIndex < messages.length - 1 ? { verbatimTail: true } : undefined,
       );
       attachMessage.parts.unshift({ type: "text", text });
-      persistInlineCompactMessage(store, attachMessage.id, text);
+      persistInlineCompactMessage(
+        store,
+        attachMessage.id,
+        text,
+        persistLocallyOnly,
+      );
       return;
     }
 
@@ -159,9 +172,14 @@ function persistInlineCompactMessage(
   store: LiveKitStore | undefined,
   id: string,
   text: string,
+  persistLocallyOnly = false,
 ) {
   if (!store) return;
-  store.commit(events.inlineCompactAttached({ id, text }));
+  store.commit(
+    ...taskEvents(persistLocallyOnly, [
+      events.inlineCompactAttached({ id, text }),
+    ]),
+  );
 }
 
 export function findInlineCompactAttachIndex(

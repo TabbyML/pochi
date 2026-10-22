@@ -253,7 +253,15 @@
     "ok": "확인",
     "setPublic": "링크를 아는 모든 사람",
     "setPrivate": "나만",
-    "shareFirst": "（먼저 공유）"
+    "shareFirst": "（먼저 공유）",
+    "sync": {
+      "synced": "동기화됨",
+      "syncing": "동기화 중…",
+      "offline": "오프라인",
+      "failed": "동기화 실패",
+      "toRemote": "원격에 동기화",
+      "description": "대기 중인 변경 사항을 원격에 동기화합니다. 대기 중인 변경 사항이 없으면 이 작업의 모든 메시지를 다시 업로드합니다."
+    }
   },
   "signInPage": {
     "welcome": "Pochi에 오신 것을 환영합니다",

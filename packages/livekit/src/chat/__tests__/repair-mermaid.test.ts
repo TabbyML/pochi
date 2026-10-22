@@ -42,8 +42,10 @@ async function runRepair(messages: Message[]) {
 }
 
 function repairedParts(store: { commit: ReturnType<typeof vi.fn> }) {
-  const event = store.commit.mock.calls[0]?.[0];
-  return event?.args?.repairs as { id: string; parts: unknown[] }[];
+  return store.commit.mock.calls[0]?.flatMap((event) => event.args.repairs) as {
+    id: string;
+    parts: unknown[];
+  }[];
 }
 
 describe("repairMermaid", () => {
@@ -166,6 +168,14 @@ describe("repairMermaid", () => {
 
     const store = await runRepair(messages);
 
+    expect(store.commit).toHaveBeenCalledTimes(1);
+    const events = store.commit.mock.calls[0];
+    expect(events).toHaveLength(2);
+    expect(
+      events.map((event) =>
+        event.args.repairs.map((repair: { id: string }) => repair.id),
+      ),
+    ).toEqual([["m1"], ["m2"]]);
     const repairs = repairedParts(store);
     expect(repairs).toHaveLength(2);
     expect(repairs[0].parts).toEqual([

@@ -253,7 +253,15 @@
     "ok": "OK",
     "setPublic": "リンクを知っている人なら誰でも",
     "setPrivate": "あなただけ",
-    "shareFirst": "（最初に共有）"
+    "shareFirst": "（最初に共有）",
+    "sync": {
+      "synced": "同期済み",
+      "syncing": "同期中…",
+      "offline": "オフライン",
+      "failed": "同期に失敗しました",
+      "toRemote": "リモートに同期",
+      "description": "未同期の変更をリモートに同期します。未同期の変更がなければ、このタスクの全メッセージを再アップロードします。"
+    }
   },
   "signInPage": {
     "welcome": "Pochi へようこそ",

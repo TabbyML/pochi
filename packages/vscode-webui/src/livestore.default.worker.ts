@@ -5,6 +5,7 @@ import { SyncBackend } from "@livestore/common";
 import { makeWsSync } from "@livestore/sync-cf/client";
 import { Effect, Stream, SubscriptionRef } from "@livestore/utils/effect";
 import { z } from "zod";
+import { observeSyncBackend } from "./lib/sync";
 
 const Payload = z.object({
   jwt: z.string(),
@@ -17,11 +18,11 @@ const makeSyncBackend =
       const { payload } = args;
       if (Payload.safeParse(payload).success) {
         const backend = yield* makeWsSync({ url: getSyncBaseUrl() })(args);
-        return backend;
+        return yield* observeSyncBackend(backend, args.storeId);
       }
 
       const isConnected = yield* SubscriptionRef.make(false);
-      return SyncBackend.of({
+      const backend = SyncBackend.of({
         isConnected,
         connect: Effect.void,
         ping: Effect.void,
@@ -36,6 +37,7 @@ const makeSyncBackend =
           description: "Fake sync backend that do nothing",
         },
       });
+      return yield* observeSyncBackend(backend, args.storeId);
     });
 
 makeWorker({

@@ -1,3 +1,5 @@
+import { Schema } from "@livestore/livestore";
+import { defaultCatalog as catalog } from "../../livestore";
 import type {
   AutoMemoryContext,
   AutoMemoryTaskState,
@@ -921,7 +923,23 @@ class FakeStore {
     return () => {};
   }
 
-  commit(event: { name: string; args: Record<string, unknown> }) {
+  commit(...batch: { name: string; args: Record<string, unknown> }[]) {
+    for (const event of batch) {
+      this.applyEvent(event.name === "v1.ForkAgentLocalEvent" ? {
+        name: event.args.name as string,
+        args: Schema.decodeUnknownSync(catalog.schema.eventsDefsMap.get(event.args.name as string)!.schema)(event.args.args),
+      } : event);
+    }
+  }
+
+  private applyEvent(event: { name: string; args: Record<string, unknown> }) {
+    if (event.name === "v1.MessageUpserted") {
+      const taskId = event.args.taskId as string;
+      const message = event.args.data as Message;
+      const messages = this.messages.get(taskId) ?? [];
+      this.messages.set(taskId, [...messages.filter((m) => m.id !== message.id), message]);
+      return;
+    }
     if (event.name === "v1.TaskInited") {
       this.commitTaskInited(event.args);
       return;

@@ -42,6 +42,134 @@ function resultMessage(status: "completed" | "pending-input"): Message {
 }
 
 describe("background task registration and handoff", () => {
+  it.each([undefined, "auto-memory", "task-memory", "auto-memory-dream"] as const)(
+    "waits for restored task identity before persisting shutdown (%s)",
+    async (useCase) => {
+      const data = makeJobStore();
+      data.tasks.set("child", subtask("child", { background: true }));
+      let resolveMetadata!: (state: BackgroundTaskState) => void;
+      const metadata = new Promise<BackgroundTaskState>((resolve) => {
+        resolveMetadata = resolve;
+      });
+      const manager = BackgroundJobManager.forStore(data.store);
+      manager.initialize({
+        blobStore: {} as never,
+        stateStore: { read: () => metadata, set: async () => {} },
+        adaptor: {
+          getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+          executeToolCall: vi.fn(),
+        },
+      });
+      const closing = manager.dispose();
+      try {
+        expect(data.commit).not.toHaveBeenCalled();
+      } finally {
+        resolveMetadata({ parentTaskId: "parent", useCase });
+        await closing;
+      }
+      expect(data.tasks.get("child")?.status).toBe("failed");
+      const persisted = data.commit.mock.calls.flat();
+      expect(persisted.length).toBeGreaterThan(0);
+      for (const event of persisted) {
+        expect(event).toEqual(
+          expect.objectContaining(
+            useCase
+              ? {
+                  name: "v1.ForkAgentLocalEvent",
+                  args: expect.objectContaining({ name: "v1.TaskFailed" }),
+                }
+              : { name: "v1.TaskFailed" },
+          ),
+        );
+      }
+      expect(data.tasks.get("child")?.error).toEqual({
+        kind: "AbortError",
+        message: "Stopped by user.",
+      });
+    },
+  );
+
+  it("waits for restored fork identity when startup fails before metadata arrives", async () => {
+    const data = makeJobStore();
+    data.tasks.set("child", subtask("child", { background: true }));
+    let resolveMetadata!: (state: BackgroundTaskState) => void;
+    const metadata = new Promise<BackgroundTaskState>((resolve) => {
+      resolveMetadata = resolve;
+    });
+    const manager = BackgroundJobManager.forStore(data.store);
+    const onTaskError = vi.fn();
+    manager.initialize({
+      blobStore: {} as never,
+      stateStore: { read: () => metadata, set: async () => {} },
+      adaptor: {
+        waitUntilReady: async () => {
+          throw new Error("host unavailable");
+        },
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+        onTaskError,
+      },
+    });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(data.commit).not.toHaveBeenCalled();
+      resolveMetadata({ parentTaskId: "parent", useCase: "auto-memory" });
+      await vi.waitFor(() => expect(onTaskError).toHaveBeenCalledOnce());
+      expect(data.commit.mock.calls.flat()).toEqual([
+        expect.objectContaining({
+          name: "v1.ForkAgentLocalEvent",
+          args: expect.objectContaining({ name: "v1.TaskFailed" }),
+        }),
+      ]);
+      expect(data.tasks.get("child")?.error?.kind).toBe("InternalError");
+    } finally {
+      resolveMetadata({ parentTaskId: "parent", useCase: "auto-memory" });
+      await manager.dispose();
+    }
+  });
+
+  it("keeps the stop result when startup fails while shutdown awaits fork metadata", async () => {
+    const data = makeJobStore();
+    data.tasks.set("child", subtask("child", { background: true }));
+    let resolveMetadata!: (state: BackgroundTaskState) => void;
+    const metadata = new Promise<BackgroundTaskState>((resolve) => {
+      resolveMetadata = resolve;
+    });
+    let rejectReady!: (error: Error) => void;
+    const ready = new Promise<void>((_, reject) => {
+      rejectReady = reject;
+    });
+    const onTaskError = vi.fn();
+    const manager = BackgroundJobManager.forStore(data.store);
+    manager.initialize({
+      blobStore: {} as never,
+      stateStore: { read: () => metadata, set: async () => {} },
+      adaptor: {
+        waitUntilReady: () => ready,
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+        onTaskError,
+      },
+    });
+    const closing = manager.dispose();
+    rejectReady(new Error("host unavailable"));
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(data.commit).not.toHaveBeenCalled();
+    } finally {
+      resolveMetadata({ parentTaskId: "parent", useCase: "auto-memory" });
+      await closing;
+    }
+    expect(data.tasks.get("child")?.error?.kind).toBe("AbortError");
+    expect(data.commit.mock.calls.flat()).toEqual([
+      expect.objectContaining({
+        name: "v1.ForkAgentLocalEvent",
+        args: expect.objectContaining({ name: "v1.TaskFailed" }),
+      }),
+    ]);
+    expect(onTaskError).not.toHaveBeenCalled();
+  });
+
   it("registers a fork with its owner and kind before an executor is available", async () => {
     const { store } = makeJobStore();
     const manager = BackgroundJobManager.forStore(store);
