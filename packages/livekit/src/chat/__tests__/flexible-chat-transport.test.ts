@@ -3,14 +3,19 @@ import {
   parseEnvironmentInfo,
   prompts,
 } from "@getpochi/common";
+import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
+import type { UIMessageChunk } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BlobStore } from "../../blob-store";
 import type { LiveKitStore, Message } from "../../types";
 import {
+  ChunkTimeoutErrorMessage,
+  ChunkTimeoutMs,
   FlexibleChatTransport,
   type OnStartCallback,
   convertDataPartToText,
+  createAbortAwareUIStreamTransform,
   extractContentFilterMetadata,
   getNumCompacts,
 } from "../flexible-chat-transport";
@@ -89,6 +94,150 @@ describe("subtask delegation", () => {
       ).toBe(!isSubTask);
     },
   );
+});
+
+describe("chunk timeout", () => {
+  function createStalledModel() {
+    return new MockLanguageModelV3({
+      doStream: async ({ abortSignal }) => ({
+        stream: new ReadableStream<LanguageModelV3StreamPart>({
+          start(controller) {
+            controller.enqueue({ type: "stream-start", warnings: [] });
+            controller.enqueue({ type: "reasoning-start", id: "r" });
+            controller.enqueue({
+              type: "reasoning-delta",
+              id: "r",
+              delta: "thinking",
+            });
+            // Never sends more data; only stops when the request is aborted.
+            abortSignal?.addEventListener("abort", () => {
+              controller.error(
+                new DOMException("The operation was aborted.", "AbortError"),
+              );
+            });
+          },
+        }),
+      }),
+    });
+  }
+
+  function createTransport(model: MockLanguageModelV3) {
+    return new FlexibleChatTransport({
+      store: {
+        storeId: "store-1",
+        commit: vi.fn(),
+      } as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      isSubTask: true,
+      getters: {
+        getLLM: () => ({
+          type: "vendor",
+          id: "test-model",
+          getModel: () => model,
+        }),
+      },
+    });
+  }
+
+  async function readChunks(stream: ReadableStream<UIMessageChunk>) {
+    const chunks: UIMessageChunk[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    return chunks;
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("surfaces a stalled stream as an error instead of an abort", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const stream = await createTransport(createStalledModel()).sendMessages({
+      trigger: "submit-message",
+      chatId: "task-1",
+      messageId: undefined,
+      messages: [
+        { id: "user-1", role: "user", parts: [{ type: "text", text: "Hi" }] },
+      ],
+      abortSignal: new AbortController().signal,
+    });
+
+    const chunksPromise = readChunks(stream);
+    await vi.advanceTimersByTimeAsync(ChunkTimeoutMs);
+    const chunks = await chunksPromise;
+
+    expect(chunks.some((chunk) => chunk.type === "abort")).toBe(false);
+    expect(chunks.at(-1)).toEqual({
+      type: "error",
+      errorText: ChunkTimeoutErrorMessage,
+    });
+  });
+
+  it("keeps a user stop as a silent termination", async () => {
+    const abortController = new AbortController();
+    const stream = await createTransport(createStalledModel()).sendMessages({
+      trigger: "submit-message",
+      chatId: "task-1",
+      messageId: undefined,
+      messages: [
+        { id: "user-1", role: "user", parts: [{ type: "text", text: "Hi" }] },
+      ],
+      abortSignal: abortController.signal,
+    });
+
+    const chunksPromise = readChunks(stream);
+    abortController.abort();
+    const chunks = await chunksPromise;
+
+    expect(chunks.some((chunk) => chunk.type === "error")).toBe(false);
+  });
+});
+
+describe("createAbortAwareUIStreamTransform", () => {
+  async function run(chunks: UIMessageChunk[], abortSignal?: AbortSignal) {
+    const source = new ReadableStream<UIMessageChunk>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    const output: UIMessageChunk[] = [];
+    for await (const chunk of source.pipeThrough(
+      createAbortAwareUIStreamTransform(abortSignal),
+    )) {
+      output.push(chunk);
+    }
+    return output;
+  }
+
+  it("converts a non-user abort chunk into a chunk timeout error", async () => {
+    const output = await run(
+      [{ type: "start" }, { type: "abort" }, { type: "finish" }],
+      new AbortController().signal,
+    );
+    expect(output).toEqual([
+      { type: "start" },
+      { type: "error", errorText: ChunkTimeoutErrorMessage },
+    ]);
+  });
+
+  it("treats an abort chunk as a timeout when no abort signal is provided", async () => {
+    const output = await run([{ type: "abort" }]);
+    expect(output).toEqual([
+      { type: "error", errorText: ChunkTimeoutErrorMessage },
+    ]);
+  });
+
+  it("drops chunks once the user aborted", async () => {
+    const abortController = new AbortController();
+    abortController.abort();
+    const output = await run(
+      [{ type: "start" }, { type: "abort" }],
+      abortController.signal,
+    );
+    expect(output).toEqual([]);
+  });
 });
 
 describe("environment after compaction", () => {
