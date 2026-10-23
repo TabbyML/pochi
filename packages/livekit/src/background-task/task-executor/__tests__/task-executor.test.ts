@@ -479,6 +479,44 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("drains through asynchronous finalization without starving the event loop", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([makeToolPart("readFile", "read", { path: "a.ts" })]),
+    ]);
+    // Bound reads so a polling regression fails instead of starving Vitest's
+    // own timeout along with the finalizer's timer.
+    const query = store.query.bind(store);
+    let reads = 0;
+    const querySpy = vi.spyOn(store, "query").mockImplementation((input) => {
+      if (++reads > 1000) throw new Error("Task drain is busy-polling the store");
+      return query(input);
+    });
+    const onTaskFinished = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return "Worktree finalized.";
+    });
+    const executor = makeExecutor(
+      store,
+      {
+        ...makeAdaptor({ executeToolCall: vi.fn(async () => ({})) }),
+        onTaskFinished,
+      },
+      { tools: ["readFile"] },
+    );
+
+    try {
+      await executor.drain();
+      expect(onTaskFinished).toHaveResolvedWith("Worktree finalized.");
+      expect(executor.isTaskRunning("task")).toBe(false);
+    } finally {
+      querySpy.mockRestore();
+      await executor.dispose();
+    }
+  });
+
   it("resumes saved unfinished tasks on startup without rerunning saved tool results or cancelled tasks", async () => {
     // These are the persisted records left when a Webview disappears without
     // issuing an explicit cancellation. The new executor has no old chat state.
