@@ -136,6 +136,9 @@ export class ReviewController implements vscode.Disposable {
         },
       ];
     } else {
+      if (thread === this.draftThread) {
+        this.draftThread = undefined;
+      }
       const newThread = thread as Thread;
       newThread.id = crypto.randomUUID();
       this.threads.set(newThread.id, newThread);
@@ -219,14 +222,9 @@ export class ReviewController implements vscode.Disposable {
     range: vscode.Range,
     body: string,
   ): Promise<Thread> {
-    const thread = this.controller.createCommentThread(
-      uri,
-      range,
-      [],
-    ) as Thread;
+    const thread = this.createExpandedThread(uri, range) as Thread;
     thread.id = crypto.randomUUID();
     thread.contextValue = "canDelete";
-    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
     thread.comments = [
       {
         id: crypto.randomUUID(),
@@ -246,21 +244,42 @@ export class ReviewController implements vscode.Disposable {
    * not covered by the selection. The thread only becomes a review once the
    * first comment is added.
    */
-  async startThreadFromEditor(editor: vscode.TextEditor, lineNumber?: number) {
-    if (this.draftThread && this.draftThread.comments.length === 0) {
-      this.draftThread.dispose();
-    }
+  startThreadFromEditor(editor: vscode.TextEditor, lineNumber?: number) {
     const { selection, document } = editor;
-    const range =
+    if (document.uri.scheme === "output") {
+      return;
+    }
+    // A draft is cleared once it receives its first comment (see `addComment`),
+    // so any remaining one is still empty.
+    this.draftThread?.dispose();
+    this.draftThread = undefined;
+
+    let range: vscode.Range = selection;
+    if (
       lineNumber !== undefined &&
       lineNumber < document.lineCount &&
       (lineNumber < selection.start.line || lineNumber > selection.end.line)
-        ? document.lineAt(lineNumber).range
-        : new vscode.Range(selection.start, selection.end);
-    const thread = this.controller.createCommentThread(document.uri, range, []);
-    thread.contextValue = "canDelete";
+    ) {
+      range = document.lineAt(lineNumber).range;
+    } else if (
+      selection.end.character === 0 &&
+      selection.end.line > selection.start.line
+    ) {
+      // A full-line selection ends at column 0 of the next line; don't
+      // include that line.
+      range = new vscode.Range(
+        selection.start,
+        document.lineAt(selection.end.line - 1).range.end,
+      );
+    }
+    // No `canDelete` until the first comment is added (see `addComment`).
+    this.draftThread = this.createExpandedThread(document.uri, range);
+  }
+
+  private createExpandedThread(uri: vscode.Uri, range: vscode.Range) {
+    const thread = this.controller.createCommentThread(uri, range, []);
     thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
-    this.draftThread = thread;
+    return thread;
   }
 
   private getAuthor() {

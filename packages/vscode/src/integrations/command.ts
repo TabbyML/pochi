@@ -620,14 +620,22 @@ export class CommandManager implements vscode.Disposable {
         "pochi.comments.addFromEditor",
         // From `editor/lineNumber/context` the argument is `{ uri, lineNumber }`
         // (1-based line); from other entry points it is a Uri or nothing.
-        async (arg?: { lineNumber?: number }) => {
-          const editor = vscode.window.activeTextEditor;
+        (arg?: { uri?: vscode.Uri; lineNumber?: number }) => {
+          // The clicked gutter may belong to an editor other than the active
+          // one (e.g. the other side of a diff), so resolve it by uri first.
+          const uri = arg?.uri?.toString();
+          const editor =
+            (uri &&
+              vscode.window.visibleTextEditors.find(
+                (e) => e.document.uri.toString() === uri,
+              )) ||
+            vscode.window.activeTextEditor;
           if (editor) {
             const line =
               typeof arg?.lineNumber === "number"
                 ? arg.lineNumber - 1
                 : undefined;
-            await this.reviewController.startThreadFromEditor(editor, line);
+            this.reviewController.startThreadFromEditor(editor, line);
           }
         },
       ),

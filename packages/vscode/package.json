@@ -277,20 +277,21 @@
       "editor/context": [
         {
           "command": "pochi.comments.addFromEditor",
-          "when": "editorTextFocus",
+          "when": "editorTextFocus && resourceScheme != output",
           "group": "1_modification@100"
         }
       ],
       "editor/lineNumber/context": [
         {
           "command": "pochi.comments.addFromEditor",
+          "when": "resourceScheme != output",
           "group": "1_modification@100"
         }
       ],
       "commandPalette": [
         {
           "command": "pochi.comments.addFromEditor",
-          "when": "editorTextFocus"
+          "when": "editorTextFocus && resourceScheme != output"
         },
         {
           "command": "pochi.openLoginPage",
@@ -474,12 +475,6 @@
         "command": "pochi.applyPochiLayoutWithCycleFocus",
         "key": "ctrl+l",
         "mac": "cmd+l"
-      },
-      {
-        "command": "pochi.comments.addFromEditor",
-        "key": "ctrl+shift+l",
-        "mac": "cmd+shift+l",
-        "when": "editorTextFocus && editorHasSelection"
       }
     ],
     "colors": [
