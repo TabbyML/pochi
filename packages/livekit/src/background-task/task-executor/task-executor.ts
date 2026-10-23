@@ -64,6 +64,8 @@ interface TaskExecutorToolCallExecution {
 }
 
 export interface RunningTaskAdaptor {
+  /** Expands `~` in tool path rules. */
+  readonly homeDir?: string;
   waitUntilReady?(): Promise<void>;
   getRequestGetters(context: {
     taskId: string;
@@ -722,6 +724,7 @@ class RunningTask {
 
     validateToolPolicy(toolName, input, toolPolicies, {
       cwd: normalizeCwd(this.task?.cwd) ?? "",
+      homeDir: this.options.adaptor.homeDir,
     });
   }
 

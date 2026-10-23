@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
@@ -95,6 +96,7 @@ interface CliRunningTaskAdaptorOptions {
 }
 
 export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
+  readonly homeDir = os.homedir();
   private readonly blobStore: BlobStore;
   private readonly llm: LLMRequestData;
   private readonly cwd: string;

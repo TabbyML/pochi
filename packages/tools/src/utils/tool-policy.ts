@@ -267,11 +267,17 @@ export function validateAgentTypePatternPolicy(
   }
 }
 
+type ToolPolicyOptions = {
+  cwd: string;
+  /** Expands `~` in path rules. Without it, `~` rules only match literal `~` paths. */
+  homeDir?: string;
+};
+
 export function validateToolPolicy(
   toolName: string,
   input: unknown,
   policies: CompiledToolPolicies | undefined,
-  options: { cwd: string },
+  options: ToolPolicyOptions,
 ): void {
   if (isCommandPolicyToolName(toolName)) {
     const command =
@@ -336,7 +342,7 @@ function validatePathPatternPolicy(
         patterns: string[];
       }
     | undefined,
-  options: { cwd: string },
+  options: ToolPolicyOptions,
 ): void {
   if (!policy) {
     return;
@@ -344,7 +350,7 @@ function validatePathPatternPolicy(
 
   const pathInfo = describeRuleMatchPath(inputPath, options);
   const matched = policy.patterns.some((pattern) =>
-    matchPathPattern(pathInfo, pattern),
+    matchPathPattern(pathInfo, pattern, options.homeDir),
   );
 
   if (!matched) {
@@ -382,8 +388,15 @@ function describeRuleMatchPath(
   };
 }
 
-function matchPathPattern(pathInfo: RuleMatchPath, pattern: string): boolean {
-  const normalizedPattern = normalizePattern(pattern);
+function matchPathPattern(
+  pathInfo: RuleMatchPath,
+  pattern: string,
+  homeDir: string | undefined,
+): boolean {
+  const normalizedPattern = expandHomePattern(
+    normalizePattern(pattern),
+    homeDir,
+  );
 
   if (pathInfo.kind === "virtual") {
     return minimatch(pathInfo.path, normalizedPattern, { nocase: true });
@@ -394,6 +407,13 @@ function matchPathPattern(pathInfo: RuleMatchPath, pattern: string): boolean {
   }
 
   return minimatch(pathInfo.relative, normalizedPattern, { nocase: true });
+}
+
+function expandHomePattern(pattern: string, homeDir: string | undefined) {
+  if (!homeDir || (pattern !== "~" && !pattern.startsWith("~/"))) {
+    return pattern;
+  }
+  return normalizePattern(homeDir).replace(/\/+$/, "") + pattern.slice(1);
 }
 
 function isAbsolutePattern(pattern: string): boolean {
