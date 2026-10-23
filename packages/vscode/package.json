@@ -205,6 +205,10 @@
         "category": "Pochi"
       },
       {
+        "command": "pochi.comments.addFromEditor",
+        "title": "Pochi: Add Comment"
+      },
+      {
         "command": "pochi.comments.addComment",
         "title": "Add Comment",
         "icon": "$(comment-add)",
@@ -270,7 +274,25 @@
           "group": "navigation"
         }
       ],
+      "editor/context": [
+        {
+          "command": "pochi.comments.addFromEditor",
+          "when": "editorTextFocus && resourceScheme != output",
+          "group": "1_modification@100"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "pochi.comments.addFromEditor",
+          "when": "resourceScheme != output",
+          "group": "1_modification@100"
+        }
+      ],
       "commandPalette": [
+        {
+          "command": "pochi.comments.addFromEditor",
+          "when": "editorTextFocus && resourceScheme != output"
+        },
         {
           "command": "pochi.openLoginPage",
           "when": "false"
