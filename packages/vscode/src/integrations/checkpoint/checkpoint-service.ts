@@ -103,7 +103,7 @@ export class CheckpointService implements vscode.Disposable {
   /**
    * Saves a checkpoint for the current workspace.
    * @param message A message to associate with the checkpoint.
-   * @returns The commit hash of the created checkpoint. If the repository is clean or timeout, returns null.
+   * @returns The commit hash of the created checkpoint. Returns null if unchanged, too large, staging fails, or the save times out.
    */
   saveCheckpoint = async (
     message: string,
@@ -135,7 +135,7 @@ export class CheckpointService implements vscode.Disposable {
       }
 
       try {
-        await this.shadowGit.stageAll();
+        if (!(await this.shadowGit.stageAll())) return null;
         if (!options.force && !(await this.shadowGit.hasStagedChanges())) {
           const duration = performance.now() - startTime;
           logger.trace(
@@ -163,14 +163,14 @@ export class CheckpointService implements vscode.Disposable {
 
   saveUserEditBaseline = runExclusive.build(
     this.indexLock,
-    async (): Promise<string> => {
+    async (): Promise<string | null> => {
       await this.ensureInitialized();
 
       if (!this.shadowGit) {
         throw new Error("Shadow Git repository not initialized");
       }
 
-      await this.shadowGit.stageAll();
+      if (!(await this.shadowGit.stageAll())) return null;
       return this.shadowGit.commit(
         `user-edit-baseline-${this.cwd}-${Date.now()}`,
       );
@@ -303,7 +303,8 @@ export class CheckpointService implements vscode.Disposable {
         throw new Error("Shadow Git repository not initialized");
       }
       try {
-        await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
+        // A skipped snapshot cannot provide a complete diff, including untracked files.
+        if (!(await this.shadowGit.stageAll())) return null;
         const changes = await this.shadowGit.getDiff(from, undefined, files);
         const result = processGitChangesToFileEdits(changes, options);
         logger.debug(

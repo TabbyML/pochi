@@ -108,6 +108,29 @@ describe("CheckpointService", () => {
     sinon.assert.calledOnce(shadowGit.commit);
   });
 
+  it("skips all checkpoint writers when staging refuses a snapshot", async () => {
+    shadowGit.stageAll.resolves(false);
+
+    assert.strictEqual(await service.saveCheckpoint("oversized"), null);
+    assert.strictEqual(
+      await service.saveCheckpoint("forced", { force: true }),
+      null,
+    );
+    assert.strictEqual(await service.saveUserEditBaseline(), null);
+    assert.strictEqual(
+      await service.getCheckpointFileEdits("old-checkpoint"),
+      null,
+    );
+    sinon.assert.notCalled(shadowGit.commit);
+    sinon.assert.notCalled(shadowGit.hasStagedChanges);
+    sinon.assert.notCalled(shadowGit.getDiff);
+    assert.strictEqual(service.latestCheckpoint.value, "old-checkpoint");
+
+    shadowGit.stageAll.resolves(true);
+    assert.strictEqual(await service.saveCheckpoint("retry"), "new-checkpoint");
+    sinon.assert.calledOnce(shadowGit.commit);
+  });
+
   it("prunes old checkpoints after initializing", async () => {
     await service.ensureInitialized();
 

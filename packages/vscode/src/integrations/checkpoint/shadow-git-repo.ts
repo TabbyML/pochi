@@ -11,10 +11,10 @@ import { writeExcludesFile } from "./shadow-git-excludes";
 const logger = getLogger("ShadowGitRepo");
 
 /**
- * Changed files larger than this are left out of checkpoints. Source files and
- * lockfiles are well below it; build outputs, binaries and media often are not.
+ * Skip the whole checkpoint when a new or modified file exceeds this size.
+ * Existing, unchanged blobs can be reused without adding to disk usage.
  */
-const MaxCheckpointFileSize = 5 * 1024 * 1024;
+const MaxCheckpointFileSize = 100 * 1024 * 1024;
 
 /** Unreachable objects younger than this survive a prune. */
 const PruneGracePeriod = "1.hour.ago";
@@ -141,8 +141,9 @@ export class ShadowGitRepo implements vscode.Disposable {
 
       await writeExcludesFile(this.gitPath, this.workspaceDir);
 
-      await this.stageAll();
-      await this.commit("Pochi Shadow Repo Initial Commit");
+      if (await this.stageAll()) {
+        await this.commit("Pochi Shadow Repo Initial Commit");
+      }
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -162,6 +163,12 @@ export class ShadowGitRepo implements vscode.Disposable {
   // Get the latest commit hash in short form
   async getLatestCommitHash(search: string): Promise<string | null> {
     try {
+      // Initialization may skip the first checkpoint because a file is too large.
+      if (
+        !(await this.git.raw(["rev-list", "--all", "--max-count=1"])).trim()
+      ) {
+        return null;
+      }
       const result = await this.git.raw([
         "log",
         "-1",
@@ -198,89 +205,69 @@ export class ShadowGitRepo implements vscode.Disposable {
       "--cached",
       "--name-only",
       "--ignore-submodules=all",
-      "HEAD",
     ]);
     return output.trim().length > 0;
   }
 
   /**
-   * Stages every change in the workspace, except files larger than
-   * {@link MaxCheckpointFileSize}. Large files that an earlier checkpoint
-   * already holds are dropped from the index, so restoring later checkpoints
-   * leaves them alone instead of bringing back a stale version.
+   * Stages a complete snapshot, or returns false without staging if a new or
+   * modified file is too large. Never remove individual files from the index:
+   * restoring a snapshot that omits an existing file can delete that file.
    */
-  async stageAll() {
+  async stageAll(): Promise<boolean> {
     if (!this.git) {
       throw new Error("Git instance is not initialized");
     }
     const largeFiles = await this.findLargeChangedFiles();
-    try {
-      if (largeFiles.length === 0) {
-        await this.git.raw([
-          "--work-tree",
-          this.workspaceDir,
-          "add",
-          ".",
-          "--ignore-errors",
-        ]);
-      } else {
-        logger.debug(
-          `Leaving ${largeFiles.length} file(s) larger than ${MaxCheckpointFileSize} bytes out of the checkpoint: ${largeFiles.join(", ")}`,
-        );
-        await this.runWithPathspecs(
-          ["add", "-A", "--ignore-errors"],
-          [".", ...largeFiles.map((file) => `:(exclude,literal)${file}`)],
-        );
-      }
-    } catch (error) {
-      logger.warn(
-        `Some files could not be staged in the repository at ${this.gitPath} (continuing with partial stage): ${toErrorMessage(error)}`,
-      );
-    }
     if (largeFiles.length > 0) {
-      try {
-        await this.runWithPathspecs(
-          ["rm", "--cached", "-f", "-q", "--ignore-unmatch"],
-          largeFiles.map((file) => `:(literal)${file}`),
-        );
-      } catch (error) {
-        logger.warn(
-          `Failed to remove large files from the index of the repository at ${this.gitPath}: ${toErrorMessage(error)}`,
-        );
-      }
+      logger.warn(
+        `Skipping checkpoint because ${largeFiles.length} new or modified file(s) exceed ${MaxCheckpointFileSize} bytes: ${largeFiles.join(", ")}`,
+      );
+      return false;
+    }
+    try {
+      await this.git.raw([
+        "--work-tree",
+        this.workspaceDir,
+        "add",
+        ".",
+        "--ignore-errors",
+      ]);
+    } catch (error) {
+      // A partially staged index must not become a checkpoint either.
+      logger.warn(
+        `Skipping checkpoint because files could not be staged in the repository at ${this.gitPath}: ${toErrorMessage(error)}`,
+      );
+      return false;
     }
     logger.trace(`Staged changes in the repository at ${this.gitPath}.`);
     return true;
   }
 
-  /**
-   * Returns the new, modified or deleted workspace files whose size is above
-   * {@link MaxCheckpointFileSize}, relative to the workspace root.
-   */
   private async findLargeChangedFiles(): Promise<string[]> {
-    let output: string;
-    try {
-      output = await this.git.raw([
-        "--work-tree",
-        this.workspaceDir,
-        "ls-files",
-        "-z",
-        "--others",
-        "--modified",
-        "--exclude-standard",
-      ]);
-    } catch (error) {
-      logger.warn(
-        `Failed to list changed files in the repository at ${this.gitPath}, staging without a size limit: ${toErrorMessage(error)}`,
-      );
-      return [];
-    }
-    const files = new Set(output.split("\0").filter(Boolean));
-    // Unchanged large files checkpointed before this size limit existed.
-    for (const file of await this.listLargeFilesInHead()) {
-      files.add(file);
-    }
-    const candidates = [...files];
+    const changed = await this.git.raw([
+      "--work-tree",
+      this.workspaceDir,
+      "ls-files",
+      "-z",
+      "--others",
+      "--modified",
+      "--exclude-standard",
+    ]);
+    // Include changes already staged by a previous diff or interrupted save.
+    // With no HEAD yet, diff --cached lists the entire index.
+    const staged = await this.git.raw([
+      "--work-tree",
+      this.workspaceDir,
+      "diff",
+      "--cached",
+      "--name-only",
+      "-z",
+      "--no-renames",
+    ]);
+    const candidates = [
+      ...new Set(`${changed}${staged}`.split("\0").filter(Boolean)),
+    ];
     const largeFiles: string[] = [];
     const batchSize = 64;
     for (let i = 0; i < candidates.length; i += batchSize) {
@@ -290,9 +277,10 @@ export class ShadowGitRepo implements vscode.Disposable {
           try {
             const stat = await fs.lstat(path.join(this.workspaceDir, file));
             return stat.isFile() ? stat.size : 0;
-          } catch {
-            // Deleted files are listed too; they have no size.
-            return 0;
+          } catch (error) {
+            // Deleted files do not add any new content to the checkpoint.
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+            throw error;
           }
         }),
       );
@@ -303,53 +291,6 @@ export class ShadowGitRepo implements vscode.Disposable {
       });
     }
     return largeFiles;
-  }
-
-  private async listLargeFilesInHead(): Promise<string[]> {
-    let output: string;
-    try {
-      output = await this.git.raw(["ls-tree", "-r", "-l", "-z", "HEAD"]);
-    } catch {
-      // No commit yet.
-      return [];
-    }
-    const files: string[] = [];
-    for (const entry of output.split("\0")) {
-      // <mode> <type> <object> <size>\t<path>; size is "-" for submodules.
-      const tab = entry.indexOf("\t");
-      if (tab === -1) continue;
-      const size = Number(entry.slice(0, tab).trim().split(/\s+/)[3]);
-      if (size > MaxCheckpointFileSize) {
-        files.push(entry.slice(tab + 1));
-      }
-    }
-    return files;
-  }
-
-  /**
-   * Runs a git command with pathspecs passed through a file, which keeps the
-   * command line short no matter how many paths there are.
-   */
-  private async runWithPathspecs(args: string[], pathspecs: string[]) {
-    const pathspecFile = path.join(
-      this.gitPath,
-      `pochi-pathspec-${randomUUID()}`,
-    );
-    await fs.writeFile(
-      pathspecFile,
-      pathspecs.map((pathspec) => `${pathspec}\0`).join(""),
-    );
-    try {
-      return await this.git.raw([
-        "--work-tree",
-        this.workspaceDir,
-        ...args,
-        `--pathspec-from-file=${pathspecFile}`,
-        "--pathspec-file-nul",
-      ]);
-    } finally {
-      await fs.rm(pathspecFile, { force: true });
-    }
   }
 
   /**
@@ -465,7 +406,7 @@ export class ShadowGitRepo implements vscode.Disposable {
         throw new Error("Git instance is not initialized");
       }
       // For bare repository with worktree, use --work-tree flag
-      const result = await this.git.raw([
+      await this.git.raw([
         "--work-tree",
         this.workspaceDir,
         "commit",
@@ -475,9 +416,8 @@ export class ShadowGitRepo implements vscode.Disposable {
         "--no-verify",
       ]);
 
-      // Extract commit hash from the output
-      const commitHashMatch = result.match(/\[[\w\s]+ ([a-f0-9]+)\]/);
-      const commitHash = commitHashMatch ? commitHashMatch[1] : "";
+      // The first successful snapshot may be a root commit after earlier skips.
+      const commitHash = (await this.git.revparse(["--short", "HEAD"])).trim();
 
       logger.trace(
         `Committed changes in the repository at ${this.gitPath} with message: ${commitMessage}`,
