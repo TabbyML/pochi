@@ -53,15 +53,17 @@ export class AutoMemoryManager extends BaseAutoMemoryManager {
     taskId: string;
     cwd?: string;
     title?: string;
+    status?: string;
     updatedAt?: number;
     transcript: string;
   }) {
-    // Extraction keeps running even when injection is disabled, so this is
+    // Transcripts are the task's durable record, so writing them is
     // intentionally not gated by the Project Memory enabled preference.
     return this.writeTaskTranscript({
       taskId: options.taskId,
       cwd: options.cwd ?? this.cwd,
       title: options.title,
+      status: options.status,
       updatedAt: options.updatedAt,
       transcript: options.transcript,
     });

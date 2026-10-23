@@ -71,6 +71,8 @@ export {
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 
+export { serializeTaskTranscript } from "./task-transcript";
+
 export { WebsiteTaskCreateEvent } from "./event";
 
 export { toErrorMessage } from "./error";

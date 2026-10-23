@@ -162,6 +162,35 @@ describe("AutoMemoryManager Dream sources and thresholds", () => {
       await manager.beginDreamRun({ cwd, currentTaskId: "parent" }),
     ).toBeUndefined();
   });
+
+  it("records the task status in the transcript frontmatter", async () => {
+    const manager = new AutoMemoryManager({ projectsRoot });
+    const written = await manager.writeTaskTranscript({
+      taskId: "task",
+      cwd,
+      title: "Task",
+      status: "pending-input",
+      updatedAt: now,
+      transcript: "### 1. user",
+    });
+    const content = await fs.readFile(
+      path.join(written!.transcriptDir, written!.filename),
+      "utf8",
+    );
+    expect(content).toBe(
+      [
+        "---",
+        "taskId: task",
+        `cwd: '${cwd}'`,
+        `updatedAt: ${new Date(now).toISOString()}`,
+        "status: 'pending-input'",
+        "title: 'Task'",
+        "---",
+        "### 1. user",
+        "",
+      ].join("\n"),
+    );
+  });
 });
 
 describe("AutoMemoryManager project info file", () => {

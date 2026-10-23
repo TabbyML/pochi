@@ -354,15 +354,6 @@ function isUserTurn(message: UIMessage): boolean {
   );
 }
 
-function serializeSessionTranscript(messages: readonly UIMessage[]): string {
-  return messages
-    .map(
-      (message, index) =>
-        `### ${index + 1}. ${message.role}\n${prompts.autoMemory.serializeMessage(message)}`,
-    )
-    .join("\n\n");
-}
-
 function isSuccessfulToolOutput(part: UIMessage["parts"][number]): boolean {
   if (!("state" in part) || part.state !== "output-available") return false;
   const output = "output" in part ? part.output : undefined;
@@ -521,18 +512,6 @@ export class AutoMemoryAdaptor {
       await this.settleCompletedTasks();
       const state = this.getState();
       const messageCount = data.messages.length;
-      const updatedAt = Date.now();
-      const transcript = serializeSessionTranscript(data.messages);
-      if (transcript) {
-        await this.options.manager.writeTaskTranscript({
-          taskId: this.options.parentTaskId,
-          cwd: parentCwd,
-          title: task.title ?? undefined,
-          updatedAt,
-          transcript,
-        });
-      }
-
       const newUserTurns = countUserTurns(
         data.messages.slice(state.lastExtractionMessageCount),
       );

@@ -708,6 +708,62 @@ describe("LiveChatKit memory lifecycle", () => {
     ]);
   });
 
+  it("writes the task transcript at each turn end but not between tool steps", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+        title: "Build shared runner",
+      }),
+    ]);
+    const manager = makeAutoMemoryManager();
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+      backgroundJobManager: makeBackgroundJobs(store),
+      projectMemory: { manager },
+    });
+
+    chatKit.chat.messages = [userMessage()];
+    chatKit.chat.finish({
+      ...assistantReadFileMessage("input-available"),
+      metadata: {
+        kind: "assistant",
+        finishReason: "tool-calls",
+        totalTokens: 100,
+      },
+    } as unknown as Message);
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(manager.writeTaskTranscript).not.toHaveBeenCalled();
+
+    chatKit.chat.finish(assistantMessage());
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1);
+    const [completed] = manager.writeTaskTranscript.mock.calls[0] as unknown as [
+      { transcript: string },
+    ];
+    expect(completed).toMatchObject({
+      taskId: "parent",
+      title: "Build shared runner",
+      status: "completed",
+    });
+    expect(completed.transcript).toContain("### 1. user");
+    expect(completed.transcript).toContain('"toolName":"attemptCompletion"');
+
+    chatKit.chat.fail(new Error("boom"));
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(2);
+    expect(manager.writeTaskTranscript.mock.calls[1]).toMatchObject([
+      { taskId: "parent", status: "failed" },
+    ]);
+  });
+
   it("settles task-memory after the background task completes", async () => {
     const store = new FakeStore([
       makeTask({

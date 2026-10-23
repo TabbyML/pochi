@@ -113,12 +113,14 @@ export class AutoMemoryManager {
     taskId,
     cwd,
     title,
+    status,
     updatedAt,
     transcript,
   }: {
     taskId: string;
     cwd?: string;
     title?: string;
+    status?: string;
     updatedAt?: number;
     transcript: string;
   }): Promise<{ transcriptDir: string; filename: string } | undefined> {
@@ -132,6 +134,7 @@ export class AutoMemoryManager {
       taskId,
       cwd,
       updatedAt: updatedAt ?? Date.now(),
+      status,
       title,
     });
     const body = transcript.endsWith("\n") ? transcript : `${transcript}\n`;
@@ -597,11 +600,13 @@ function serializeTranscriptFrontmatter({
   taskId,
   cwd,
   updatedAt,
+  status,
   title,
 }: {
   taskId: string;
   cwd: string | undefined;
   updatedAt: number;
+  status?: string;
   title?: string;
 }): string {
   const lines = [
@@ -610,6 +615,9 @@ function serializeTranscriptFrontmatter({
     `cwd: ${cwd ? quoteYamlString(cwd) : "(unknown)"}`,
     `updatedAt: ${new Date(updatedAt).toISOString()}`,
   ];
+  if (status) {
+    lines.push(`status: ${quoteYamlString(status)}`);
+  }
   if (title) {
     lines.push(`title: ${quoteYamlString(title)}`);
   }

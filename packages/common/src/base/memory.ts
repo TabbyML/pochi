@@ -88,6 +88,8 @@ export interface AutoMemoryManager {
     taskId: string;
     cwd?: string;
     title?: string;
+    /** Task status when the transcript was written, e.g. `completed`. */
+    status?: string;
     updatedAt?: number;
     transcript: string;
   }): Promise<AutoMemoryTranscriptInfo | undefined>;
