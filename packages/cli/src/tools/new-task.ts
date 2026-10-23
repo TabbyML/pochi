@@ -3,10 +3,16 @@ import os from "node:os";
 import path from "node:path";
 import {
   createBackgroundSubAgentStartedResult,
+  formatSubagentWorktreeNote,
   getLogger,
   getSubAgentBackgroundJobId,
   shouldRunSubAgentInBackground,
 } from "@getpochi/common";
+import {
+  type SubagentWorktree,
+  createSubagentWorktree,
+  finalizeSubagentWorktree,
+} from "@getpochi/common/tool-utils";
 import type { ValidCustomAgentFile } from "@getpochi/common/vscode-webui-bridge";
 import { formatFollowupQuestions } from "@getpochi/livekit";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
@@ -32,7 +38,7 @@ const SubTaskBrowserAgentMaxSteps = 65535;
  */
 export const newTask =
   (options: ToolCallOptions): ToolFunctionType<ClientTools["newTask"]> =>
-  async ({ _meta, agentType, background }, { toolCallId }) => {
+  async ({ _meta, agentType, background, isolation }, { toolCallId, cwd }) => {
     const taskId = _meta?.uid || crypto.randomUUID();
 
     if (!options.createSubTaskRunner) {
@@ -54,11 +60,19 @@ export const newTask =
       }
     }
 
+    let worktree: SubagentWorktree | undefined;
+    if (isolation === "worktree") {
+      worktree = await createSubagentWorktree(cwd, taskId);
+    }
+
     if (shouldRunSubAgentInBackground({ background, agentType })) {
       if (options.backgroundSubTask) {
         await options.backgroundSubTask({ taskId, agentType });
         return {
-          result: createBackgroundSubAgentStartedResult(taskId),
+          result: appendNote(
+            createBackgroundSubAgentStartedResult(taskId),
+            worktree && formatSubagentWorktreeNote(worktree),
+          ),
           backgroundJobId: getSubAgentBackgroundJobId(taskId),
         };
       }
@@ -161,6 +175,9 @@ export const newTask =
     const overrideOptions: CreateSubTaskRunnerOverrideOptions = {
       customAgent,
     };
+    if (worktree) {
+      overrideOptions.cwd = worktree.path;
+    }
     if (subTaskLLM) {
       overrideOptions.llm = subTaskLLM;
     }
@@ -170,10 +187,23 @@ export const newTask =
     const subTaskRunner = options.createSubTaskRunner(taskId, overrideOptions);
 
     // Execute the sub-task (synchronous), rethrow any errors
+    let worktreeNote: string | undefined;
     try {
       await subTaskRunner.run();
     } finally {
       await finalize?.();
+      if (worktree) {
+        const finalized = await finalizeSubagentWorktree(cwd, taskId).catch(
+          (error) => {
+            logger.warn("Failed to finalize the subagent worktree", error);
+            return undefined;
+          },
+        );
+        worktreeNote = formatSubagentWorktreeNote(
+          finalized?.worktree ?? worktree,
+          finalized?.removed ?? false,
+        );
+      }
     }
 
     // Get the final state and extract result
@@ -205,6 +235,13 @@ export const newTask =
     }
 
     return {
-      result: typeof result === "string" ? result : JSON.stringify(result),
+      result: appendNote(
+        typeof result === "string" ? result : JSON.stringify(result),
+        worktreeNote,
+      ),
     };
   };
+
+function appendNote(result: string, note: string | undefined) {
+  return note ? `${result}\n\n${note}` : result;
+}

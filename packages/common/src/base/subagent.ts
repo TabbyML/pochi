@@ -46,6 +46,37 @@ export function getSubAgentNotificationId(task: {
   return `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
 }
 
+/**
+ * Names a subagent task's isolated worktree: directory `subagent-<id>` on
+ * branch `subagent/<id>`.
+ */
+export function getSubagentWorktreeId(taskId: string): string {
+  const id = taskId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(0, 8)
+    .toLowerCase();
+  if (!id) throw new Error(`Invalid task id for a worktree: ${taskId}`);
+  return id;
+}
+
+/**
+ * Tells the parent where an isolated subagent works. `removed` is undefined
+ * while the subagent has not finished yet.
+ */
+export function formatSubagentWorktreeNote(
+  worktree: { path: string; branch: string },
+  removed?: boolean,
+): string {
+  if (removed === true) {
+    return "The subagent made no changes, so its isolated worktree was removed.";
+  }
+  const location = `isolated worktree at ${worktree.path} (branch ${worktree.branch})`;
+  if (removed === false) {
+    return `The subagent's changes are in the ${location}; they were not applied to the current workspace.`;
+  }
+  return `The subagent works in an ${location}, created from the latest default branch. If it makes no changes, the worktree is removed when it finishes; otherwise its changes stay there and are not applied to the current workspace.`;
+}
+
 /** Tool result returned by newTask when the subagent starts in the background. */
 export function createBackgroundSubAgentStartedResult(taskId: string): string {
   return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.

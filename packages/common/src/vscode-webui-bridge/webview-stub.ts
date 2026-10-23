@@ -81,6 +81,7 @@ const VSCodeHostStub = {
     omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
+    cwd?: string;
   }): Promise<Environment> => {
     return Promise.resolve({} as Environment);
   },
@@ -95,6 +96,7 @@ const VSCodeHostStub = {
       storeId: string;
       taskId: string;
       allowBackground?: boolean;
+      cwd?: string;
     },
   ): Promise<unknown> => {
     return Promise.resolve(undefined);
@@ -148,6 +150,15 @@ const VSCodeHostStub = {
   },
   clearFileStateCache: (_taskId: string): Promise<void> => {
     return Promise.resolve();
+  },
+  readSubagentWorktreePath: async (_taskId: string) => {
+    return undefined;
+  },
+  createSubagentWorktree: async (_taskId: string) => {
+    return { path: "", branch: "" };
+  },
+  finalizeSubagentWorktree: async (_taskId: string) => {
+    return undefined;
   },
   forkFileStateCache: (
     _sourceTaskId: string,

@@ -3,6 +3,13 @@ import path from "node:path";
 
 export type WorktreeOwner = "user" | "subagent";
 
+export interface WorktreeOwnerInfo {
+  owner: WorktreeOwner;
+  taskId?: string;
+  branch?: string;
+  baseCommit?: string;
+}
+
 // Lives in the worktree's admin directory (`.git/worktrees/<id>/`), which git
 // removes together with the worktree on `git worktree remove` / `prune`.
 const OwnerFileName = "pochi.json";
@@ -22,12 +29,12 @@ async function getWorktreeGitDir(
 }
 
 /**
- * Returns the owner recorded by Pochi, or undefined if the worktree was not
- * created by Pochi.
+ * Returns the marker recorded by Pochi, or undefined if the worktree was not
+ * created by Pochi. A corrupted marker is treated as owned by the user.
  */
-export async function readWorktreeOwner(
+export async function readWorktreeOwnerInfo(
   worktreePath: string,
-): Promise<WorktreeOwner | undefined> {
+): Promise<WorktreeOwnerInfo | undefined> {
   const gitDir = await getWorktreeGitDir(worktreePath);
   if (!gitDir) return undefined;
 
@@ -38,15 +45,30 @@ export async function readWorktreeOwner(
     return undefined;
   }
   try {
-    return JSON.parse(content)?.owner === "subagent" ? "subagent" : "user";
+    const data = JSON.parse(content);
+    if (data?.owner !== "subagent") return { owner: "user" };
+    return {
+      owner: "subagent",
+      taskId: typeof data.taskId === "string" ? data.taskId : undefined,
+      branch: typeof data.branch === "string" ? data.branch : undefined,
+      baseCommit:
+        typeof data.baseCommit === "string" ? data.baseCommit : undefined,
+    };
   } catch {
-    return "user";
+    return { owner: "user" };
   }
+}
+
+export async function readWorktreeOwner(
+  worktreePath: string,
+): Promise<WorktreeOwner | undefined> {
+  return (await readWorktreeOwnerInfo(worktreePath))?.owner;
 }
 
 export async function writeWorktreeOwner(
   worktreePath: string,
   owner: WorktreeOwner,
+  metadata?: Omit<WorktreeOwnerInfo, "owner">,
 ): Promise<void> {
   const gitDir = await getWorktreeGitDir(worktreePath);
   if (!gitDir) {
@@ -54,6 +76,11 @@ export async function writeWorktreeOwner(
   }
   await fs.writeFile(
     path.join(gitDir, OwnerFileName),
-    JSON.stringify({ createdBy: "pochi", createdAt: Date.now(), owner }),
+    JSON.stringify({
+      createdBy: "pochi",
+      createdAt: Date.now(),
+      owner,
+      ...metadata,
+    }),
   );
 }

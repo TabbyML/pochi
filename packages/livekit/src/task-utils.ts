@@ -149,12 +149,15 @@ export function getSubAgentInvocation(
 /**
  * Builds the notification for a finished background subagent task, injected
  * into the parent conversation as a `data-background-job-notification` part.
+ * `note` is appended to the result, e.g. the fate of an isolated worktree.
  */
 export function createBackgroundSubagentNotification(
   store: LiveKitStore,
   task: Pick<Task, "id" | "status" | "error" | "title">,
   parentMessages: readonly Message[],
+  note?: string,
 ): BackgroundSubagentNotification {
+  const withNote = (result: string) => (note ? `${result}\n\n${note}` : result);
   const base = {
     kind: "subagent" as const,
     notificationId: getSubAgentNotificationId(task),
@@ -170,7 +173,7 @@ export function createBackgroundSubagentNotification(
       agentType,
       title,
       status: task.error?.kind === "AbortError" ? "stopped" : "failed",
-      result: getTaskErrorMessage(task.error) ?? "Subagent failed.",
+      result: withNote(getTaskErrorMessage(task.error) ?? "Subagent failed."),
     };
   }
 
@@ -186,12 +189,13 @@ export function createBackgroundSubagentNotification(
     agentType,
     title,
     status: "completed",
-    result:
+    result: withNote(
       result === undefined
         ? "Subagent finished without an explicit result."
         : typeof result === "string"
           ? result
           : JSON.stringify(result),
+    ),
   };
 }
 

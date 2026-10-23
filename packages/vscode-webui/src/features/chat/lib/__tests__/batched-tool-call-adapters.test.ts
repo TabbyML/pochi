@@ -106,6 +106,7 @@ describe("createSubtaskBatchedToolCall", () => {
       uid: "subtask-1",
       store: {} as never,
       storeId: "store-1",
+      cwd: "/repo.worktree/subagent-1",
       abortSignal: new AbortController().signal,
       addToolOutput,
       toolCallStatusRegistry: makeToolCallStatusRegistry(),
@@ -114,6 +115,10 @@ describe("createSubtaskBatchedToolCall", () => {
     const result = await batched.run();
 
     expect(result).toEqual({ kind: "success" });
+    expect(executeToolCall.mock.calls[0][2]).toMatchObject({
+      taskId: "subtask-1",
+      cwd: "/repo.worktree/subagent-1",
+    });
     expect(processContentOutput).toHaveBeenCalledOnce();
     expect(addToolOutput).toHaveBeenCalledWith({
       tool: "readFile",

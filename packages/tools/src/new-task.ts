@@ -9,6 +9,9 @@ export type SubTask = {
   todos: Todo[];
 };
 
+export const SubagentIsolation = z.enum(["worktree"]);
+export type SubagentIsolation = z.infer<typeof SubagentIsolation>;
+
 export const CustomAgent = z.object({
   name: z.string().describe("The name of the custom agent."),
   description: z.string().describe("A brief description of the custom agent."),
@@ -27,6 +30,9 @@ export const CustomAgent = z.object({
     .describe(
       "Whether to omit workspace agent markdown such as AGENTS.md and README.pochi.md from the agent system prompt.",
     ),
+  isolation: SubagentIsolation.optional().describe(
+    'Set to "worktree" to always run the agent in an isolated git worktree.',
+  ),
   _internal: z
     .object({
       resultSchema: z
@@ -78,6 +84,9 @@ export const inputSchema = z.object({
     .describe(
       "Optional, defaults to true. Background returns a backgroundJobId immediately and delivers the result later as a system notification; false blocks until the result is available.",
     ),
+  isolation: SubagentIsolation.optional().describe(
+    'Optional. Set to "worktree" to run the agent in a temporary git worktree created from the latest default branch, so its file changes do not touch the current workspace. The worktree is removed if the agent makes no changes; otherwise its path and branch are reported back.',
+  ),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),

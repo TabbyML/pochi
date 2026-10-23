@@ -485,7 +485,10 @@
   },
   "subtask": {
     "back": "戻る",
-    "complete": "完了"
+    "complete": "完了",
+    "isolatedWorktree": "独立した worktree",
+    "worktreeBranch": "ブランチ",
+    "worktreePath": "パス"
   },
   "errorMessageView": {
     "contentFilter": "安全フィルターにより応答が停止されました。メッセージを言い換えるか、再試行してください。",

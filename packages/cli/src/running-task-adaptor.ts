@@ -12,6 +12,7 @@ import {
   acknowledgeBackgroundJobNotification,
   createBackgroundJobNotification,
   enqueueBackgroundJobNotification,
+  formatSubagentWorktreeNote,
   getLogger,
   getPendingBackgroundJobNotifications,
   snapshotPendingBackgroundJobNotifications,
@@ -25,8 +26,10 @@ import {
   FileStateCache,
   PlainOutputSanitizer,
   createBackgroundJobId,
+  finalizeSubagentWorktree,
   getBackgroundJobOutputPath,
   getShellPath,
+  getSubagentWorktreePath,
   maybePersistToolResult,
 } from "@getpochi/common/tool-utils";
 import {
@@ -41,6 +44,7 @@ import {
   type LiveKitStore,
   type RunningTaskAdaptor,
   type UITools,
+  catalog,
   processContentOutput,
 } from "@getpochi/livekit";
 import type { Skill } from "@getpochi/tools";
@@ -245,6 +249,8 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       },
       getCustomAgents: () => this.customAgents,
       getSkills: () => this.skills,
+      getSubagentWorktreePath: (taskId: string) =>
+        getSubagentWorktreePath(this.cwd, taskId),
     };
   }
 
@@ -290,7 +296,7 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
       await executeToolCall(
         tool,
         this.createToolCallOptions(args.taskId, args.allowBackground),
-        this.cwd,
+        args.cwd ?? this.cwd,
         args.abortSignal,
         (this.taskLLMs.get(args.taskId) ?? this.llm).contentType,
       ),
@@ -306,6 +312,18 @@ export class CliRunningTaskAdaptor implements RunningTaskAdaptor {
 
   onTaskError(taskId: string, error: Error) {
     logger.warn({ taskId, error }, "Task execution failed");
+  }
+
+  async onTaskFinished(taskId: string) {
+    const task = this.options.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    );
+    if (!task?.parentId || !task.cwd || task.cwd === this.cwd) return;
+    const finalized = await finalizeSubagentWorktree(this.cwd, taskId);
+    return (
+      finalized &&
+      formatSubagentWorktreeNote(finalized.worktree, finalized.removed)
+    );
   }
 
   clearFileStateCache(taskId: string) {

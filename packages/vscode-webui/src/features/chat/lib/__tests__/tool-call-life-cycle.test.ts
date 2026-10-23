@@ -8,8 +8,10 @@ import { makeJobStore } from "@getpochi/livekit/testing";
 import type { Todo } from "@getpochi/tools";
 import { ManagedToolCallLifeCycle } from "../tool-call-life-cycle";
 
+const vscodeHostMock = vi.hoisted(() => ({}) as Record<string, unknown>);
+
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: {},
+  vscodeHost: vscodeHostMock,
 }));
 
 function makeStore() {
@@ -52,6 +54,224 @@ async function makeStreamingNewTaskLifecycle(
 }
 
 describe("ManagedToolCallLifeCycle", () => {
+  it("runs an isolated foreground newTask in a worktree and reports kept changes", async () => {
+    const worktree = { path: "/repo.worktree/subagent-1", branch: "subagent/1" };
+    vscodeHostMock.createSubagentWorktree = vi.fn(async () => worktree);
+    vscodeHostMock.finalizeSubagentWorktree = vi.fn(async () => ({
+      ...worktree,
+      removed: false,
+    }));
+    const { store, completeSubtask } = makeCompletingStore({
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        { type: "step-start" },
+        {
+          type: "tool-attemptCompletion",
+          toolCallId: "attempt-tool-1",
+          state: "output-available",
+          input: { result: "Fixed." },
+        },
+      ],
+    } as Message);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "newTask", toolCallId: "tool-call-1" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute({
+      background: false,
+      isolation: "worktree",
+      _meta: { uid: "subtask-1" },
+    });
+    await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
+    expect(vscodeHostMock.createSubagentWorktree).toHaveBeenCalledWith(
+      "subtask-1",
+    );
+
+
+
+    completeSubtask();
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.finalizeSubagentWorktree).toHaveBeenCalledWith(
+      "subtask-1",
+    );
+    const { result } = lifecycle.complete.result as { result: string };
+    expect(result).toMatch(/^Fixed\./);
+    expect(result).toContain(
+      `isolated worktree at ${worktree.path} (branch ${worktree.branch})`,
+    );
+  });
+
+  it.each([
+    { background: false, source: "lifecycle" },
+    { background: false, source: "parent" },
+    { background: true, source: "lifecycle" },
+    { background: true, source: "parent" },
+  ])(
+    "cleans up cancellation during worktree creation ($source, background: $background)",
+    async ({ background, source }) => {
+      const worktree = {
+        path: "/repo.worktree/subagent-1",
+        branch: "subagent/1",
+      };
+      let finishCreate!: (value: typeof worktree) => void;
+      vscodeHostMock.createSubagentWorktree = vi.fn(
+        () =>
+          new Promise<typeof worktree>((resolve) => {
+            finishCreate = resolve;
+          }),
+      );
+      const finalize = vi.fn(async () => ({ ...worktree, removed: true }));
+      vscodeHostMock.finalizeSubagentWorktree = finalize;
+      const outer = new AbortController();
+      const lifecycle = new ManagedToolCallLifeCycle(
+        makeStore() as never,
+        { toolName: "newTask", toolCallId: "cancel-create" },
+        outer.signal,
+      );
+
+      lifecycle.execute({
+        background,
+        isolation: "worktree",
+        _meta: { uid: "subtask-1" },
+      });
+      if (source === "lifecycle") lifecycle.abort("user-abort");
+      else outer.abort("user-abort");
+      expect(finalize).not.toHaveBeenCalled();
+      finishCreate(worktree);
+
+      await vi.waitFor(() => {
+        expect(finalize).toHaveBeenCalledExactlyOnceWith("subtask-1");
+        expect(lifecycle.status).toBe("complete");
+      });
+      expect(lifecycle.complete.reason).toBe("user-abort");
+    },
+  );
+
+  it.each(["lifecycle", "parent"])(
+    "cleans up cancellation after foreground preparation (%s)",
+    async (source) => {
+      const worktree = {
+        path: "/repo.worktree/subagent-1",
+        branch: "subagent/1",
+      };
+      let finishCreate!: (value: typeof worktree) => void;
+      const creation = new Promise<typeof worktree>((resolve) => {
+        finishCreate = resolve;
+      });
+      vscodeHostMock.createSubagentWorktree = vi.fn(() => creation);
+      const finalize = vi.fn(async () => ({ ...worktree, removed: true }));
+      vscodeHostMock.finalizeSubagentWorktree = finalize;
+      const outer = new AbortController();
+      const lifecycle = new ManagedToolCallLifeCycle(
+        makeStore() as never,
+        { toolName: "newTask", toolCallId: "cancel-prepared" },
+        outer.signal,
+      );
+      lifecycle.execute({
+        background: false,
+        isolation: "worktree",
+        _meta: { uid: "subtask-1" },
+      });
+      finishCreate(worktree);
+      // Let runNewTask return before cancelling, but don't start streaming yet.
+      await creation;
+      if (source === "lifecycle") lifecycle.abort("user-abort");
+      else outer.abort("user-abort");
+
+      await vi.waitFor(() => {
+        expect(finalize).toHaveBeenCalledExactlyOnceWith("subtask-1");
+        expect(lifecycle.status).toBe("complete");
+      });
+      expect(lifecycle.complete.reason).toBe("user-abort");
+    },
+  );
+
+  it("cleans up the worktree when background handoff fails", async () => {
+    const worktree = { path: "/repo.worktree/subagent-1", branch: "subagent/1" };
+    vscodeHostMock.createSubagentWorktree = vi.fn(async () => worktree);
+    const finalize = vi.fn(async () => ({ ...worktree, removed: true }));
+    vscodeHostMock.finalizeSubagentWorktree = finalize;
+    const { store } = makeJobStore();
+    const manager = BackgroundJobManager.forStore(store);
+    const handoff = vi
+      .spyOn(manager, "backgroundSubTask")
+      .mockRejectedValueOnce(new Error("handoff failed"));
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store,
+      { toolName: "newTask", toolCallId: "failed-handoff" },
+      new AbortController().signal,
+    );
+    try {
+      lifecycle.execute({ isolation: "worktree", _meta: { uid: "subtask-1" } });
+      await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+      expect(finalize).toHaveBeenCalledExactlyOnceWith("subtask-1");
+      expect(lifecycle.complete.result).toEqual({
+        error: "Failed to execute tool: handoff failed",
+      });
+    } finally {
+      handoff.mockRestore();
+      await manager.dispose();
+    }
+  });
+
+  it("leaves a successfully handed-off worktree to the background executor", async () => {
+    const worktree = { path: "/repo.worktree/subagent-1", branch: "subagent/1" };
+    vscodeHostMock.createSubagentWorktree = vi.fn(async () => worktree);
+    const finalize = vi.fn();
+    vscodeHostMock.finalizeSubagentWorktree = finalize;
+    const { store } = makeJobStore();
+    const manager = BackgroundJobManager.forStore(store);
+    let finishHandoff!: () => void;
+    const handedOff = new Promise<void>((resolve) => {
+      finishHandoff = resolve;
+    });
+    const handoff = vi
+      .spyOn(manager, "backgroundSubTask")
+      .mockReturnValueOnce(handedOff);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store,
+      { toolName: "newTask", toolCallId: "successful-handoff" },
+      new AbortController().signal,
+    );
+    try {
+      lifecycle.execute({ isolation: "worktree", _meta: { uid: "subtask-1" } });
+      await vi.waitFor(() => expect(handoff).toHaveBeenCalledOnce());
+      finishHandoff();
+      await handedOff;
+      lifecycle.abort("user-abort");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(lifecycle.complete.reason).toBe("user-abort");
+      expect(finalize).not.toHaveBeenCalled();
+    } finally {
+      handoff.mockRestore();
+      await manager.dispose();
+    }
+  });
+
+  it("reports worktree creation failures without trying to finalize a missing worktree", async () => {
+    vscodeHostMock.createSubagentWorktree = vi
+      .fn()
+      .mockRejectedValue(new Error("checkout failed"));
+    const finalize = vi.fn();
+    vscodeHostMock.finalizeSubagentWorktree = finalize;
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeStore() as never,
+      { toolName: "newTask", toolCallId: "failed-create" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute({ isolation: "worktree", _meta: { uid: "subtask-1" } });
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(finalize).not.toHaveBeenCalled();
+    expect(lifecycle.complete.result).toEqual({
+      error: "Failed to execute tool: checkout failed",
+    });
+  });
+
   it("resolves attemptTodoCompletion newTask results with full todos", async () => {
     const todo: Todo = {
       id: "todo-1",

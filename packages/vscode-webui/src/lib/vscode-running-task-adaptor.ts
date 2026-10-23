@@ -1,6 +1,10 @@
 import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
-import { type AutoMemoryContext, getLogger } from "@getpochi/common";
+import {
+  type AutoMemoryContext,
+  formatSubagentWorktreeNote,
+  getLogger,
+} from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import {
   type CustomAgentFile,
@@ -129,6 +133,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         vscodeHost.readEnvironment({
           webviewKind: globalThis.POCHI_WEBVIEW_KIND,
           taskId: context.taskId,
+          cwd: context.cwd,
           omitCustomRules: context.omitCustomRules,
         }),
       getAutoMemory: () => this.getAutoMemory(),
@@ -138,6 +143,8 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       }),
       getCustomAgents: () => this.customAgents.filter(isValidCustomAgentFile),
       getSkills: () => this.skills.filter(isValidSkillFile),
+      getSubagentWorktreePath: (taskId: string) =>
+        vscodeHost.readSubagentWorktreePath(taskId),
     };
   }
 
@@ -201,6 +208,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
       storeId: args.storeId,
       taskId: args.taskId,
       allowBackground: args.allowBackground,
+      cwd: args.cwd,
     });
 
     if (
@@ -220,6 +228,13 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
 
   onTaskError(taskId: string, error: Error) {
     logger.warn({ taskId, error }, "Task execution failed");
+  }
+
+  async onTaskFinished(taskId: string) {
+    const finalized = await vscodeHost.finalizeSubagentWorktree(taskId);
+    return (
+      finalized && formatSubagentWorktreeNote(finalized, finalized.removed)
+    );
   }
 
   private async init() {

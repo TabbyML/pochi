@@ -33,6 +33,7 @@ import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
 import { TodoDetail } from "./todo-detail";
+import { SubagentWorktreeBadge } from "./worktree-badge";
 
 const SubtaskPreviewThrottleMs = 300;
 
@@ -222,6 +223,9 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
           <span className="break-words align-top">{description}</span>
         )}
       </div>
+      {uid && tool.input?.isolation === "worktree" && (
+        <SubagentWorktreeBadge taskId={uid} />
+      )}
       {onMoveToBackground && (
         <Tooltip>
           <TooltipTrigger asChild>

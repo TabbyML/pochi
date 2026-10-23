@@ -61,6 +61,7 @@ interface TaskExecutorToolCallExecution {
   abortSignal: AbortSignal;
   allowBackground?: boolean;
   toolPolicies: CompiledToolPolicies | undefined;
+  cwd?: string;
 }
 
 export interface RunningTaskAdaptor {
@@ -83,6 +84,12 @@ export interface RunningTaskAdaptor {
   }): Promise<RequestData["llm"] | undefined>;
   executeToolCall(args: TaskExecutorToolCallExecution): Promise<unknown>;
   onTaskError?(taskId: string, error: Error): MaybePromise<void>;
+  /**
+   * Runs once a task completes or fails, before its result is delivered. It
+   * may return a note to append to that result, e.g. the fate of the task's
+   * isolated worktree.
+   */
+  onTaskFinished?(taskId: string): MaybePromise<string | undefined>;
 }
 
 type TaskToolOutput = {
@@ -138,7 +145,10 @@ type CreateRunningTaskChatKit = (options: {
 }) => MaybePromise<RunningTaskChatKit>;
 
 export class TaskExecutor {
-  private readonly runningTasks = new Map<string, RunningTask>();
+  private readonly runningTasks = new Map<
+    string,
+    { task: RunningTask; done: Promise<void> }
+  >();
   private readonly taskDoneWaiters = new Map<string, Set<() => void>>();
   private unsubscribe: (() => void) | undefined;
   private started = false;
@@ -222,7 +232,7 @@ export class TaskExecutor {
     }
     const runningTask = this.runningTasks.get(taskId);
     if (runningTask) {
-      await runningTask.dispose();
+      await runningTask.task.dispose();
       await runningTask.done.catch(() => undefined);
     }
   }
@@ -277,7 +287,7 @@ export class TaskExecutor {
         catalog.queries.makeTaskQuery(taskId),
       );
       if (task?.status === "failed" && task.error?.kind === "AbortError") {
-        void runningTask
+        void runningTask.task
           .dispose()
           .catch((error) =>
             logger.warn({ taskId, error }, "Failed to stop cancelled task"),
@@ -296,31 +306,49 @@ export class TaskExecutor {
 
   private startRunningTask(taskId: string) {
     if (this.disposed) return;
-    const runningTask = new RunningTask({
+    const task = new RunningTask({
       ...this.options,
       taskId,
     });
+    // Keep the task active until its asynchronous finalization has finished.
+    // drain() must not poll the already-resolved execution promise meanwhile.
+    const runningTask = {
+      task,
+      done: task.done
+        .catch(async (error) => {
+          const normalizedError = toError(error);
+          logger.warn(
+            { taskId, error: normalizedError },
+            "Task execution failed",
+          );
+          await this.options.adaptor.onTaskError?.(taskId, normalizedError);
+        })
+        .then(() => this.finishTask(taskId))
+        .finally(() => {
+          if (this.runningTasks.get(taskId) === runningTask) {
+            this.runningTasks.delete(taskId);
+          }
+          if (!this.disposed) this.options.onTaskSettled?.(taskId);
+          this.resolveTaskDoneWaiters(taskId);
+          if (!this.disposed && this.started) {
+            this.reconcileRunnableTasks();
+          }
+        }),
+    };
     this.runningTasks.set(taskId, runningTask);
+  }
 
-    runningTask.done
-      .catch(async (error) => {
-        const normalizedError = toError(error);
-        logger.warn(
-          { taskId, error: normalizedError },
-          "Task execution failed",
-        );
-        await this.options.adaptor.onTaskError?.(taskId, normalizedError);
-      })
-      .finally(() => {
-        if (this.runningTasks.get(taskId) === runningTask) {
-          this.runningTasks.delete(taskId);
-        }
-        if (!this.disposed) this.options.onTaskSettled?.(taskId);
-        this.resolveTaskDoneWaiters(taskId);
-        if (!this.disposed && this.started) {
-          this.reconcileRunnableTasks();
-        }
-      });
+  private async finishTask(taskId: string) {
+    if (this.disposed || !this.options.adaptor.onTaskFinished) return;
+    const status = this.options.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    )?.status;
+    if (status !== "completed" && status !== "failed") return;
+    try {
+      await this.options.adaptor.onTaskFinished(taskId);
+    } catch (error) {
+      logger.warn({ taskId, error }, "Failed to finish task");
+    }
   }
 
   private resolveTaskDoneWaiters(taskId: string) {
@@ -675,6 +703,7 @@ class RunningTask {
         abortSignal: this.abortController.signal,
         allowBackground: !isForkAgentUseCase(this.taskState.useCase),
         toolPolicies,
+        cwd: normalizeCwd(this.task?.cwd),
       });
 
       await this.addToolOutput({

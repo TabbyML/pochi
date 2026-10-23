@@ -50,6 +50,8 @@ type CreateExecutorToolCallAdapterOptions = {
   uid: string;
   store: LiveKitStore;
   storeId: string;
+  /** The sub-task's own cwd, e.g. its isolated worktree. */
+  cwd?: string;
   abortSignal: AbortSignal;
   contentType?: string[];
   builtinSubAgentInfo?: BuiltinSubAgentInfo;
@@ -140,6 +142,7 @@ export function createSubtaskBatchedToolCall({
   uid,
   store,
   storeId,
+  cwd,
   abortSignal,
   contentType,
   builtinSubAgentInfo,
@@ -172,6 +175,7 @@ export function createSubtaskBatchedToolCall({
             toolPolicies,
             storeId,
             taskId: uid,
+            cwd,
           });
         const result =
           toolCall.toolName === "killBackgroundJob"

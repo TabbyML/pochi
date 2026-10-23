@@ -1,4 +1,9 @@
-import { APICallError } from "ai";
+import {
+  APICallError,
+  InvalidToolInputError,
+  JSONParseError,
+  TypeValidationError,
+} from "ai";
 import { describe, expect, it } from "vitest";
 import { toTaskError } from "./task";
 
@@ -65,6 +70,28 @@ describe("toTaskError", () => {
     });
 
     expect(JSON.stringify(toTaskError(error)).length).toBeLessThan(900_000);
+  });
+
+  it("explains why a tool input was rejected, but not schema errors", () => {
+    const rejected = (cause: unknown) =>
+      toTaskError(
+        new InvalidToolInputError({
+          toolName: "newTask",
+          toolInput: "{}",
+          cause,
+        }),
+      ).message;
+    expect(
+      rejected(new Error("Worktree isolation requires a git repository.")),
+    ).toBe(
+      'Invalid arguments provided to tool "newTask": Worktree isolation requires a git repository.',
+    );
+    expect(
+      rejected(new TypeValidationError({ value: {}, cause: "bad" })),
+    ).toBe('Invalid arguments provided to tool "newTask". Please try again.');
+    expect(rejected(new JSONParseError({ text: "{", cause: "bad" }))).toBe(
+      'Invalid arguments provided to tool "newTask". Please try again.',
+    );
   });
 
   it("maps non-api errors to internal errors", () => {

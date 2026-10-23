@@ -95,10 +95,12 @@ export interface VSCodeHostApi {
   readEnvironment(options: {
     omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
-    /**
-     * The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-     */
     taskId?: string;
+    /**
+     * The task's own cwd (`task.cwd` in the store), e.g. the isolated worktree
+     * of a subagent. Defaults to the workspace cwd.
+     */
+    cwd?: string;
   }): Promise<Environment>;
 
   /**
@@ -122,6 +124,11 @@ export interface VSCodeHostApi {
       storeId: string;
       taskId: string;
       allowBackground?: boolean;
+      /**
+       * The task's own cwd (`task.cwd` in the store), e.g. the isolated
+       * worktree of a subagent. Defaults to the workspace cwd.
+       */
+      cwd?: string;
     },
   ): Promise<unknown>;
 
@@ -186,6 +193,25 @@ export interface VSCodeHostApi {
    * from being returned for content that was compacted away.
    */
   clearFileStateCache(taskId: string): Promise<void>;
+
+  /**
+   * The cwd a subagent task runs in under worktree isolation, known before
+   * the worktree is created. Undefined outside a git repository.
+   */
+  readSubagentWorktreePath(taskId: string): Promise<string | undefined>;
+
+  /** Create the isolated worktree a subagent task runs in. */
+  createSubagentWorktree(
+    taskId: string,
+  ): Promise<{ path: string; branch: string }>;
+
+  /**
+   * Remove a subagent task's worktree if it holds no changes. Returns
+   * undefined when the task has no isolated worktree.
+   */
+  finalizeSubagentWorktree(
+    taskId: string,
+  ): Promise<{ path: string; branch: string; removed: boolean } | undefined>;
 
   /**
    * Copy a parent task's file state cache to a fork task. Only forks inherit

@@ -35,9 +35,11 @@ export {
 } from "./background-job-notification-queue";
 export {
   createBackgroundSubAgentStartedResult,
+  formatSubagentWorktreeNote,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  getSubagentWorktreeId,
   isBackgroundSubAgentRequested,
   shouldRunSubAgentInBackground,
 } from "./subagent";

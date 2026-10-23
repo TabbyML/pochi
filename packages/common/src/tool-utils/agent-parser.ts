@@ -12,6 +12,7 @@ const CustomAgentFrontmatter = z.object({
   model: z.string().optional(),
   tools: z.union([z.string(), z.array(z.string())]).optional(),
   omitAgentsMd: z.boolean().optional(),
+  isolation: z.enum(["worktree"]).optional(),
   _internal: z
     .object({
       resultSchema: z.string().optional(),
@@ -97,6 +98,7 @@ export async function parseAgentFile(
     systemPrompt,
     model: frontmatterData.model,
     omitAgentsMd: frontmatterData.omitAgentsMd,
+    isolation: frontmatterData.isolation,
     _internal: frontmatterData._internal,
   } satisfies ValidCustomAgentFile;
 }

@@ -83,6 +83,9 @@ import { McpHub } from "@getpochi/common/mcp-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
   GitStatusReader,
+  createSubagentWorktree as createSubagentWorktreeImpl,
+  finalizeSubagentWorktree as finalizeSubagentWorktreeImpl,
+  getSubagentWorktreePath,
   ignoreWalk,
   maybePersistToolResult,
   persistPastedTextFiles as writePastedTextFiles,
@@ -227,6 +230,29 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.workspaceScope.cwd;
   }
 
+  readSubagentWorktreePath = async (taskId: string) => {
+    return this.cwd ? getSubagentWorktreePath(this.cwd, taskId) : undefined;
+  };
+
+  createSubagentWorktree = async (taskId: string) => {
+    if (!this.cwd) {
+      throw new Error("No workspace folder found.");
+    }
+    const worktree = await createSubagentWorktreeImpl(this.cwd, taskId);
+    return { path: worktree.path, branch: worktree.branch };
+  };
+
+  finalizeSubagentWorktree = async (taskId: string) => {
+    if (!this.cwd) return undefined;
+    const result = await finalizeSubagentWorktreeImpl(this.cwd, taskId);
+    if (!result) return undefined;
+    return {
+      path: result.worktree.path,
+      branch: result.worktree.branch,
+      removed: result.removed,
+    };
+  };
+
   listRuleFiles = async (): Promise<RuleFile[]> => {
     return this.cwd ? await collectRuleFiles(this.cwd) : [];
   };
@@ -370,26 +396,25 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.browserSessionStore.unregisterBrowserSession(taskId);
   };
 
-  /**
-   * @param options.taskId - The passed in taskId parameter is always the top level parameter in the task, (e.g even for a tool call from a subtask, it's still invoked with its parent task's call)
-   */
   readEnvironment = async (options: {
     omitCustomRules?: boolean;
     webviewKind: "sidebar" | "pane";
     taskId?: string;
+    cwd?: string;
   }): Promise<Environment> => {
     const webviewKind = options.webviewKind;
+    const cwd = options.cwd || this.cwd;
     const customRules =
-      this.cwd && !options.omitCustomRules
-        ? await collectCustomRules(this.cwd)
+      cwd && !options.omitCustomRules
+        ? await collectCustomRules(cwd)
         : undefined;
 
-    const systemInfo = getSystemInfo(this.cwd);
+    const systemInfo = getSystemInfo(cwd);
 
     let gitStatus: GitStatus | undefined;
-    if (this.cwd) {
+    if (cwd) {
       const gitStatusReader = new GitStatusReader({
-        cwd: this.cwd,
+        cwd,
         webviewKind,
       });
       gitStatus = await gitStatusReader.readGitStatus();
@@ -615,6 +640,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       storeId: string;
       taskId: string;
       allowBackground?: boolean;
+      cwd?: string;
     },
   ) => {
     let tool: ToolFunctionType<Tool> | undefined;
@@ -632,7 +658,8 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       };
     }
 
-    if (!this.cwd) {
+    const cwd = options.cwd || this.cwd;
+    if (!cwd) {
       return {
         error: "No workspace folder found.",
       };
@@ -660,7 +687,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const toolCallStart = Date.now();
     try {
       validateToolPolicy(toolName, args, options.toolPolicies, {
-        cwd: this.cwd,
+        cwd,
         homeDir: os.homedir(),
       });
       envs = await this.resolveToolCallEnvs(
@@ -687,7 +714,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         abortSignal,
         messages: [],
         toolCallId: options.toolCallId,
-        cwd: this.cwd,
+        cwd,
         contentType: options.contentType,
         envs,
         taskId,

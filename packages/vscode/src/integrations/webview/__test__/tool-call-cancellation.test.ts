@@ -30,16 +30,19 @@ describe("tool-call cancellation", () => {
       workspaceScope: { cwd: "/workspace" },
       taskActivityTracker: { getTaskAbortSignal: () => task.signal },
       mcpHub: { executeFns: { value: { testTool: tool } } },
+      fileStateCacheRegistry: { get: () => undefined },
+      capture: () => {},
     });
     const prepare = sinon.stub(host, "resolveToolCallEnvs").resolves(undefined);
-    const execute = () =>
+    const execute = (taskId = "parent", cwd?: string) =>
       host.executeToolCall(
         "testTool",
         {},
         {
           toolCallId: "call1",
           storeId: "test-store",
-          taskId: "parent",
+          taskId,
+          cwd,
           abortSignal: {
             aborted: caller.signal.aborted,
             start: (listener) => {
@@ -50,8 +53,21 @@ describe("tool-call cancellation", () => {
           },
         },
       );
-    return { caller, task, tool, prepare, execute };
+    return { host, caller, task, tool, prepare, execute };
   }
+
+  it("runs a task's tools in the task's own cwd", async () => {
+    const h = createHarness();
+
+    await h.execute("subagent", "/workspace.worktree/subagent-1");
+    await h.execute("parent");
+
+    assert.strictEqual(
+      h.tool.firstCall.args[1].cwd,
+      "/workspace.worktree/subagent-1",
+    );
+    assert.strictEqual(h.tool.secondCall.args[1].cwd, "/workspace");
+  });
 
   for (const source of ["caller", "task"] as const) {
     it(`skips resource preparation when ${source} has already aborted`, async () => {

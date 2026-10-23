@@ -3,6 +3,7 @@ import { vscodeHost } from "@/lib/vscode";
 import {
   constants,
   createBackgroundSubAgentStartedResult,
+  formatSubagentWorktreeNote,
   getLogger,
   getSubAgentBackgroundJobId,
   shouldRunSubAgentInBackground,
@@ -48,6 +49,7 @@ type NewTaskReturnType = {
   /** The subtask was converted to a background subagent task. */
   background?: boolean;
 };
+type SubagentWorktree = { path: string; branch: string };
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
 export type StreamingResult =
@@ -268,9 +270,7 @@ export class ManagedToolCallLifeCycle
       }))
       .then((result) => processContentOutput(blobStore, result, abortSignal))
 
-      .then((result) => {
-        this.onExecuteDone(result);
-      });
+      .then((result) => this.onExecuteDone(result));
 
     this.transitTo("init", {
       type: "execute",
@@ -300,27 +300,39 @@ export class ManagedToolCallLifeCycle
       throw new Error("Missing uid in newTask arguments");
     }
 
-    if (shouldRunSubAgentInBackground(args)) {
-      await BackgroundJobManager.forStore(this.store).backgroundSubTask(
-        {
-          taskId: uid,
-          parentTaskId: options.taskId ?? "",
+    try {
+      if (args.isolation === "worktree") {
+        this.subagentWorktree = await vscodeHost.createSubagentWorktree(uid);
+        options.abortSignal.throwIfAborted();
+      }
+
+      if (shouldRunSubAgentInBackground(args)) {
+        await BackgroundJobManager.forStore(this.store).backgroundSubTask(
+          {
+            taskId: uid,
+            parentTaskId: options.taskId ?? "",
+            agentType: args.agentType,
+          },
+          options.abortSignal,
+        );
+        return {
+          result: uid,
           agentType: args.agentType,
-        },
-        options.abortSignal,
-      );
+          background: true,
+        };
+      }
+
       return {
         result: uid,
         agentType: args.agentType,
-        background: true,
+        todos: args._meta?.todos,
       };
+    } catch (error) {
+      // Neither the foreground listener nor the background executor owns the
+      // worktree yet, so failed or cancelled preparation must clean it up.
+      await this.finalizeSubagentWorktree(uid);
+      throw error;
     }
-
-    return {
-      result: uid,
-      agentType: args.agentType,
-      todos: args._meta?.todos,
-    };
   }
 
   addResult(result: unknown): void {
@@ -343,6 +355,22 @@ export class ManagedToolCallLifeCycle
   }
 
   private backgroundHandoff: Promise<void> | undefined;
+
+  private subagentWorktree: SubagentWorktree | undefined;
+
+  private withWorktreeNote(result: unknown, removed?: boolean): unknown {
+    if (!this.subagentWorktree) return result;
+    const text = typeof result === "string" ? result : JSON.stringify(result);
+    return `${text}\n\n${formatSubagentWorktreeNote(this.subagentWorktree, removed)}`;
+  }
+
+  private finalizeSubagentWorktree(taskId: string) {
+    if (!this.subagentWorktree) return Promise.resolve(undefined);
+    return vscodeHost.finalizeSubagentWorktree(taskId).catch((error) => {
+      logger.warn("Failed to finalize the subagent worktree", error);
+      return undefined;
+    });
+  }
 
   moveToBackground(
     taskId: string,
@@ -374,7 +402,9 @@ export class ManagedToolCallLifeCycle
         streaming.abortSignal,
       );
       this.detach({
-        result: createBackgroundSubAgentStartedResult(uid),
+        result: this.withWorktreeNote(
+          createBackgroundSubAgentStartedResult(uid),
+        ),
         backgroundJobId: getSubAgentBackgroundJobId(uid),
       });
     };
@@ -411,7 +441,25 @@ export class ManagedToolCallLifeCycle
     });
   }
 
-  private onExecuteDone(result: ExecuteReturnType) {
+  private async onExecuteDone(result: ExecuteReturnType) {
+    // Cancellation may have settled the lifecycle while host preparation
+    // was still running. Its late result must not transition it again.
+    if (this.state.type !== "execute" || this.state.abortSignal.aborted) {
+      if (this.toolName === "newTask") {
+        const prepared = result as NewTaskReturnType;
+        // Background worktrees belong to the executor after handoff. A
+        // foreground result still needs its streaming listener to take over.
+        if (prepared.result && !prepared.background) {
+          await this.finalizeSubagentWorktree(prepared.result);
+        }
+      }
+      if (this.state.type === "execute") {
+        this.settleAbort("user-abort", {
+          error: this.state.abortSignal.reason,
+        });
+      }
+      return;
+    }
     const { abortSignal } = this.checkState("onExecuteDone", "execute");
     if (
       this.toolName === "executeCommand" &&
@@ -420,7 +468,10 @@ export class ManagedToolCallLifeCycle
       "streamingOutput" in result
     ) {
       this.onExecuteCommand(result as ExecuteCommandReturnType);
-    } else if (this.toolName === "newTask") {
+    } else if (
+      this.toolName === "newTask" &&
+      !(typeof result === "object" && result !== null && "error" in result)
+    ) {
       this.onExecuteNewTask(result as NewTaskReturnType);
     } else {
       this.transitTo("execute", {
@@ -495,7 +546,9 @@ export class ManagedToolCallLifeCycle
       this.transitTo("execute", {
         type: "complete",
         result: {
-          result: createBackgroundSubAgentStartedResult(uid),
+          result: this.withWorktreeNote(
+            createBackgroundSubAgentStartedResult(uid),
+          ),
           backgroundJobId: getSubAgentBackgroundJobId(uid),
         },
         reason: "execute-finish",
@@ -528,6 +581,7 @@ export class ManagedToolCallLifeCycle
             reason: "execute-finish",
           });
           cleanup();
+          void this.finalizeSubagentWorktree(uid);
         },
       },
       abort,
@@ -539,6 +593,9 @@ export class ManagedToolCallLifeCycle
         error: abortSignal.reason,
       });
       cleanup();
+      if (abortSignal.reason !== "detached") {
+        void this.finalizeSubagentWorktree(uid);
+      }
     };
     if (abortSignal.aborted) {
       onAbort();
@@ -579,6 +636,23 @@ export class ManagedToolCallLifeCycle
         }
 
         const rawResult = extractTaskResult(this.store, uid);
+        if (this.subagentWorktree) {
+          cleanup();
+          void this.finalizeSubagentWorktree(uid).then((finalized) => {
+            if (this.state.type !== "execute:streaming") return;
+            this.transitTo("execute:streaming", {
+              type: "complete",
+              result: {
+                result: this.withWorktreeNote(
+                  rawResult,
+                  finalized?.removed ?? false,
+                ),
+              },
+              reason: "execute-finish",
+            });
+          });
+          return;
+        }
         const result = {
           result: rawResult,
         };

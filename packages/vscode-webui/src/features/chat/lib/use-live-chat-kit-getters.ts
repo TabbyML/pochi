@@ -25,6 +25,7 @@ export function useLiveChatKitGetters({
   modelOverride,
   mcpConfigOverride,
   taskId,
+  cwd,
 }: {
   todos: React.RefObject<Todo[] | undefined>;
   todoModeActive?: React.RefObject<boolean>;
@@ -34,6 +35,8 @@ export function useLiveChatKitGetters({
   /** Per-task MCP tool configuration. If provided, filters the global toolset. */
   mcpConfigOverride?: McpConfigOverride | null;
   taskId?: string | null;
+  /** The task's own cwd, e.g. a subagent's isolated worktree. */
+  cwd?: string | null;
 }) {
   const { toolset, instructions, connections } = useMcp();
   const mcpInfo = useLatest({
@@ -58,6 +61,7 @@ export function useLiveChatKitGetters({
       omitCustomRules,
       webviewKind: globalThis.POCHI_WEBVIEW_KIND,
       taskId: taskId || undefined,
+      cwd: cwd || undefined,
     });
 
     const currentTodos = todos.current;
@@ -69,7 +73,7 @@ export function useLiveChatKitGetters({
       ...environment,
       todos: currentTodos,
     };
-  }, [todos, omitCustomRules, taskId]);
+  }, [todos, omitCustomRules, taskId, cwd]);
 
   // Read the current enable state so disabling the checkbox takes effect for
   // the current task (not just on the next mount).
@@ -138,6 +142,11 @@ export function useLiveChatKitGetters({
 
     // biome-ignore lint/correctness/useExhaustiveDependencies(skillsRef.current): skillsRef is ref.
     getSkills: useCallback(() => skillsRef.current, []),
+
+    getSubagentWorktreePath: useCallback(
+      (taskId: string) => vscodeHost.readSubagentWorktreePath(taskId),
+      [],
+    ),
   };
 }
 
