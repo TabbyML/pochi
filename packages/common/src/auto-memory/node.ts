@@ -13,6 +13,7 @@ import {
   type AutoMemoryManifestEntry,
   AutoMemoryProjectInfoName,
   type AutoMemoryReadContextOptions,
+  type AutoMemoryTranscriptEntry,
   AutoMemoryTypeValues,
   getLogger,
   renderAutoMemoryIndex,
@@ -112,12 +113,14 @@ export class AutoMemoryManager {
     taskId,
     cwd,
     title,
+    status,
     updatedAt,
     transcript,
   }: {
     taskId: string;
     cwd?: string;
     title?: string;
+    status?: string;
     updatedAt?: number;
     transcript: string;
   }): Promise<{ transcriptDir: string; filename: string } | undefined> {
@@ -131,6 +134,7 @@ export class AutoMemoryManager {
       taskId,
       cwd,
       updatedAt: updatedAt ?? Date.now(),
+      status,
       title,
     });
     const body = transcript.endsWith("\n") ? transcript : `${transcript}\n`;
@@ -141,6 +145,40 @@ export class AutoMemoryManager {
       return undefined;
     }
     return { transcriptDir: context.transcriptDir, filename };
+  }
+
+  /**
+   * Lists the task transcripts of the repo containing `cwd`, newest first.
+   * Never creates directories; a missing transcript directory yields `[]`.
+   */
+  async listTranscripts({
+    cwd,
+    excludeTaskId,
+  }: {
+    cwd?: string;
+    excludeTaskId?: string;
+  }): Promise<AutoMemoryTranscriptEntry[]> {
+    const context = await this.readContext(cwd, { ensure: false });
+    if (!context) return [];
+
+    let candidates: AutoMemoryDreamCandidate[];
+    try {
+      candidates = await collectDreamCandidates(context.transcriptDir);
+    } catch {
+      return [];
+    }
+    return candidates
+      .filter((candidate) => candidate.taskId !== excludeTaskId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map((candidate) => ({
+        taskId: candidate.taskId,
+        title: candidate.title,
+        updatedAt: candidate.updatedAt,
+        filePath: path.join(
+          context.transcriptDir,
+          candidate.transcriptFilename,
+        ),
+      }));
   }
 
   async beginDreamRun({
@@ -562,11 +600,13 @@ function serializeTranscriptFrontmatter({
   taskId,
   cwd,
   updatedAt,
+  status,
   title,
 }: {
   taskId: string;
   cwd: string | undefined;
   updatedAt: number;
+  status?: string;
   title?: string;
 }): string {
   const lines = [
@@ -575,6 +615,9 @@ function serializeTranscriptFrontmatter({
     `cwd: ${cwd ? quoteYamlString(cwd) : "(unknown)"}`,
     `updatedAt: ${new Date(updatedAt).toISOString()}`,
   ];
+  if (status) {
+    lines.push(`status: ${quoteYamlString(status)}`);
+  }
   if (title) {
     lines.push(`title: ${quoteYamlString(title)}`);
   }

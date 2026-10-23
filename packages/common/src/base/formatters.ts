@@ -15,6 +15,7 @@ import { stripOpenAIItemReferencesFromLastStep } from "../message-utils/openai-i
 import { AttemptTodoCompletionAgentName, KnownTags } from "./constants";
 import type { MessageMetadata } from "./message";
 import { prompts } from "./prompts";
+import { type TaskReference, parseTaskReferences } from "./task-reference";
 
 function resolvePendingToolCalls(
   messages: UIMessage[],
@@ -755,6 +756,40 @@ function removePastedTextPartsForLLM(messages: UIMessage[]): UIMessage[] {
   });
 }
 
+/**
+ * Collects the `<task-reference>` tags in a user message and explains them to
+ * the model. The tags themselves are stripped later by `stripKnownXMLTags`,
+ * leaving the transcript path inline (like `<file>`); the reminder maps each
+ * path to the title of the task it belongs to. The title is deliberately not
+ * kept inline, where it would read as an instruction.
+ */
+function addTaskReferenceReminderForLLM(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    if (message.role !== "user") return message;
+
+    const refs = new Map<string, TaskReference>();
+    let firstIndex = -1;
+    message.parts.forEach((part, index) => {
+      if (part.type !== "text" || prompts.isSystemReminder(part.text)) return;
+      const found = parseTaskReferences(part.text);
+      if (found.length > 0 && firstIndex < 0) firstIndex = index;
+      for (const ref of found) {
+        if (!refs.has(ref.id)) refs.set(ref.id, ref);
+      }
+    });
+    if (refs.size === 0) return message;
+
+    const parts = [...message.parts];
+    parts.splice(firstIndex, 0, {
+      type: "text",
+      text: prompts.createSystemReminder(
+        prompts.taskReferences([...refs.values()]),
+      ),
+    });
+    return { ...message, parts };
+  });
+}
+
 function removePendingTodoAttemptCompletion(
   messages: UIMessage[],
 ): UIMessage[] {
@@ -807,6 +842,7 @@ const LLMFormatOps: FormatOp[] = [
   removeMessagesWithoutTextOrToolCall,
   replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,
+  addTaskReferenceReminderForLLM,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
   removeToolCallResultTransientData,

@@ -1419,6 +1419,10 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.autoMemoryManager.readHostApi();
   };
 
+  listReferenceableTasks = async (excludeTaskId?: string) => {
+    return this.autoMemoryManager.listHostTranscripts(excludeTaskId);
+  };
+
   readAutoMemoryEnabled = async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;

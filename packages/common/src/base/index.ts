@@ -44,6 +44,12 @@ export {
   shouldRunSubAgentInBackground,
 } from "./subagent";
 
+export {
+  parseTaskReferences,
+  serializeTaskReference,
+  type TaskReference,
+} from "./task-reference";
+
 export { SocialLinks } from "./social";
 export * as constants from "./constants";
 
@@ -67,6 +73,8 @@ export {
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 
+export { serializeTaskTranscript } from "./task-transcript";
+
 export { WebsiteTaskCreateEvent } from "./event";
 
 export { toErrorMessage } from "./error";
@@ -81,6 +89,7 @@ export type {
   AutoMemoryManager,
   AutoMemoryReadContextOptions,
   AutoMemoryTaskState,
+  AutoMemoryTranscriptEntry,
   AutoMemoryTranscriptInfo,
   TaskMemoryState,
 } from "./memory";

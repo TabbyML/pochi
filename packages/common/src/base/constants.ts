@@ -4,6 +4,7 @@ export const KnownTags = [
   "custom-agent",
   "skill",
   "issue",
+  "task-reference",
 ] as const;
 
 export const CompactTaskMinTokens = 50_000;

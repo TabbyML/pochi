@@ -18,6 +18,9 @@ export function useMentionKeyboardNavigation<T>(
 ) {
   return {
     onKeyDown: ({ event }: SuggestionKeyDownProps) => {
+      // Nothing to pick: leave the key (e.g. Enter to send) to the editor.
+      if (items.length === 0) return false;
+
       const lastIndex = items.length - 1;
       let newIndex = selectedIndex;
 

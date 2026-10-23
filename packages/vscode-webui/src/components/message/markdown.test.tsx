@@ -1,4 +1,4 @@
-import { prompts } from "@getpochi/common";
+import { prompts, serializeTaskReference } from "@getpochi/common";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MessageMarkdown, hideUserInvokedSkillInstructions } from "./markdown";
@@ -15,12 +15,56 @@ vi.mock("@/features/tools", () => ({
   ),
 }));
 
+vi.mock("./task-reference-badge", () => ({
+  TaskReferenceBadge: ({ id, title }: { id: string; title: string }) => (
+    <span data-testid="task-reference-badge" data-task-id={id}>
+      {title}
+    </span>
+  ),
+}));
+
 vi.mock("@/lib/vscode", () => ({
   isVSCodeEnvironment: () => false,
   vscodeHost: {},
 }));
 
 describe("MessageMarkdown", () => {
+  it("renders a task reference as a task badge", () => {
+    const tag = serializeTaskReference({
+      id: "task-1",
+      path: "/tmp/transcripts/task-1.md",
+      title: 'Fix "login" <bug>',
+    });
+
+    render(<MessageMarkdown>{`compare with ${tag} please`}</MessageMarkdown>);
+
+    const badge = screen.getByTestId("task-reference-badge");
+    expect(badge.getAttribute("data-task-id")).toBe("task-1");
+    expect(badge.textContent).toBe('Fix "login" <bug>');
+  });
+
+  it("renders a task-reference tag without attributes as plain text", () => {
+    render(
+      <MessageMarkdown>
+        {"draft <task-reference>Refactor the parser</task-reference> prompt"}
+      </MessageMarkdown>,
+    );
+
+    expect(screen.queryByTestId("task-reference-badge")).toBeNull();
+    expect(screen.getByText(/Refactor the parser/)).toBeTruthy();
+  });
+
+  it("does not treat a plain <task> tag as a task reference", () => {
+    const { container } = render(
+      <MessageMarkdown>
+        {"split it into <task>Refactor</task> parts"}
+      </MessageMarkdown>,
+    );
+
+    expect(screen.queryByTestId("task-reference-badge")).toBeNull();
+    expect(container.textContent).toContain("<task>Refactor</task>");
+  });
+
   it("renders text following a directly invoked skill", () => {
     const skillPrompt = prompts.skill({
       name: "find-skills",

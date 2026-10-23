@@ -33,6 +33,17 @@ export function parseMarkdown(content: string) {
             _child.value = `/${child.properties.id}`;
             child.children = [];
           }
+          // A hand-written tag without a title keeps its body as plain text.
+          if (
+            child.type === "element" &&
+            child.tagName === "task-reference" &&
+            child.properties.title
+          ) {
+            const _child = child as unknown as Text;
+            _child.type = "text";
+            _child.value = String(child.properties.title);
+            child.children = [];
+          }
           if (
             child.type === "element" &&
             (child.tagName === "file" || child.tagName === "issue")

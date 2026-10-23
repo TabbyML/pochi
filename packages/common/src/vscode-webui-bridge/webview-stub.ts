@@ -5,6 +5,7 @@ import type {
   ActiveSelection,
   AutoMemoryManager,
   AutoMemoryTaskState,
+  AutoMemoryTranscriptEntry,
   BackgroundJobNotification,
   BackgroundTaskState,
   ContextWindowUsage,
@@ -474,6 +475,7 @@ const VSCodeHostStub = {
     finishDreamRun: async () => undefined,
     clearProjectMemory: async () => undefined,
   }),
+  listReferenceableTasks: async (): Promise<AutoMemoryTranscriptEntry[]> => [],
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;

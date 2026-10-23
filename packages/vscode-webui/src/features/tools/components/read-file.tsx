@@ -1,5 +1,9 @@
+import { TaskReferenceBadge } from "@/components/message/task-reference-badge";
 import { getToolPartError } from "@/lib/tool-call-error";
-import { parseBackgroundJobOutputFilePath } from "@getpochi/common/pochi-file-system";
+import {
+  parseBackgroundJobOutputFilePath,
+  parseTaskTranscriptFilePath,
+} from "@getpochi/common/pochi-file-system";
 import { useTranslation } from "react-i18next";
 import { BackgroundJobPanel } from "./command-execution-panel";
 import { FileBadge } from "./file-badge";
@@ -73,18 +77,25 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
     );
   }
 
+  // A task transcript is shown as the task itself, not as the file storing it.
+  const taskTranscript = path ? parseTaskTranscriptFilePath(path) : undefined;
+
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2" />
       {t("toolInvocation.reading")}
-      {path && (
-        <FileBadge
-          className="ml-1"
-          path={path}
-          startLine={displayStartLine}
-          endLine={displayEndLine}
-        />
+      {taskTranscript ? (
+        <TaskReferenceBadge id={taskTranscript.taskId} className="ml-1" />
+      ) : (
+        path && (
+          <FileBadge
+            className="ml-1"
+            path={path}
+            startLine={displayStartLine}
+            endLine={displayEndLine}
+          />
+        )
       )}
     </>
   );

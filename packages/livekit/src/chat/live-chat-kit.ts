@@ -80,6 +80,7 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import { TaskTranscriptWriter } from "./task-transcript";
 import { scheduleGenerateTitleJob } from "./title-generation";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import {
@@ -373,6 +374,7 @@ export class LiveChatKit<
   readonly backgroundJobManager: BackgroundJobManager;
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
+  private readonly transcriptWriter: TaskTranscriptWriter | undefined;
   private readonly backgroundJobNotifications:
     | LiveChatKitBackgroundJobNotificationOptions
     | undefined;
@@ -456,9 +458,18 @@ export class LiveChatKit<
       taskMemory && !isSubTask
         ? this.backgroundJobManager.getTaskMemory(taskId, taskMemory)
         : undefined;
+    const isTopLevelTask = !isSubTask && !isForkAgentUseCase(requestUseCase);
     this.autoMemoryAdaptor =
-      projectMemory && !isSubTask && !isForkAgentUseCase(requestUseCase)
+      projectMemory && isTopLevelTask
         ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
+        : undefined;
+    this.transcriptWriter =
+      projectMemory && isTopLevelTask
+        ? new TaskTranscriptWriter({
+            taskId,
+            store,
+            manager: projectMemory.manager,
+          })
         : undefined;
 
     this.transport = new FlexibleChatTransport({
@@ -1229,6 +1240,7 @@ export class LiveChatKit<
       contextWindowUsage,
     };
 
+    this.scheduleTranscriptWrite(finishData);
     this.scheduleMemoryUpdate(finishData);
 
     this.onStreamFinish?.(finishData);
@@ -1317,6 +1329,21 @@ export class LiveChatKit<
     }
   }
 
+  private scheduleTranscriptWrite(data: {
+    messages: Message[];
+    status: string;
+  }) {
+    if (!this.transcriptWriter) return;
+    this.trackMemoryOperation(this.transcriptWriter.write(data));
+  }
+
+  private trackMemoryOperation(promise: Promise<void>) {
+    const tracked = promise.finally(() => {
+      this.pendingMemoryOperations.delete(tracked);
+    });
+    this.pendingMemoryOperations.add(tracked);
+  }
+
   private scheduleMemoryUpdate(data: {
     messages: Message[];
     status?: string;
@@ -1342,10 +1369,7 @@ export class LiveChatKit<
       })
       .then(() => undefined);
 
-    const tracked = promise.finally(() => {
-      this.pendingMemoryOperations.delete(tracked);
-    });
-    this.pendingMemoryOperations.add(tracked);
+    this.trackMemoryOperation(promise);
   }
 
   private updateTotalTokensEstimate(messages: Message[]) {
@@ -1403,6 +1427,11 @@ export class LiveChatKit<
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
+
+    this.scheduleTranscriptWrite({
+      messages: [...this.chat.messages],
+      status: "failed",
+    });
 
     this.onStreamFinish?.({
       id: this.taskId,

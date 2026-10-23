@@ -26,6 +26,7 @@ import {
 } from "streamdown";
 import { CodeBlock } from "./code-block";
 import { customStripTagsPlugin } from "./custom-strip-tags-plugin";
+import { TaskReferenceBadge } from "./task-reference-badge";
 import "./markdown.css";
 import { useTranslation } from "react-i18next";
 import type { ExtraProps, Options } from "react-markdown";
@@ -285,6 +286,13 @@ interface IssueComponentProps {
   children: string;
 }
 
+interface TaskReferenceComponentProps {
+  id?: string;
+  path?: string;
+  title?: string;
+  children?: React.ReactNode;
+}
+
 function escapeMarkdown(text: string): string {
   return text.replace(/[\\`*_{}\[\]()#+\-.!|<]/g, "\\$&");
 }
@@ -461,6 +469,7 @@ export function MessageMarkdown({
                 "custom-agent": ["path", "id"],
                 skill: ["path", "id"],
                 issue: ["id", "url", "title"],
+                "task-reference": ["id", "path", "title"],
                 ...mathSanitizeConfig.attributes,
                 ol: [...(defaultSchema.attributes?.ol ?? []), "start"],
               },
@@ -510,6 +519,14 @@ export function MessageMarkdown({
         // Remove the user-content- prefix added by the markdown sanitizer
         const cleanId = id.replace("user-content-", "");
         return <IssueBadge id={cleanId} url={url} title={title} />;
+      },
+      "task-reference": (props: TaskReferenceComponentProps) => {
+        const { id, path, title, children } = props;
+        // A hand-written tag without the attributes of a real reference is
+        // plain text, not a badge.
+        if (!id || !path || !title) return <>{children}</>;
+        const cleanId = id.replace("user-content-", "");
+        return <TaskReferenceBadge id={cleanId} title={title} />;
       },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {

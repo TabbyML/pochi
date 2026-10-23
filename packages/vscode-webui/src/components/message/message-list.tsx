@@ -33,6 +33,7 @@ import { MessageMarkdown } from "./markdown";
 import type { MermaidContext } from "./mermaid-context";
 import { MermaidContextProvider } from "./mermaid-context";
 import { Reviews } from "./reviews";
+import { TaskReferenceContextProvider } from "./task-reference-context";
 import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
 
@@ -40,6 +41,17 @@ interface UserEditsCheckpoint {
   origin: string | undefined;
   modified: string | undefined;
 }
+
+const MessageContextProviders: React.FC<{
+  messages: Message[];
+  children: React.ReactNode;
+}> = ({ messages, children }) => (
+  <BackgroundJobContextProvider messages={messages}>
+    <TaskReferenceContextProvider messages={messages}>
+      {children}
+    </TaskReferenceContextProvider>
+  </BackgroundJobContextProvider>
+);
 
 export const MessageList: React.FC<{
   messages: Message[];
@@ -162,7 +174,7 @@ export const MessageList: React.FC<{
   );
 
   return (
-    <BackgroundJobContextProvider messages={messages}>
+    <MessageContextProviders messages={messages}>
       <MermaidContextProvider value={mermaidContextValue}>
         <ScrollArea
           className={cn("mb-2 min-h-0 flex-1 px-4", className)}
@@ -288,7 +300,7 @@ export const MessageList: React.FC<{
           )}
         </ScrollArea>
       </MermaidContextProvider>
-    </BackgroundJobContextProvider>
+    </MessageContextProviders>
   );
 };
 

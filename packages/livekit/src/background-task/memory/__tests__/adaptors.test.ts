@@ -803,77 +803,19 @@ describe("auto-memory adaptor", () => {
     expect(manager.beginDreamRun).toHaveBeenCalledTimes(1);
   });
 
-  it("preserves long tool results and late corrections in the transcript", async () => {
+  it("leaves transcript writing to the task", async () => {
     const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "completed",
-        background: false,
-        title: "Build shared runner",
-      }),
+      makeTask({ id: "parent", status: "completed", background: false }),
     ]);
     const manager = makeAutoMemoryManager();
-    const adaptor = new AutoMemoryAdaptor({
-      store: store as unknown as LiveKitStore,
-      backgroundTask: createTestBackgroundTask({
-        store: store as unknown as LiveKitStore,
-        stateStore: new BackgroundTaskStateStore(),
-      }),
-      parentTaskId: "parent",
-      parentCwd: "/repo",
-      manager,
-    });
+    const { adaptor } = makeAutoMemoryAdaptor({ store, manager });
 
-    const content = `${"source line\n".repeat(3_000)}END OF TOOL RESULT`;
-    const messages = [
-      {
-        id: "u1",
-        role: "user",
-        parts: [{ type: "text", text: "hello" }],
-      },
-      {
-        id: "a1",
-        role: "assistant",
-        parts: [
-          {
-            type: "tool-readFile",
-            toolCallId: "read",
-            state: "output-available",
-            input: { path: "a.ts" },
-            output: { content },
-          },
-        ],
-      },
-      {
-        id: "u2",
-        role: "user",
-        parts: [{ type: "text", text: "Correction: retain the old API." }],
-      },
-      {
-        id: "a2",
-        role: "assistant",
-        parts: [
-          { type: "text", text: "The old API is retained and verified." },
-        ],
-      },
-    ] as Message[];
     await adaptor.update({
-      messages,
+      messages: makeAutoMemoryParentMessages(),
       status: "completed",
     });
 
-    const transcript = vi.mocked(manager.writeTaskTranscript).mock.calls[0]?.[0]
-      .transcript;
-    expect(transcript).toContain("### 1. user");
-    expect(transcript).toContain("### 2. assistant");
-    expect(transcript).toContain('"type":"tool-readFile"');
-    expect(transcript.length).toBeGreaterThan(24_000);
-    expect(transcript).not.toContain("[truncated]");
-    const restored = transcript
-      .split(/### \d+\. \w+\n/)
-      .slice(1)
-      .map((message) => JSON.parse(message));
-    expect(restored).toEqual(messages);
+    expect(manager.writeTaskTranscript).not.toHaveBeenCalled();
   });
 
   it("starts a dream background task after extraction completes and finishes the dream lock", async () => {

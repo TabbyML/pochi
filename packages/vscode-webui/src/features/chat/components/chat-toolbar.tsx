@@ -571,6 +571,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           onFileDrop={handleFileDrop}
           messageContent={messageContent}
           isSubTask={isSubTask}
+          currentTaskId={taskId}
           reviews={reviews}
           userEdits={includedUserEdits}
           lastCheckpointHash={lastCheckpointHash}

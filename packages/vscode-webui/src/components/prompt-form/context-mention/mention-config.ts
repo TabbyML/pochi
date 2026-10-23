@@ -14,17 +14,29 @@ import {
   fileMentionPluginKey,
   fileMentionPreviewPluginKey,
 } from "./extension";
-import { MentionList, type MentionListProps } from "./mention-list";
+import {
+  MentionList,
+  type MentionListProps,
+  type TaskMentionItem,
+} from "./mention-list";
 
 const logger = getLogger("mention-config");
 
 interface CreateFileMentionConfigOptions<T extends { filepath: string }> {
   fetchItems: (query?: string) => Promise<T[]>;
+  fetchTasks?: (query?: string) => Promise<TaskMentionItem[]>;
+  /**
+   * Synchronously tells whether a query containing spaces still matches a task
+   * title, which keeps the mention open past a space (titles are sentences).
+   */
+  hasTaskMatch?: (query: string) => boolean;
   checkHasIssues: () => Promise<boolean>;
 }
 
 export function createFileMentionConfig<T extends { filepath: string }>({
   fetchItems,
+  fetchTasks,
+  hasTaskMatch,
   checkHasIssues,
 }: CreateFileMentionConfigOptions<T>) {
   let isFileMentionComposing = false;
@@ -110,6 +122,7 @@ export function createFileMentionConfig<T extends { filepath: string }>({
           props: {
             ...props,
             fetchItems,
+            fetchTasks,
             checkHasIssues,
             onSelectedIndexChange,
           },
@@ -131,6 +144,9 @@ export function createFileMentionConfig<T extends { filepath: string }>({
           offset: [0, 6],
           maxWidth: "none",
           onHide() {
+            // Hidden by an outside click: dismiss the suggestion like Escape,
+            // so the file hint does not outlive the popup.
+            isActive = false;
             clearPreview(currentEditor);
           },
           onDestroy: () => {
@@ -182,6 +198,9 @@ export function createFileMentionConfig<T extends { filepath: string }>({
           return true;
         }
 
+        // Hidden by an outside click: keys must not reach the invisible list.
+        if (!isActive) return false;
+
         const result = component?.ref?.onKeyDown(props) ?? false;
 
         // Preview will be updated automatically via onSelectedIndexChange callback
@@ -199,7 +218,22 @@ export function createFileMentionConfig<T extends { filepath: string }>({
     if (match?.query.startsWith("#")) {
       return null;
     }
-    return match;
+    if (match || !hasTaskMatch) {
+      return match;
+    }
+
+    // A space normally ends the mention. Keep it open while what was typed
+    // after the `@` still matches a task title.
+    const spaced = findSuggestionMatch({ ...config, allowSpaces: true });
+    if (
+      spaced &&
+      !spaced.query.startsWith("#") &&
+      /\s/.test(spaced.query) &&
+      hasTaskMatch(spaced.query)
+    ) {
+      return spaced;
+    }
+    return null;
   };
 
   const items = async ({ query }: { query?: string }) => {
