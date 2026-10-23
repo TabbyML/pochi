@@ -17,7 +17,7 @@ import type { AutoApprove } from "../store";
 import { useAutoApprove } from "./use-auto-approve";
 
 export function useToolAutoApproval(
-  pendingApproval: PendingToolCallApproval,
+  pendingApproval: PendingToolCallApproval | undefined,
   autoApproveGuard: boolean,
   isSubTask: boolean,
 ): boolean {
@@ -26,6 +26,10 @@ export function useToolAutoApproval(
     isSubTask,
   });
   const { toolset } = useMcp();
+
+  if (!pendingApproval) {
+    return false;
+  }
 
   return isToolAutoApproved({
     autoApproveActive,
