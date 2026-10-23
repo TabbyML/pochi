@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import os from "node:os";
 import {
   type AutoMemoryContext,
   type ContextWindowUsage,
@@ -773,6 +774,7 @@ export class TaskRunner {
     try {
       validateToolPolicy(toolName, toolCall.input, toolPolicies, {
         cwd: this.cwd,
+        homeDir: os.homedir(),
       });
     } catch (error) {
       validateToolPolicyError = error;

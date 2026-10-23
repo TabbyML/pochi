@@ -1284,6 +1284,34 @@ describe("TaskExecutor", () => {
     await executor.dispose();
   });
 
+  it("expands ~ in tool path rules with the adaptor home directory", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-tool", cwd: "/repo" }),
+    ]);
+    store.setMessages("task", [
+      makeAssistantMessage([
+        makeToolPart("writeToFile", "write", {
+          path: "/home/me/.pochi/config.jsonc",
+          content: "{}",
+        }),
+      ]),
+    ]);
+    const adaptor = {
+      ...makeAdaptor({
+        executeToolCall: vi.fn(async () => ({ ok: true })),
+      }),
+      homeDir: "/home/me",
+    };
+    const executor = makeExecutor(store, adaptor, {
+      tools: ["writeToFile(~/.pochi/config.jsonc)"],
+    });
+
+    await executor.drain();
+
+    expect(adaptor.executeToolCall).toHaveBeenCalledTimes(1);
+    await executor.dispose();
+  });
+
   it("keeps background file-state cache when retry keeps completed readFile", async () => {
     const store = new FakeLiveKitStore([
       makeTask({ id: "task", status: "pending-model" }),

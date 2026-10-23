@@ -3,6 +3,8 @@ import type { BatchExecuteManager } from "../batch-execute-manager";
 import type { ToolCallLifeCycle } from "../tool-call-life-cycle";
 
 export interface ChatState {
+  /** Working directory of the current task. */
+  cwd?: string;
   // Auto approve guard have three modes:
   // "auto": auto execute tool call run, and auto start next round (sendAutomaticWhen === true)
   // "manual": manual execute tool call run, and auto start next round (sendAutomaticWhen === true)

@@ -22,6 +22,10 @@ export function useBatchExecuteManager() {
   return useChatState().batchExecuteManager;
 }
 
+export function useTaskCwd() {
+  return useChatState().cwd;
+}
+
 export function useToolCallLifeCycle() {
   const { getToolCallLifeCycle, executingToolCalls, completeToolCalls } =
     useChatState();

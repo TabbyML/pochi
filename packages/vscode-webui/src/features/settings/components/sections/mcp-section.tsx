@@ -329,19 +329,15 @@ const Connection: React.FC<{
             href={commandForMcp("openServerSettings", name)}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-2"
+            className="ml-2 flex shrink-0 items-center rounded-md p-1 hover:bg-muted"
           >
-            <Edit
-              className={cn(
-                "inline size-3.5 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100",
-              )}
-            />
+            <Edit className="size-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
           </a>
           {status === "error" && (
             <a
               href={commandForMcp("restartServer", name)}
               className={cn(
-                "ml-2 rounded-md p-1 hover:bg-muted",
+                "ml-1 flex shrink-0 items-center rounded-md p-1 hover:bg-muted",
                 "!ring-0 outline-none !focus:ring-0 focus:outline-none",
               )}
               draggable="false"

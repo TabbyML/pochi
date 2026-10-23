@@ -153,6 +153,30 @@ describe("path pattern policies", () => {
     ).not.toThrow();
   });
 
+  it("should expand ~ in path patterns against the home directory", () => {
+    const homeDir = path.join(process.cwd(), "home-dir");
+    const cwd = path.join(process.cwd(), "workspace-root");
+    const policies = compileToolPolicies([
+      "writeToFile(~/.pochi/config.jsonc)",
+    ]);
+    const validate = (inputPath: string) =>
+      validateToolPolicy("writeToFile", { path: inputPath }, policies, {
+        cwd,
+        homeDir,
+      });
+
+    expect(() =>
+      validate(path.join(homeDir, ".pochi", "config.jsonc")),
+    ).not.toThrow();
+    // A literal `~` is not expanded by file tools, so it lands under cwd.
+    expect(() => validate("~/.pochi/config.jsonc")).toThrow(
+      "Path is not allowed by the configured path rules.",
+    );
+    expect(() =>
+      validate(path.join(homeDir, ".pochi", "other.jsonc")),
+    ).toThrow("Path is not allowed by the configured path rules.");
+  });
+
   it("should allow virtual paths that match configured patterns", () => {
     expect(() =>
       validateToolPolicy(

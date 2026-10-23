@@ -75,7 +75,7 @@ export function ChatPage(props: ChatProps) {
   // Load the host-backed state before mounting any chat execution hooks.
   if (!memory.isReady) return <ChatSkeleton />;
   return (
-    <ChatContextProvider>
+    <ChatContextProvider cwd={task?.cwd ?? props.info.cwd}>
       <FilesProvider>
         <Chat {...props} memory={memory} />
       </FilesProvider>

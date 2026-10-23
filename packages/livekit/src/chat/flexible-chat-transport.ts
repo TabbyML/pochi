@@ -10,6 +10,7 @@ import type {
 import {
   BackgroundJobNotification,
   formatters,
+  getLogger,
   prompts,
 } from "@getpochi/common";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
@@ -54,6 +55,8 @@ import {
   getModelCalibrationKey,
   updateModelCalibration,
 } from "./token-utils";
+
+const logger = getLogger("FlexibleChatTransport");
 
 export type OnStartCallback = (options: {
   messages: Message[];
@@ -119,7 +122,20 @@ export function extractContentFilterMetadata(
   }
 }
 
-function createAbortAwareUIStreamTransform(
+/**
+ * Abort the model request when no new chunk arrives within this window, to
+ * prevent indefinitely stalled streams. Some models (e.g. Gemini) can stay
+ * silent for a long time while thinking or before emitting a large tool call,
+ * so keep this generous. It must stay below the server's 120s idle timeout,
+ * otherwise the server would close the connection first.
+ * See https://ai-sdk.dev/docs/ai-sdk-core/settings#timeout
+ */
+export const ChunkTimeoutMs = 60_000;
+
+export const ChunkTimeoutErrorMessage = `The model stopped responding: no data was received for ${ChunkTimeoutMs / 1000} seconds.`;
+
+/** @internal exported for testing */
+export function createAbortAwareUIStreamTransform(
   abortSignal: AbortSignal | undefined,
 ) {
   let onAbort: (() => void) | undefined;
@@ -140,6 +156,21 @@ function createAbortAwareUIStreamTransform(
       // already be queued locally when abort fires. Gate the UI stream too so
       // post-abort chunks cannot mutate the chat message state.
       if (abortSignal?.aborted) {
+        controller.terminate();
+        return;
+      }
+      if (chunk.type === "abort") {
+        // `streamText` only aborts on its own when `timeout.chunkMs` elapses;
+        // a user stop is handled above. Surface the timeout as an error so it
+        // is shown as a retryable failure instead of a silent stop.
+        logger.warn("Model stream stalled, aborted by chunk timeout", {
+          abortOrigin: "chunk-timeout",
+          chunkTimeoutMs: ChunkTimeoutMs,
+        });
+        controller.enqueue({
+          type: "error",
+          errorText: ChunkTimeoutErrorMessage,
+        });
         controller.terminate();
         return;
       }
@@ -352,9 +383,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
       tools,
       maxRetries: 0,
       timeout: {
-        // Abort if no new chunk is received within 30s to prevent indefinitely stalled streams.
-        // See https://ai-sdk.dev/docs/ai-sdk-core/settings#timeout
-        chunkMs: 30_000,
+        chunkMs: ChunkTimeoutMs,
       },
       // error log is handled in live chat kit.
       onError: () => {},

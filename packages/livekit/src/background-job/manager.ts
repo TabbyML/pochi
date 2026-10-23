@@ -194,6 +194,7 @@ export class BackgroundJobManager {
       blobStore: options.blobStore,
       onTaskSettled: (taskId) => this.taskChanged(taskId),
       adaptor: {
+        homeDir: options.adaptor.homeDir,
         waitUntilReady: () =>
           options.adaptor.waitUntilReady?.() ?? Promise.resolve(),
         getRequestGetters: (context) =>

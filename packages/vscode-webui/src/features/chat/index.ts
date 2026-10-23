@@ -5,6 +5,7 @@ export {
   ToolCallStatusRegistry,
   useAutoApproveGuard,
   useBatchExecuteManager,
+  useTaskCwd,
   useToolCallLifeCycle,
   useRetryCount,
 } from "./lib/chat-state";
