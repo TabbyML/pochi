@@ -1,9 +1,11 @@
 import * as assert from "node:assert";
+import fsSync from "node:fs";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import simpleGit from "simple-git";
+import sinon from "sinon";
 import * as vscode from "vscode";
 import {
   type OrphanCheckpointCleanupOptions,
@@ -97,6 +99,7 @@ describe("cleanupOrphanCheckpoints", () => {
   });
 
   afterEach(async () => {
+    sinon.restore();
     await fs.rm(rootDir, { recursive: true, force: true });
   });
 
@@ -184,6 +187,43 @@ describe("cleanupOrphanCheckpoints", () => {
       `/Volumes/pochi-missing-volume-${Date.now()}/project`,
       400,
     );
+
+    assert.deepStrictEqual(await cleanupOrphanCheckpoints(options), []);
+    assert.strictEqual(await exists(path.join(repo, "HEAD")), true);
+  });
+
+  for (const volumeRoot of ["/run/media", "/media"]) {
+    it(`keeps an offline volume below an existing user directory in ${volumeRoot}`, async function () {
+      if (process.platform === "win32") this.skip();
+      const userDir = `${volumeRoot}/pochi-test-user`;
+      const volume = `${userDir}/USB`;
+      const repo = await createWorkspaceRepo("offline", `${volume}/project`, 400);
+      let mounted = false;
+      // Only mock the external volume. Repository inspection and deletion
+      // still use real files in the temporary storage directory.
+      const volumeExists = sinon.stub(fsSync, "existsSync").callThrough();
+      volumeExists.withArgs(userDir).returns(true);
+      volumeExists.withArgs(volume).callsFake(() => mounted);
+
+      assert.deepStrictEqual(await cleanupOrphanCheckpoints(options), []);
+      assert.strictEqual(await exists(path.join(repo, "HEAD")), true);
+      // Once the volume is back, a genuinely deleted project can be cleaned up.
+      mounted = true;
+      assert.deepStrictEqual(
+        await cleanupOrphanCheckpoints({ ...options, intervalMs: 0 }),
+        [repo],
+      );
+      assert.strictEqual(await exists(repo), false);
+    });
+  }
+
+  it("keeps ambiguous missing folders directly below /media volumes", async function () {
+    if (process.platform === "win32") this.skip();
+    const repo = await createWorkspaceRepo("ambiguous", "/media/USB/project", 400);
+    // This could also be an offline volume named project below a user named USB.
+    const volumeExists = sinon.stub(fsSync, "existsSync").callThrough();
+    volumeExists.withArgs("/media/USB").returns(true);
+    volumeExists.withArgs("/media/USB/project").returns(false);
 
     assert.deepStrictEqual(await cleanupOrphanCheckpoints(options), []);
     assert.strictEqual(await exists(path.join(repo, "HEAD")), true);

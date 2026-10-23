@@ -298,6 +298,57 @@ describe("ShadowGitRepo", () => {
       await git.raw(["fsck", "--no-dangling"]);
     });
 
+    for (const aggressiveExpiry of [false, true]) {
+      it(`keeps reflog-only checkpoints for the full retention period (${aggressiveExpiry ? "custom" : "default"} GC expiry)`, async () => {
+        await writeFile("file.txt", "initial");
+        repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+        await git.raw(["config", "core.logAllRefUpdates", "true"]);
+        if (aggressiveExpiry) {
+          await git.raw(["config", "gc.reflogExpire", "now"]);
+          await git.raw(["config", "gc.reflogExpireUnreachable", "now"]);
+          await git.raw(["config", "gc.refs/heads/*.reflogExpireUnreachable", "now"]);
+        }
+        await writeFile("file.txt", "expired");
+        const expired = await commitAt(200, "expired");
+        await writeFile("file.txt", "base");
+        const base = await commitAt(100, "base");
+        await writeFile("file.txt", "sixty days old");
+        const first = await commitAt(60, "first");
+        await writeFile("file.txt", "fifty days old");
+        const second = await commitAt(50, "second");
+        // These checkpoints have been reachable only through the reflog for
+        // 40 days: beyond Git's default 30 days, within our 90-day retention.
+        await simpleGit(gitPath)
+          .env({
+            ...process.env,
+            GIT_DIR: gitPath,
+            GIT_COMMITTER_DATE: new Date(Date.now() - 40 * DayMs).toISOString(),
+          })
+          .raw(["--work-tree", workspaceDir, "reset", "--hard", base]);
+        await writeFile("file.txt", "current");
+        const current = await commitAt(5, "current");
+        await ageObjects();
+
+        assert.strictEqual(await repo.pruneCheckpoints(90 * DayMs, 0), true);
+        assert.strictEqual(await objectExists(expired), false);
+        assert.strictEqual((await git.revparse(["HEAD"])).trim(), current);
+        const reflog = await git.raw(["reflog", "show", "--all", "--format=%H"]);
+        for (const [commit, content] of [
+          [first, "sixty days old"],
+          [second, "fifty days old"],
+        ]) {
+          assert.strictEqual(await objectExists(commit), true, commit);
+          assert.ok(reflog.includes(commit), commit);
+          await repo.reset(commit);
+          assert.strictEqual(
+            await fs.readFile(path.join(workspaceDir, "file.txt"), "utf8"),
+            content,
+          );
+        }
+        await git.raw(["fsck", "--no-dangling"]);
+      });
+    }
+
     it("keeps the latest checkpoint even when it is old", async () => {
       await writeFile("file.txt", "initial");
       repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);

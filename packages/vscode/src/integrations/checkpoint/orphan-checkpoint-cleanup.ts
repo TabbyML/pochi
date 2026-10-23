@@ -178,8 +178,16 @@ function isOnMissingVolume(folder: string): boolean {
   }
   for (const root of VolumeRoots) {
     if (folder.startsWith(`${root}/`)) {
-      const volume = folder.slice(root.length + 1).split("/")[0];
-      return !existsSync(path.join(root, volume));
+      // Linux desktop mounts can be <root>/<user>/<volume>. The user
+      // directory can survive an unmount, so checking it alone is unsafe.
+      // /media also permits <root>/<volume>; when ambiguous, retain the
+      // repository rather than mistake an offline volume for a deleted folder.
+      const depth = root === "/media" || root === "/run/media" ? 2 : 1;
+      const volume = folder
+        .slice(root.length + 1)
+        .split("/")
+        .slice(0, depth);
+      return volume.length < depth || !existsSync(path.join(root, ...volume));
     }
   }
   return false;

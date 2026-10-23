@@ -393,7 +393,18 @@ export class ShadowGitRepo implements vscode.Disposable {
       timeout: { block: PruneTimeoutMs },
     })
       .env("GIT_DIR", this.gitPath)
-      .raw(["gc", "--quiet", `--prune=${PruneGracePeriod}`]);
+      .raw([
+        // Reflogs were already expired with our retention cutoff above. Do
+        // not let gc expire them again using Git's shorter unreachable default
+        // or user configuration after we have chosen the retained commits.
+        "-c",
+        "gc.reflogExpire=never",
+        "-c",
+        "gc.reflogExpireUnreachable=never",
+        "gc",
+        "--quiet",
+        `--prune=${PruneGracePeriod}`,
+      ]);
     logger.info(
       `Pruned checkpoints older than ${cutoff} in the repository at ${this.gitPath}.`,
     );
