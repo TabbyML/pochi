@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { constants, getLogger, toErrorMessage } from "@getpochi/common";
@@ -8,6 +9,25 @@ import type { FileChange } from "../editor/diff-changes-editor";
 import { writeExcludesFile } from "./shadow-git-excludes";
 
 const logger = getLogger("ShadowGitRepo");
+
+/**
+ * Skip the whole checkpoint when a new or modified file exceeds this size.
+ * Existing, unchanged blobs can be reused without adding to disk usage.
+ */
+const MaxCheckpointFileSize = 100 * 1024 * 1024;
+
+/** Unreachable objects younger than this survive a prune. */
+const PruneGracePeriod = "1.hour.ago";
+
+/** Inactivity timeout for `git gc`, which prints nothing while repacking. */
+const PruneTimeoutMs = 5 * 60 * 1000;
+
+function splitLines(output: string): string[] {
+  return output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 let gitUnavailableNotified = false;
 
@@ -121,8 +141,9 @@ export class ShadowGitRepo implements vscode.Disposable {
 
       await writeExcludesFile(this.gitPath, this.workspaceDir);
 
-      await this.stageAll();
-      await this.commit("Pochi Shadow Repo Initial Commit");
+      if (await this.stageAll()) {
+        await this.commit("Pochi Shadow Repo Initial Commit");
+      }
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error(
@@ -142,6 +163,12 @@ export class ShadowGitRepo implements vscode.Disposable {
   // Get the latest commit hash in short form
   async getLatestCommitHash(search: string): Promise<string | null> {
     try {
+      // Initialization may skip the first checkpoint because a file is too large.
+      if (
+        !(await this.git.raw(["rev-list", "--all", "--max-count=1"])).trim()
+      ) {
+        return null;
+      }
       const result = await this.git.raw([
         "log",
         "-1",
@@ -163,69 +190,40 @@ export class ShadowGitRepo implements vscode.Disposable {
     }
   }
 
-  async status() {
-    try {
-      if (!this.git) {
-        throw new Error("Git instance is not initialized");
-      }
-      // For bare repository with worktree, use --work-tree flag
-      const statusOutput = await this.git.raw([
-        "--work-tree",
-        this.workspaceDir,
-        "status",
-        "--porcelain",
-        "--ignore-submodules=all",
-      ]);
-
-      // Parse the raw output to match StatusResult format
-      const files = statusOutput
-        .trim()
-        .split("\n")
-        .filter((line) => line.length > 0)
-        .map((line) => {
-          const status = line.substring(0, 2);
-          const path = line.substring(3);
-          return { path, index: status[0], working_dir: status[1] };
-        });
-
-      const status = {
-        not_added: files.filter(
-          (f) => f.index === "?" && f.working_dir === "?",
-        ),
-        conflicted: files.filter(
-          (f) => f.index === "U" || f.working_dir === "U",
-        ),
-        created: files.filter((f) => f.index === "A"),
-        deleted: files.filter((f) => f.index === "D"),
-        modified: files.filter((f) => f.index === "M"),
-        renamed: files.filter((f) => f.index === "R"),
-        files: files.map((f) => f.path),
-        staged: files.filter((f) => f.index !== " " && f.index !== "?"),
-        ahead: 0,
-        behind: 0,
-        current: null,
-        tracking: null,
-        detached: false,
-        isClean: files.length === 0,
-      };
-
-      logger.trace(`Retrieved status for the repository at ${this.gitPath}.`);
-      return status;
-    } catch (error) {
-      const errorMessage = toErrorMessage(error);
-      const message = `Failed to get status of the repository at ${this.gitPath}: ${errorMessage}`;
-      logger.error(message, {
-        error,
-        gitPath: this.gitPath,
-        workspaceDir: this.workspaceDir,
-      });
-      throw new Error(message);
-    }
-  }
-
-  async stageAll() {
+  /**
+   * Whether the index differs from HEAD, i.e. whether a commit would record
+   * any change. Call it after {@link stageAll}.
+   */
+  async hasStagedChanges(): Promise<boolean> {
     if (!this.git) {
       throw new Error("Git instance is not initialized");
+    }
+    const output = await this.git.raw([
+      "--work-tree",
+      this.workspaceDir,
+      "diff",
+      "--cached",
+      "--name-only",
+      "--ignore-submodules=all",
+    ]);
+    return output.trim().length > 0;
+  }
+
+  /**
+   * Stages a complete snapshot, or returns false without staging if a new or
+   * modified file is too large. Never remove individual files from the index:
+   * restoring a snapshot that omits an existing file can delete that file.
+   */
+  async stageAll(): Promise<boolean> {
+    if (!this.git) {
+      throw new Error("Git instance is not initialized");
+    }
+    const largeFiles = await this.findLargeChangedFiles();
+    if (largeFiles.length > 0) {
+      logger.warn(
+        `Skipping checkpoint because ${largeFiles.length} new or modified file(s) exceed ${MaxCheckpointFileSize} bytes: ${largeFiles.join(", ")}`,
+      );
+      return false;
     }
     try {
       await this.git.raw([
@@ -236,11 +234,180 @@ export class ShadowGitRepo implements vscode.Disposable {
         "--ignore-errors",
       ]);
     } catch (error) {
+      // A partially staged index must not become a checkpoint either.
       logger.warn(
-        `Some files could not be staged in the repository at ${this.gitPath} (continuing with partial stage): ${toErrorMessage(error)}`,
+        `Skipping checkpoint because files could not be staged in the repository at ${this.gitPath}: ${toErrorMessage(error)}`,
       );
+      return false;
     }
     logger.trace(`Staged changes in the repository at ${this.gitPath}.`);
+    return true;
+  }
+
+  private async findLargeChangedFiles(): Promise<string[]> {
+    const changed = await this.git.raw([
+      "--work-tree",
+      this.workspaceDir,
+      "ls-files",
+      "-z",
+      "--others",
+      "--modified",
+      "--exclude-standard",
+    ]);
+    // Include changes already staged by a previous diff or interrupted save.
+    // With no HEAD yet, diff --cached lists the entire index.
+    const staged = await this.git.raw([
+      "--work-tree",
+      this.workspaceDir,
+      "diff",
+      "--cached",
+      "--name-only",
+      "-z",
+      "--no-renames",
+    ]);
+    const candidates = [
+      ...new Set(`${changed}${staged}`.split("\0").filter(Boolean)),
+    ];
+    const largeFiles: string[] = [];
+    const batchSize = 64;
+    for (let i = 0; i < candidates.length; i += batchSize) {
+      const batch = candidates.slice(i, i + batchSize);
+      const sizes = await Promise.all(
+        batch.map(async (file) => {
+          try {
+            const stat = await fs.lstat(path.join(this.workspaceDir, file));
+            return stat.isFile() ? stat.size : 0;
+          } catch (error) {
+            // Deleted files do not add any new content to the checkpoint.
+            if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+            throw error;
+          }
+        }),
+      );
+      batch.forEach((file, index) => {
+        if (sizes[index] > MaxCheckpointFileSize) {
+          largeFiles.push(file);
+        }
+      });
+    }
+    return largeFiles;
+  }
+
+  /**
+   * Deletes checkpoints committed before `retentionMs` ago, at most once per
+   * `intervalMs`.
+   *
+   * Commit hashes of the remaining checkpoints stay the same: the oldest kept
+   * commits are listed in `$GIT_DIR/shallow`, so git treats them as having no
+   * parents, and gc then deletes everything older. gc keeps unreachable
+   * objects younger than {@link PruneGracePeriod}, which lets it run while
+   * other windows sharing this repository are saving checkpoints, the same
+   * way git's own background gc does.
+   *
+   * @returns whether old checkpoints were found and pruned.
+   */
+  async pruneCheckpoints(
+    retentionMs: number,
+    intervalMs: number,
+  ): Promise<boolean> {
+    if (!this.git) {
+      throw new Error("Git instance is not initialized");
+    }
+    const markerFile = path.join(this.gitPath, "pochi-last-prune");
+    const lastPrunedAt = await fs
+      .stat(markerFile)
+      .then((stat) => stat.mtimeMs)
+      .catch(() => 0);
+    if (Date.now() - lastPrunedAt < intervalMs) {
+      return false;
+    }
+    await fs.writeFile(markerFile, "");
+
+    const cutoff = new Date(Date.now() - retentionMs).toISOString();
+    // Restoring a checkpoint moves HEAD back with `reset --hard`, so newer
+    // checkpoints can be reachable only from the reflog. Keep recent entries.
+    await this.git.raw([
+      "reflog",
+      "expire",
+      `--expire=${cutoff}`,
+      `--expire-unreachable=${cutoff}`,
+      "--all",
+    ]);
+    const tips = splitLines(
+      await this.git.raw(["rev-list", "--all", "--reflog", "--no-walk"]),
+    );
+    const recent = splitLines(
+      await this.git.raw([
+        "rev-list",
+        "--all",
+        "--reflog",
+        `--since=${cutoff}`,
+        "--parents",
+      ]),
+    ).map((line) => line.split(" "));
+    const recentCommits = new Set(recent.map(([commit]) => commit));
+    const kept = new Set([...recentCommits, ...tips]);
+
+    const shallowFile = path.join(this.gitPath, "shallow");
+    const previousBoundaries = splitLines(
+      await fs.readFile(shallowFile, "utf8").catch(() => ""),
+    );
+    // Boundaries from an earlier prune already show no parents, so carry over
+    // the ones that are still kept.
+    const boundaries = new Set(
+      previousBoundaries.filter((commit) => kept.has(commit)),
+    );
+    for (const [commit, ...parents] of recent) {
+      if (parents.some((parent) => !kept.has(parent))) {
+        boundaries.add(commit);
+      }
+    }
+    // A ref or reflog entry older than the cutoff is kept, without its history.
+    for (const tip of tips) {
+      if (!recentCommits.has(tip)) {
+        boundaries.add(tip);
+      }
+    }
+    if (
+      [...boundaries].every((commit) => previousBoundaries.includes(commit))
+    ) {
+      return false;
+    }
+
+    const tmpShallowFile = `${shallowFile}.pochi-${randomUUID()}`;
+    await fs.writeFile(
+      tmpShallowFile,
+      [...boundaries].map((commit) => `${commit}\n`).join(""),
+    );
+    await fs.rename(tmpShallowFile, shallowFile);
+    // A commit-graph still lists the pruned commits. Git ignores it in a
+    // shallow repository, but `git fsck` reports it as corrupt.
+    const objectInfoDir = path.join(this.gitPath, "objects", "info");
+    await fs.rm(path.join(objectInfoDir, "commit-graph"), { force: true });
+    await fs.rm(path.join(objectInfoDir, "commit-graphs"), {
+      force: true,
+      recursive: true,
+    });
+
+    await simpleGit(this.gitPath, {
+      timeout: { block: PruneTimeoutMs },
+    })
+      .env("GIT_DIR", this.gitPath)
+      .raw([
+        // Reflogs were already expired with our retention cutoff above. Do
+        // not let gc expire them again using Git's shorter unreachable default
+        // or user configuration after we have chosen the retained commits.
+        "-c",
+        "gc.reflogExpire=never",
+        "-c",
+        "gc.reflogExpireUnreachable=never",
+        "gc",
+        "--quiet",
+        `--prune=${PruneGracePeriod}`,
+      ]);
+    logger.info(
+      `Pruned checkpoints older than ${cutoff} in the repository at ${this.gitPath}.`,
+    );
     return true;
   }
 
@@ -250,7 +417,7 @@ export class ShadowGitRepo implements vscode.Disposable {
         throw new Error("Git instance is not initialized");
       }
       // For bare repository with worktree, use --work-tree flag
-      const result = await this.git.raw([
+      await this.git.raw([
         "--work-tree",
         this.workspaceDir,
         "commit",
@@ -260,9 +427,8 @@ export class ShadowGitRepo implements vscode.Disposable {
         "--no-verify",
       ]);
 
-      // Extract commit hash from the output
-      const commitHashMatch = result.match(/\[[\w\s]+ ([a-f0-9]+)\]/);
-      const commitHash = commitHashMatch ? commitHashMatch[1] : "";
+      // The first successful snapshot may be a root commit after earlier skips.
+      const commitHash = (await this.git.revparse(["--short", "HEAD"])).trim();
 
       logger.trace(
         `Committed changes in the repository at ${this.gitPath} with message: ${commitMessage}`,

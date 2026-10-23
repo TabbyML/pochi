@@ -30,6 +30,12 @@ const checkpointCommitPrefix = (cwd: string) => `checkpoint-${cwd}-msg-`;
 /** Timeout (ms) for saving a checkpoint, excluding time waiting for the index lock. */
 const SaveCheckpointTimeoutMs = 10_000;
 
+/** Checkpoints older than this are deleted. Matches the task history retention. */
+const CheckpointRetentionMs = 90 * 24 * 60 * 60 * 1000;
+
+/** How often to look for checkpoints to delete. */
+const PruneIntervalMs = 24 * 60 * 60 * 1000;
+
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
 export class CheckpointService implements vscode.Disposable {
@@ -76,6 +82,15 @@ export class CheckpointService implements vscode.Disposable {
         checkpointCommitPrefix(this.cwd),
       );
       this.readyDefer.resolve();
+      // gc is safe to run alongside checkpoint saves, so it does not take the
+      // index lock and does not delay the first save.
+      this.shadowGit
+        .pruneCheckpoints(CheckpointRetentionMs, PruneIntervalMs)
+        .catch((error) => {
+          logger.warn(
+            `Failed to prune old checkpoints: ${toErrorMessage(error)}`,
+          );
+        });
     } catch (error) {
       const errorMessage = toErrorMessage(error);
       logger.error("Failed to initialize Shadow Git repository:", errorMessage);
@@ -88,7 +103,7 @@ export class CheckpointService implements vscode.Disposable {
   /**
    * Saves a checkpoint for the current workspace.
    * @param message A message to associate with the checkpoint.
-   * @returns The commit hash of the created checkpoint. If the repository is clean or timeout, returns null.
+   * @returns The commit hash of the created checkpoint. Returns null if unchanged, too large, staging fails, or the save times out.
    */
   saveCheckpoint = async (
     message: string,
@@ -120,15 +135,14 @@ export class CheckpointService implements vscode.Disposable {
       }
 
       try {
-        const status = await this.shadowGit.status();
-        if (status.isClean && !options.force) {
+        if (!(await this.shadowGit.stageAll())) return null;
+        if (!options.force && !(await this.shadowGit.hasStagedChanges())) {
           const duration = performance.now() - startTime;
           logger.trace(
             `Skipped checkpoint (no changes) with message: ${message}, duration: ${duration.toFixed(0)}ms`,
           );
           return null;
         }
-        await this.shadowGit.stageAll();
         const commitMessage = `${checkpointCommitPrefix(this.cwd)}${message}`;
         const commitHash = await this.shadowGit.commit(commitMessage);
         const duration = performance.now() - startTime;
@@ -149,14 +163,14 @@ export class CheckpointService implements vscode.Disposable {
 
   saveUserEditBaseline = runExclusive.build(
     this.indexLock,
-    async (): Promise<string> => {
+    async (): Promise<string | null> => {
       await this.ensureInitialized();
 
       if (!this.shadowGit) {
         throw new Error("Shadow Git repository not initialized");
       }
 
-      await this.shadowGit.stageAll();
+      if (!(await this.shadowGit.stageAll())) return null;
       return this.shadowGit.commit(
         `user-edit-baseline-${this.cwd}-${Date.now()}`,
       );
@@ -289,7 +303,8 @@ export class CheckpointService implements vscode.Disposable {
         throw new Error("Shadow Git repository not initialized");
       }
       try {
-        await this.shadowGit.stageAll(); // Ensure all changes are staged, including untracked files
+        // A skipped snapshot cannot provide a complete diff, including untracked files.
+        if (!(await this.shadowGit.stageAll())) return null;
         const changes = await this.shadowGit.getDiff(from, undefined, files);
         const result = processGitChangesToFileEdits(changes, options);
         logger.debug(
