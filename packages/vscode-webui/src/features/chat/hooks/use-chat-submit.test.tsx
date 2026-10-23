@@ -258,6 +258,77 @@ describe("useChatSubmit", () => {
   describe.each(["handleSubmit", "handleSteerSubmit"] as const)(
     "%s preparation state",
     (method) => {
+      it.each(["upload", "persistence"])(
+        "handles a tool approved during %s before sending",
+        async (stage) => {
+          const context = setup({
+            isLoading: false,
+            taskStatus: "pending-tool",
+            pendingApproval: {
+              name: "executeCommand",
+              tool: {
+                type: "tool-executeCommand",
+                toolCallId: "command-1",
+                state: "input-available",
+                input: { command: "echo pending" },
+              },
+            },
+            files:
+              stage === "upload"
+                ? [new File(["image"], "image.png", { type: "image/png" })]
+                : [],
+            pastedTexts: stage === "persistence" ? ["pasted text"] : [],
+          });
+          let finishPreparation!: () => void;
+          const preparation = new Promise<[]>((resolve) => {
+            finishPreparation = () => resolve([]);
+          });
+          if (stage === "upload") {
+            context.upload.mockReturnValueOnce(preparation);
+          } else {
+            vscodeMocks.persistPastedTextFiles.mockReturnValueOnce(preparation);
+          }
+
+          expect(context.result.current.allowSendMessage).toBe(true);
+          let submission!: Promise<void>;
+          await act(async () => {
+            submission = context.result.current[method]();
+          });
+          expect(context.result.current.isPreparingMessage).toBe(true);
+
+          // Approval remains available while the message is being prepared.
+          chatStateMocks.isExecuting = true;
+          context.rerender({});
+          expect(context.result.current.allowSendMessage).toBe(false);
+
+          await act(async () => {
+            finishPreparation();
+          });
+          expect(context.sendMessage).not.toHaveBeenCalled();
+          expect(context.stopChat).not.toHaveBeenCalled();
+
+          if (method === "handleSubmit") {
+            await submission;
+            expect(context.queuedMessages).toHaveLength(1);
+            expect(chatStateMocks.batchAbort).not.toHaveBeenCalled();
+          } else {
+            expect(chatStateMocks.batchAbort).toHaveBeenCalledExactlyOnceWith(
+              "task-1",
+              "user-abort",
+            );
+            expect(context.queuedMessages).toEqual([]);
+
+            // Steering must wait for the executing lifecycle to settle.
+            chatStateMocks.isExecuting = false;
+            context.rerender({});
+            await act(async () => {
+              await submission;
+            });
+            expect(context.sendMessage).toHaveBeenCalledOnce();
+          }
+        },
+      );
+
       it("stays busy through upload and text persistence, but not the response", async () => {
         const context = setup({
           isLoading: false,

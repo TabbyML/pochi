@@ -10,6 +10,7 @@ import { type PastedTextFile, getLogger } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
+import { useLatest } from "@/lib/hooks/use-latest";
 import type {
   ActiveSelection,
   FileDiff,
@@ -374,6 +375,16 @@ export function useChatSubmit({
     ],
   );
 
+  // Tool approval and chat status can change while attachments are uploaded or
+  // pasted text is persisted. Decide how to submit using the latest state.
+  const submissionState = useLatest({
+    allowSendMessage,
+    isRunning,
+    handleStop,
+    waitForReady,
+    sendChatMessage,
+  });
+
   /**
    * Handles form submission, send the current input to chat if not running, otherwise send it to the message queue.
    * Including text input, file attachments, reviews and active selections.
@@ -407,8 +418,8 @@ export function useChatSubmit({
         return;
       }
 
-      if (allowSendMessage) {
-        sendChatMessage(message);
+      if (submissionState.current.allowSendMessage) {
+        submissionState.current.sendChatMessage(message);
       } else {
         setQueuedMessages((prev) => [...prev, message]);
       }
@@ -417,8 +428,7 @@ export function useChatSubmit({
       isSubmitEnabled,
       isPreparingMessage,
       validateInput,
-      allowSendMessage,
-      sendChatMessage,
+      submissionState,
       createMessage,
       setQueuedMessages,
     ],
@@ -453,13 +463,15 @@ export function useChatSubmit({
         return;
       }
 
-      let readyToSend = allowSendMessage;
-      if (isRunning) {
-        readyToSend = (await handleStop()) && (await waitForReady());
+      let readyToSend = submissionState.current.allowSendMessage;
+      if (submissionState.current.isRunning) {
+        readyToSend =
+          (await submissionState.current.handleStop()) &&
+          (await submissionState.current.waitForReady());
       }
 
       if (readyToSend) {
-        sendChatMessage(message);
+        submissionState.current.sendChatMessage(message);
       } else {
         setQueuedMessages((messages) => [...messages, message]);
       }
@@ -468,12 +480,8 @@ export function useChatSubmit({
       isSubmitEnabled,
       isPreparingMessage,
       validateInput,
-      isRunning,
-      allowSendMessage,
-      sendChatMessage,
+      submissionState,
       createMessage,
-      handleStop,
-      waitForReady,
       setQueuedMessages,
     ],
   );
