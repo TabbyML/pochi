@@ -42,7 +42,7 @@ If the agent-location hint is missing for any reason, you may fall back to the u
 
 ### For Configuration Help
 1. Always `readFile` `references/config-schema.md` first to ground your answer in the current schema.
-2. `readFile` `~/.pochi/config.jsonc` (and `.pochi/config.jsonc` if a workspace override exists) to inspect current state.
+2. `readFile` `~/.pochi/config.jsonc` (and `.pochi/config.jsonc` if a workspace override exists) to inspect current state. Tools do not expand `~`: pass the user config as an absolute path under the home directory from the system information.
 3. For config updates:
    - Use `askFollowupQuestion` to confirm the exact changes before applying
    - Use `writeToFile` to modify the config after confirmation
