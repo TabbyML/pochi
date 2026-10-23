@@ -136,6 +136,12 @@ function StrictModeBoundary({ children }: { children: ReactNode }) {
 // Render the app
 const rootElement = document.getElementById("app");
 if (rootElement && !rootElement.innerHTML) {
+  // VS Code runs copy/cut/paste in a webview by first refocusing the last
+  // focused element when `document.activeElement` is <body>. Clicking plain
+  // text leaves <body> active, so a copy would refocus the chat input and
+  // clear the selection. A focusable root keeps focus off <body>.
+  rootElement.tabIndex = -1;
+  rootElement.style.outline = "none";
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <StrictModeBoundary>
