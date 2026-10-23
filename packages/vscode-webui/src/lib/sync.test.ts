@@ -3,6 +3,11 @@ import { catalog, type Message } from "@getpochi/livekit";
 import { EventSequenceNumber, Schema, StoreInternalsSymbol, createStorePromise } from "@livestore/livestore";
 import { InvalidPushError, SyncBackend, UnknownError } from "@livestore/common";
 import {
+  MAX_WS_MESSAGE_BYTES,
+  splitChunkBySize,
+} from "@livestore/sync-cf/common";
+import {
+  Chunk,
   Deferred,
   Duration,
   Effect,
@@ -97,28 +102,112 @@ describe("manual message sync", () => {
     expect(rows[0].data).toEqual(first);
   });
 
-  it("appends snapshot events without rejecting a large local message", async () => {
-    const store = await makeStore();
-    store.commit(
-      catalog.events.taskInited({
+  it.each([
+    ["UTF-8 bytes", "中文".repeat(150000)],
+    ["JSON escaping", '"'.repeat(450000)],
+    ["transport overhead", "x".repeat(MAX_WS_MESSAGE_BYTES - 16 * 1024)],
+  ])(
+    "rejects the whole snapshot when %s exceeds the resend limit",
+    async (_, text) => {
+      const store = await makeStore();
+      store.commit(
+        catalog.events.taskInited({
+          id: "task",
+          createdAt: new Date(),
+          initMessages: [
+            messages[0],
+            {
+              ...messages[1],
+              parts: [{ type: "text", text }],
+            },
+          ],
+        }),
+      );
+      const commit = vi.spyOn(store, "commit");
+      const before = store.query(catalog.queries.makeMessagesQuery("task"));
+      expect(() => syncTaskMessages(store, "task")).toThrow(
+        /message m-1 is too large .*No messages were queued/,
+      );
+      expect(commit).not.toHaveBeenCalled();
+      expect(store.query(catalog.queries.makeMessagesQuery("task"))).toEqual(
+        before,
+      );
+    },
+  );
+
+  it("keeps later changes syncing after rejecting a compacted message snapshot", async () => {
+    const relay = makeRelayBackend();
+    const backend: SyncBackend.SyncBackendConstructor = (args) =>
+      Effect.gen(function* () {
+        const inner = yield* relay(args);
+        return SyncBackend.of({
+          ...inner,
+          push: (batch) =>
+            Chunk.fromIterable(batch).pipe(
+              splitChunkBySize({
+                maxItems: 100,
+                maxBytes: MAX_WS_MESSAGE_BYTES,
+                encode: (batch) => ({ batch, storeId: args.storeId }),
+              }),
+              Effect.mapError(
+                (cause) =>
+                  new InvalidPushError({ cause: new UnknownError({ cause }) }),
+              ),
+              Effect.andThen(inner.push(batch)),
+            ),
+        });
+      });
+    const local = await makeStore(backend);
+    const remote = await makeStore(backend);
+    local.commit(
+      ...catalog.taskInitEvents({
         id: "task",
         createdAt: new Date(),
         initMessages: [
-          messages[0],
           {
-            ...messages[1],
-            parts: [{ type: "text", text: "中文".repeat(300000) }],
+            id: "large",
+            role: "user",
+            parts: [{ type: "text", text: "x".repeat(890000) }],
           },
         ],
       }),
     );
-    const commit = vi.spyOn(store, "commit");
-    const before = store.query(catalog.queries.makeMessagesQuery("task"));
-    expect(() => syncTaskMessages(store, "task")).not.toThrow();
-    expect(commit).toHaveBeenCalledTimes(1);
-    expect(commit.mock.calls[0]).toHaveLength(2);
-    expect(store.query(catalog.queries.makeMessagesQuery("task"))).toEqual(
+    await vi.waitFor(async () =>
+      expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0),
+    );
+    local.commit(
+      catalog.events.inlineCompactAttached({
+        id: "large",
+        text: "summary".repeat(2000),
+      }),
+    );
+    await vi.waitFor(async () => {
+      expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0);
+      expect(
+        remote.query(catalog.queries.makeMessagesQuery("task"))[0].data.parts,
+      ).toHaveLength(2);
+    });
+    const before = local.query(catalog.queries.makeMessagesQuery("task"));
+    const commit = vi.spyOn(local, "commit");
+    expect(() => syncTaskMessages(local, "task")).toThrow(
+      "message large is too large",
+    );
+    expect(commit).not.toHaveBeenCalled();
+    expect(local.query(catalog.queries.makeMessagesQuery("task"))).toEqual(
       before,
+    );
+    expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0);
+    local.commit(
+      catalog.events.updateTitle({
+        id: "task",
+        title: "later change",
+        updatedAt: new Date(),
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(remote.query(catalog.queries.makeTaskQuery("task"))?.title).toBe(
+        "later change",
+      ),
     );
   });
 

@@ -1,9 +1,15 @@
 import { type LiveKitStore, catalog } from "@getpochi/livekit";
 import type { SyncBackend } from "@livestore/common";
-import { StoreInternalsSymbol } from "@livestore/livestore";
+import { Schema, StoreInternalsSymbol } from "@livestore/livestore";
+import { MAX_WS_MESSAGE_BYTES } from "@livestore/sync-cf/common";
 import { Effect, Socket, Stream } from "@livestore/utils/effect";
 
 export const syncChannelName = (storeId: string) => `pochi-sync:${storeId}`;
+
+// Leave room for sequence numbers, client/session IDs and the authenticated
+// transport envelope, which the worker adds after the event is committed.
+const MaxResendEventBytes = MAX_WS_MESSAGE_BYTES - 16 * 1024;
+const textEncoder = new TextEncoder();
 
 /**
  * Re-send only the selected user task's messages with the same ids.
@@ -13,6 +19,22 @@ export function syncTaskMessages(store: LiveKitStore, taskId: string) {
   const events = store
     .query(catalog.queries.makeMessagesQuery(taskId))
     .map(({ data }) => catalog.events.messageUpserted({ taskId, data }));
+  // Validate the entire snapshot before committing any of it. A message may
+  // have grown beyond the transport limit through separate compact events.
+  for (const event of events) {
+    const encoded = {
+      name: event.name,
+      args: Schema.encodeSync(catalog.events.messageUpserted.schema)(
+        event.args,
+      ),
+    };
+    const size = textEncoder.encode(JSON.stringify(encoded)).byteLength;
+    if (size > MaxResendEventBytes) {
+      throw new Error(
+        `Cannot re-upload this task: message ${event.args.data.id} is too large (${size} bytes; limit ${MaxResendEventBytes} bytes). No messages were queued.`,
+      );
+    }
+  }
   if (events.length) store.commit(...events);
 }
 

@@ -46,12 +46,17 @@ function makeFakeStore() {
     }),
   };
   const commit = vi.fn();
+  const query = vi.fn(() => [
+    {
+      id: "m1",
+      taskId: "task",
+      data: { id: "m1", role: "user", parts: [] as unknown[] },
+    },
+  ]);
   const store = {
     storeId: crypto.randomUUID(),
     commit,
-    query: () => [
-      { id: "m1", taskId: "task", data: { id: "m1", role: "user", parts: [] } },
-    ],
+    query,
     [StoreInternalsSymbol]: {
       clientSession: { leaderThread },
       syncProcessor: { syncState: Subscribable.fromSubscriptionRef(session) },
@@ -61,6 +66,7 @@ function makeFakeStore() {
     store,
     leaderThread,
     commit,
+    query,
     getLeader,
     setConnected: (isConnected: boolean) =>
       Effect.runPromise(SubscriptionRef.set(network, { isConnected })),
@@ -223,6 +229,48 @@ describe("useSyncStatus", () => {
       expect.objectContaining({ name: "v1.MessageUpserted" }),
     );
     expect(result.current.isRequesting).toBe(false);
+  });
+
+  it("keeps a rejected resend visible across refreshes and clears it on a successful retry", async () => {
+    const fake = makeFakeStore();
+    const smallMessages = fake.query();
+    fake.query.mockReturnValue([
+      {
+        ...smallMessages[0],
+        data: {
+          ...smallMessages[0].data,
+          parts: [{ type: "text", text: "中文".repeat(150000) }],
+        },
+      },
+    ]);
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useSyncStatus(fake.store, { taskId: "task", enabled }),
+      { initialProps: { enabled: true } },
+    );
+    await waitFor(() => expect(result.current.state).toBe("synced"));
+    await act(async () => {
+      await expect(result.current.sync()).rejects.toThrow(
+        "message m1 is too large",
+      );
+    });
+    expect(fake.commit).not.toHaveBeenCalled();
+    expect(result.current.isRequesting).toBe(false);
+    expect(result.current.error).toContain("No messages were queued");
+    const reads = fake.getLeader.mock.calls.length;
+    rerender({ enabled: false });
+    rerender({ enabled: true });
+    await waitFor(() =>
+      expect(fake.getLeader.mock.calls.length).toBeGreaterThan(reads),
+    );
+    expect(result.current.error).toContain("message m1 is too large");
+    fake.query.mockReturnValue(smallMessages);
+    await act(() => result.current.sync());
+    expect(fake.commit).toHaveBeenCalledOnce();
+    expect(result.current).toMatchObject({
+      state: "synced",
+      error: null,
+      isRequesting: false,
+    });
   });
 
   it.each(["leader", "page", "offline"] as const)(

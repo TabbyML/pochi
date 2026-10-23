@@ -31,6 +31,8 @@ type Snapshot = {
   summary?: { pending: number; localHead: number };
   networkError?: string | null;
   sessionError?: string | null;
+  // A rejected resend does not change pending, so queue refreshes cannot clear it.
+  requestError?: string | null;
   error: string | null;
 };
 
@@ -179,14 +181,18 @@ export function useSyncStatus(
     const controller = new AbortController();
     request.current = controller;
     setRequesting(store);
+    update({ requestError: null });
     try {
+      // Read fresh pending before deciding whether a full resend is needed.
+      const initial = await Effect.runPromise(refresh(), {
+        signal: controller.signal,
+      });
+      controller.signal.throwIfAborted();
+      if (initial.pending === 0) syncTaskMessages(store, taskId);
       // Keep waiting for confirmation; upload retries/backoff belong to the SDK.
       // There is no overall timeout here. Unmount/store changes cancel the wait.
       await Effect.runPromise(
         Effect.gen(function* () {
-          // Read fresh pending before deciding whether a full resend is needed.
-          const initial = yield* refresh();
-          if (initial.pending === 0) syncTaskMessages(store, taskId);
           while (true) {
             const status = yield* refresh();
             if (status.isConnected && status.pending === 0) return;
@@ -203,7 +209,10 @@ export function useSyncStatus(
         { signal: controller.signal },
       );
     } catch (error) {
-      if (!controller.signal.aborted) update({ error: String(error) });
+      if (!controller.signal.aborted)
+        update({
+          requestError: error instanceof Error ? error.message : String(error),
+        });
       throw error;
     } finally {
       if (request.current === controller) request.current = undefined;
@@ -220,7 +229,11 @@ export function useSyncStatus(
     (current?.summary?.pending ?? 0) + ahead,
   );
   const error =
-    current?.networkError ?? current?.sessionError ?? current?.error ?? null;
+    current?.requestError ??
+    current?.networkError ??
+    current?.sessionError ??
+    current?.error ??
+    null;
   const state: SyncStatus["state"] =
     error || current?.connected === false
       ? "offline"
