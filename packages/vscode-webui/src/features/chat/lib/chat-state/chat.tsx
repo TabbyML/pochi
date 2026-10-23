@@ -4,10 +4,14 @@ import { useToolCallLifeCycles } from "../use-tool-call-life-cycles";
 import { ChatContext, type ChatState, type RetryCount } from "./types";
 
 interface ChatContextProviderProps {
+  cwd?: string;
   children: ReactNode;
 }
 
-export function ChatContextProvider({ children }: ChatContextProviderProps) {
+export function ChatContextProvider({
+  cwd,
+  children,
+}: ChatContextProviderProps) {
   const autoApproveGuard = useRef<"auto" | "manual" | "stop">("stop");
   const abortController = useRef(new AbortController());
   const [retryCount, setRetryCount] = useState<RetryCount | undefined>(
@@ -18,6 +22,7 @@ export function ChatContextProvider({ children }: ChatContextProviderProps) {
   const batchExecuteManager = useRef(new BatchExecuteManager()).current;
 
   const value: ChatState = {
+    cwd,
     abortController,
     autoApproveGuard,
     getToolCallLifeCycle,

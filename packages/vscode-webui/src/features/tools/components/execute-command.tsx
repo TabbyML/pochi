@@ -1,4 +1,5 @@
-import { useToolCallLifeCycle } from "@/features/chat";
+import { useTaskCwd, useToolCallLifeCycle } from "@/features/chat";
+import { normalizePathForComparison } from "@getpochi/common/git-utils";
 import { getStaticToolName } from "ai";
 import { TerminalIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -29,18 +30,24 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
   }, [lifecycle.abort]);
 
   const { cwd, command, background } = tool.input || {};
+  const taskCwd = useTaskCwd();
   const backgroundJobMetadata =
     tool.state === "output-available" ? tool.output._meta : undefined;
   const isPromoted = !background && Boolean(backgroundJobMetadata);
   const runningStatus = useBackgroundJobRunningStatus(
     backgroundJobMetadata?.backgroundJobId,
   );
-  const cwdNode = cwd ? (
-    <span>
-      {" "}
-      {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
-    </span>
-  ) : null;
+  const normalizedCwd = normalizePathForComparison(cwd);
+  const isDefaultCwd =
+    normalizedCwd === "." ||
+    (!!taskCwd && normalizedCwd === normalizePathForComparison(taskCwd));
+  const cwdNode =
+    cwd && !isDefaultCwd ? (
+      <span>
+        {" "}
+        {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
+      </span>
+    ) : null;
   const text = background
     ? t("toolInvocation.backgroundExecute")
     : isPromoted
