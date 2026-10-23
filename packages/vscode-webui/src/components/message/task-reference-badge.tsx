@@ -3,7 +3,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useCurrentWorkspace } from "@/lib/hooks/use-current-workspace";
 import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useTasks } from "@/lib/use-tasks";
 import { cn } from "@/lib/utils";
@@ -36,7 +35,7 @@ export function useTaskReference(id: string, title?: string) {
 }
 
 /**
- * Badge for a referenced task, shown for a `<task>` tag in a sent
+ * Badge for a referenced task, shown for a `<task-reference>` tag in a sent
  * message and for reads of a task transcript. Clicking opens the task in a
  * panel when the task's working directory is known.
  */
@@ -47,10 +46,10 @@ export function TaskReferenceBadge({
 }: TaskReferenceBadgeProps) {
   const { jwt } = usePochiCredentials();
   const { task, displayTitle } = useTaskReference(id, title);
-  const { data: workspace } = useCurrentWorkspace();
-  // Transcripts are listed per repo and the task history is not always in
-  // sync, so open the task from its id when it has no history entry.
-  const cwd = task?.cwd ?? workspace?.cwd;
+  // A transcript can come from a client that is not in this task history
+  // (e.g. the CLI); without a history entry its working directory is
+  // unknown, so the badge is not clickable.
+  const cwd = task?.cwd;
 
   const openTask = useCallback(
     (e: React.MouseEvent) => {

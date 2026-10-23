@@ -11,7 +11,7 @@ function createTagFilterExpression(tagNames: string[]): RegExp {
     .map((tag) => tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
     .join("|");
   return new RegExp(
-    `<(/?)(?!/?(${escapedTags}))([^>]*)(?=[\\t\\n\\f\\r />])`,
+    `<(/?)(?!/?(${escapedTags})(?=[\\t\\n\\f\\r />]))([^>]*)(?=[\\t\\n\\f\\r />])`,
     "gi",
   );
 }

@@ -757,7 +757,7 @@ function removePastedTextPartsForLLM(messages: UIMessage[]): UIMessage[] {
 }
 
 /**
- * Collects the `<task>` tags in a user message and explains them to
+ * Collects the `<task-reference>` tags in a user message and explains them to
  * the model. The tags themselves are stripped later by `stripKnownXMLTags`,
  * leaving the transcript path inline (like `<file>`); the reminder maps each
  * path to the title of the task it belongs to. The title is deliberately not
@@ -779,13 +779,14 @@ function addTaskReferenceReminderForLLM(messages: UIMessage[]): UIMessage[] {
     });
     if (refs.size === 0) return message;
 
-    message.parts.splice(firstIndex, 0, {
+    const parts = [...message.parts];
+    parts.splice(firstIndex, 0, {
       type: "text",
       text: prompts.createSystemReminder(
         prompts.taskReferences([...refs.values()]),
       ),
     });
-    return message;
+    return { ...message, parts };
   });
 }
 

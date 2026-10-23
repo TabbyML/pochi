@@ -43,6 +43,28 @@ describe("MessageMarkdown", () => {
     expect(badge.textContent).toBe('Fix "login" <bug>');
   });
 
+  it("renders a task-reference tag without attributes as plain text", () => {
+    render(
+      <MessageMarkdown>
+        {"draft <task-reference>Refactor the parser</task-reference> prompt"}
+      </MessageMarkdown>,
+    );
+
+    expect(screen.queryByTestId("task-reference-badge")).toBeNull();
+    expect(screen.getByText(/Refactor the parser/)).toBeTruthy();
+  });
+
+  it("does not treat a plain <task> tag as a task reference", () => {
+    const { container } = render(
+      <MessageMarkdown>
+        {"split it into <task>Refactor</task> parts"}
+      </MessageMarkdown>,
+    );
+
+    expect(screen.queryByTestId("task-reference-badge")).toBeNull();
+    expect(container.textContent).toContain("<task>Refactor</task>");
+  });
+
   it("renders text following a directly invoked skill", () => {
     const skillPrompt = prompts.skill({
       name: "find-skills",

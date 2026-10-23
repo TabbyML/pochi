@@ -7,7 +7,7 @@ const TaskReferenceTitleContext = createContext<ReadonlyMap<string, string>>(
 );
 
 /**
- * Collects the titles recorded in the `<task>` tags of the user
+ * Collects the titles recorded in the `<task-reference>` tags of the user
  * messages, so a task shows its title wherever it appears in the conversation
  * (e.g. when the model reads its record) even if the task history has no entry.
  */

@@ -1,5 +1,5 @@
 export type TaskReference = {
-  /** Sanitized task id, also the transcript file name without extension. */
+  /** Task id, as recorded in the transcript header. */
   id: string;
   /** Absolute path of the task's transcript markdown file. */
   path: string;
@@ -9,17 +9,17 @@ export type TaskReference = {
 const FallbackTitle = "Untitled task";
 
 const TaskReferenceRegex =
-  /<task\s+id="([^"]*)"\s+path="([^"]*)"\s+title="([^"]*)"[^>]*>.*?<\/task>/gs;
+  /<task-reference\s+id="([^"]*)"\s+path="([^"]*)"\s+title="([^"]*)"[^>]*>.*?<\/task-reference>/gs;
 
 /**
- * Serializes a task reference as an inline `<task>` tag. The tag is
+ * Serializes a task reference as an inline `<task-reference>` tag. The tag is
  * kept in the stored user text; the model only sees its body, the transcript
  * path (like `<file>`), plus a system reminder from `formatters.llm()` that
  * maps the path to the task title.
  */
 export function serializeTaskReference({ id, path, title }: TaskReference) {
   const cleanTitle = title.replace(/\s+/g, " ").trim() || FallbackTitle;
-  return `<task id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path)}" title="${escapeXmlAttribute(cleanTitle)}">${path}</task>`;
+  return `<task-reference id="${escapeXmlAttribute(id)}" path="${escapeXmlAttribute(path)}" title="${escapeXmlAttribute(cleanTitle)}">${path}</task-reference>`;
 }
 
 export function parseTaskReferences(text: string): TaskReference[] {

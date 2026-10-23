@@ -198,6 +198,9 @@ export function createFileMentionConfig<T extends { filepath: string }>({
           return true;
         }
 
+        // Hidden by an outside click: keys must not reach the invisible list.
+        if (!isActive) return false;
+
         const result = component?.ref?.onKeyDown(props) ?? false;
 
         // Preview will be updated automatically via onSelectedIndexChange callback

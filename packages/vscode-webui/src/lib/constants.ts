@@ -3,7 +3,7 @@ export const CustomHtmlTags = [
   "custom-agent",
   "skill",
   "issue",
-  "task",
+  "task-reference",
 ];
 
 export const MaxAttachments = 4;

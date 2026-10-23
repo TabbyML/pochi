@@ -206,11 +206,31 @@ export function FormEditor({
   // Last fetched tasks, so the mention can decide synchronously whether a query
   // with spaces still matches a task title.
   const taskCacheRef = useRef<AutoMemoryTranscriptEntry[]>([]);
+  // Listing tasks reads every transcript header, so share one listing between
+  // the keystrokes of a mention instead of listing again for each query.
+  const taskListingRef = useRef<
+    | {
+        at: number;
+        promise: Promise<AutoMemoryTranscriptEntry[]>;
+      }
+    | undefined
+  >(undefined);
   const fetchTaskMentionItems = useCallback(
     async (query = "") => {
-      const tasks = await vscodeHost.listReferenceableTasks(
-        currentTaskIdRef.current,
-      );
+      let listing = taskListingRef.current;
+      if (!listing || Date.now() - listing.at > TaskListingCacheMs) {
+        const promise = vscodeHost.listReferenceableTasks(
+          currentTaskIdRef.current,
+        );
+        listing = { at: Date.now(), promise };
+        taskListingRef.current = listing;
+        promise.catch(() => {
+          if (taskListingRef.current?.promise === promise) {
+            taskListingRef.current = undefined;
+          }
+        });
+      }
+      const tasks = await listing.promise;
       taskCacheRef.current = tasks;
       return fuzzySearchTasks(query, tasks);
     },
@@ -790,6 +810,8 @@ export function FormEditor({
     </form>
   );
 }
+
+const TaskListingCacheMs = 5000;
 
 const debouncedListFiles = debounceWithCachedValue(
   async () => {

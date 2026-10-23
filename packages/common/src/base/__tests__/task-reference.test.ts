@@ -58,12 +58,12 @@ describe("task reference serialization", () => {
 
   it("uses the path as the tag body", () => {
     expect(serializeTaskReference(ref)).toMatch(
-      new RegExp(`>${ref.path}</task>$`),
+      new RegExp(`>${ref.path}</task-reference>$`),
     );
   });
 
   it("ignores unrelated tags", () => {
-    expect(parseTaskReferences("<tasks>x</tasks> <file>a.ts</file>")).toEqual(
+    expect(parseTaskReferences("<task>x</task> <tasks>x</tasks> <file>a.ts</file>")).toEqual(
       [],
     );
   });
@@ -74,6 +74,12 @@ describe("task reference in titles", () => {
     expect(parseTitle(`Continue ${serializeTaskReference(ref)}`)).toBe(
       "Continue Fix login bug",
     );
+  });
+
+  it("keeps the body of a hand-written tag without a title", () => {
+    expect(
+      parseTitle("Split <task-reference>Refactor the parser</task-reference>"),
+    ).toBe("Split Refactor the parser");
   });
 });
 
@@ -92,7 +98,13 @@ describe("formatters.llm with task references", () => {
     expect(texts[0]).toContain("only when it helps");
     expect(texts[1]).toBe(`compare with ${ref.path} now`);
     expect(texts[1]).not.toContain("Fix login bug");
-    expect(texts[1]).not.toContain("<task");
+    expect(texts[1]).not.toContain("<task-reference");
+  });
+
+  it("leaves a plain <task> tag untouched", () => {
+    const text = "split into <task>Refactor the parser</task> parts";
+    const [message] = formatters.llm([userMessage(text)]);
+    expect(textsOf(message)).toEqual([text]);
   });
 
   it("places the reminder after earlier system reminders", () => {

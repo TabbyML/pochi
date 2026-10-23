@@ -287,8 +287,10 @@ interface IssueComponentProps {
 }
 
 interface TaskReferenceComponentProps {
-  id: string;
-  title: string;
+  id?: string;
+  path?: string;
+  title?: string;
+  children?: React.ReactNode;
 }
 
 function escapeMarkdown(text: string): string {
@@ -467,7 +469,7 @@ export function MessageMarkdown({
                 "custom-agent": ["path", "id"],
                 skill: ["path", "id"],
                 issue: ["id", "url", "title"],
-                task: ["id", "path", "title"],
+                "task-reference": ["id", "path", "title"],
                 ...mathSanitizeConfig.attributes,
                 ol: [...(defaultSchema.attributes?.ol ?? []), "start"],
               },
@@ -518,8 +520,11 @@ export function MessageMarkdown({
         const cleanId = id.replace("user-content-", "");
         return <IssueBadge id={cleanId} url={url} title={title} />;
       },
-      task: (props: TaskReferenceComponentProps) => {
-        const { id, title } = props;
+      "task-reference": (props: TaskReferenceComponentProps) => {
+        const { id, path, title, children } = props;
+        // A hand-written tag without the attributes of a real reference is
+        // plain text, not a badge.
+        if (!id || !path || !title) return <>{children}</>;
         const cleanId = id.replace("user-content-", "");
         return <TaskReferenceBadge id={cleanId} title={title} />;
       },
