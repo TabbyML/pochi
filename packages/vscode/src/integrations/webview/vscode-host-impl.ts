@@ -1,3 +1,4 @@
+import os from "node:os";
 import path from "node:path";
 import { executeCommandWithPty } from "@/integrations/terminal/execute-command-with-pty";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -660,6 +661,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     try {
       validateToolPolicy(toolName, args, options.toolPolicies, {
         cwd: this.cwd,
+        homeDir: os.homedir(),
       });
       envs = await this.resolveToolCallEnvs(
         toolName,

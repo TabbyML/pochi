@@ -29,6 +29,7 @@ const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
 
 export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
+  readonly homeDir = globalThis.POCHI_HOME_DIR;
   private modelList: DisplayModel[] = [];
   private mcpStatus: McpStatus = {
     connections: {},
