@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { executeCommandTool as ExecuteCommandTool } from "../execute-command";
 
+const taskCwd = vi.hoisted(() => ({
+  current: undefined as string | undefined,
+}));
+
 vi.mock("@/features/chat", () => ({
+  useTaskCwd: () => taskCwd.current,
   useToolCallLifeCycle: () => ({
     getToolCallLifeCycle: () => ({
       abort: vi.fn(),
@@ -73,6 +78,53 @@ vi.mock("../command-execution-panel", () => ({
 }));
 
 describe("executeCommandTool", () => {
+  beforeEach(() => {
+    taskCwd.current = undefined;
+  });
+
+  it("hides the cwd when it matches the task cwd", () => {
+    taskCwd.current = "/workspace";
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "default-cwd-call",
+          state: "input-available",
+          input: {
+            command: "bun run test",
+            cwd: "/workspace",
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("toolInvocation.executeCommand")).toBeTruthy();
+    expect(screen.queryByText("toolInvocation.in")).toBeNull();
+  });
+
+  it("shows the cwd when it differs from the task cwd", () => {
+    taskCwd.current = "/workspace";
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "custom-cwd-call",
+          state: "input-available",
+          input: {
+            command: "bun run test",
+            cwd: "/workspace/packages/vscode-webui",
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("toolInvocation.in")).toBeTruthy();
+  });
+
   it("passes a background command output file to the job panel", () => {
     render(
       <ExecuteCommandTool
