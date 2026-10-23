@@ -6,6 +6,7 @@ import {
   getLogger,
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
+  isForkAgentUseCase,
   parseBackgroundJobId,
   withTimeout,
 } from "@getpochi/common";
@@ -155,6 +156,7 @@ export class BackgroundJobManager {
       this.taskStates.set(taskId, state);
     },
   };
+  private readonly localTaskIds = new Set<string>();
   // Only forks created in this Webview/run can reuse their parent's request.
   private readonly forkSystemPrompts = new Map<string, string | undefined>();
   private readonly taskMemories = new Map<string, TaskMemoryAdaptor>();
@@ -218,7 +220,19 @@ export class BackgroundJobManager {
               )
             : options.adaptor.executeToolCall(args),
       },
-      readTaskState: (taskId) => this.taskStateStore.read(taskId),
+      readTaskState: async (taskId) => {
+        const state = await this.taskStateStore.read(taskId);
+        if (isForkAgentUseCase(state?.useCase)) this.localTaskIds.add(taskId);
+        return state;
+      },
+      isLocalTask: (taskId) => {
+        if (this.localTaskIds.has(taskId)) return true;
+        // A restored fork must be identified before its failure event is persisted.
+        const registration = this.taskRegistrations.get(taskId);
+        return registration
+          ? registration.then(() => this.localTaskIds.has(taskId))
+          : false;
+      },
       shouldRunForkTask: (taskId) => this.forkSystemPrompts.has(taskId),
       clearFileStateCache: options.clearFileStateCache,
       waitForBackgroundJobs: async (taskId, abortSignal) => {
@@ -254,6 +268,7 @@ export class BackgroundJobManager {
           chatClass: InMemoryChat,
           isSubTask: isSubagent,
           requestUseCase: taskState.useCase ?? "agent",
+          persistLocallyOnly: isForkAgentUseCase(taskState.useCase),
           customAgent,
           attemptCompletionSchema: resultSchema
             ? parseOutputSchema(resultSchema)
@@ -359,16 +374,20 @@ export class BackgroundJobManager {
       };
       await this.taskStateStore.set(taskId, state);
       if (this.disposed) throw new Error("Background job manager is disposed.");
+      this.localTaskIds.add(taskId);
       this.batch(() => {
         this.store.commit(
-          catalog.events.taskInited({
-            id: taskId,
-            cwd: agent.cwd,
-            background: true,
-            createdAt: new Date(),
-            initMessages: agent.initMessages,
-            initTitle: agent.initTitle,
-          }),
+          ...catalog.taskEvents(
+            true,
+            catalog.taskInitEvents({
+              id: taskId,
+              cwd: agent.cwd,
+              background: true,
+              createdAt: new Date(),
+              initMessages: agent.initMessages,
+              initTitle: agent.initTitle,
+            }),
+          ),
         );
         this.registerTask(taskId, state);
       });
@@ -441,6 +460,7 @@ export class BackgroundJobManager {
   }
 
   registerTask(taskId: string, state: BackgroundTaskState) {
+    if (isForkAgentUseCase(state.useCase)) this.localTaskIds.add(taskId);
     const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
     const ownerTaskId = state.parentTaskId ?? task?.parentId;
     if (!ownerTaskId) return;
@@ -471,6 +491,7 @@ export class BackgroundJobManager {
       if (this.jobs.has(id) || this.taskRegistrations.has(task.id)) continue;
       const registration = (async () => {
         const state = await this.taskStateStore.read(task.id);
+        if (isForkAgentUseCase(state?.useCase)) this.localTaskIds.add(task.id);
         // A local launch may have registered newer metadata while this read
         // was in flight. It owns that registration.
         if (!this.disposed && !this.jobs.has(id))
@@ -1068,11 +1089,13 @@ export class BackgroundJobManager {
         child.status !== "failed"
       )
         this.store.commit(
-          catalog.events.taskFailed({
-            id: childId,
-            error: { kind: "AbortError", message: "Stopped by user." },
-            updatedAt: new Date(),
-          }),
+          ...catalog.taskEvents(this.localTaskIds.has(childId), [
+            catalog.events.taskFailed({
+              id: childId,
+              error: { kind: "AbortError", message: "Stopped by user." },
+              updatedAt: new Date(),
+            }),
+          ]),
         );
       this.taskChanged(childId);
     } else {

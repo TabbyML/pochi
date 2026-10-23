@@ -1,4 +1,6 @@
+import { Schema } from "@livestore/livestore";
 import { vi } from "vitest";
+import { defaultCatalog as catalog } from "../../livestore";
 import type { LiveKitStore, Message, Task } from "../../types";
 
 /** In-memory materialization of the events used by background-job tests. */
@@ -40,7 +42,20 @@ export function makeJobStore() {
     },
     commit: vi.fn(
       (...events: { name: string; args: Record<string, unknown> }[]) => {
-        for (const event of events) {
+        for (const input of events) {
+          let event = input;
+          if (input.name === "v1.ForkAgentLocalEvent") {
+            const name = input.args.name as string;
+            const definition = catalog.schema.eventsDefsMap.get(name);
+            if (!definition)
+              throw new Error(`Unknown fork agent event: ${name}`);
+            event = {
+              name,
+              args: Schema.decodeUnknownSync(definition.schema)(
+                input.args.args,
+              ),
+            };
+          }
           const args = event.args;
           const id = args.id as string;
           if (event.name === "v1.TaskFailed")
@@ -72,6 +87,18 @@ export function makeJobStore() {
             messages.set(
               id,
               (args.initMessages as Message[] | undefined) ?? [],
+            );
+          } else if (event.name === "v1.MessageUpserted") {
+            const taskId = args.taskId as string;
+            const data = args.data as Message;
+            const previous = messages.get(taskId) ?? [];
+            messages.set(
+              taskId,
+              previous.some((message) => message.id === data.id)
+                ? previous.map((message) =>
+                    message.id === data.id ? data : message,
+                  )
+                : [...previous, data],
             );
           } else if (event.name === "v1.ToolsExecutionFinished") {
             for (const [taskId, taskMessages] of messages)

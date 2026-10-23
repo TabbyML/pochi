@@ -6,6 +6,7 @@ import {
   prompts,
 } from "@getpochi/common";
 import { convertToModelMessages, generateText } from "ai";
+import { taskEvents } from "../../livestore";
 import { events } from "../../livestore/default-schema";
 import type { LiveKitStore, Message } from "../../types";
 
@@ -19,6 +20,7 @@ export async function repairMermaid({
   chart,
   error,
   abortSignal,
+  persistLocallyOnly = false,
 }: {
   store: LiveKitStore;
   taskId: string;
@@ -27,6 +29,7 @@ export async function repairMermaid({
   chart: string;
   error: string;
   abortSignal?: AbortSignal;
+  persistLocallyOnly?: boolean;
 }): Promise<void> {
   // Find all messages containing the mermaid diagram by searching through all parts
   // This is more reliable than using messageId since messages may be transformed in UI/DB
@@ -101,9 +104,12 @@ export async function repairMermaid({
     // Commit all updated messages to the database in a single transaction
     if (updatedMessages.length > 0) {
       store.commit(
-        events.mermaidRepaired({
-          repairs: updatedMessages.map(({ id, parts }) => ({ id, parts })),
-        }),
+        ...taskEvents(
+          persistLocallyOnly,
+          updatedMessages.map(({ id, parts }) =>
+            events.mermaidRepaired({ repairs: [{ id, parts }] }),
+          ),
+        ),
       );
       logger.debug(
         `Committed ${updatedMessages.length} updated message(s) to database`,

@@ -252,7 +252,15 @@
     "ok": "确定",
     "setPublic": "任何有链接的人",
     "setPrivate": "仅您",
-    "shareFirst": "（请先分享）"
+    "shareFirst": "（请先分享）",
+    "sync": {
+      "synced": "已同步",
+      "syncing": "同步中…",
+      "offline": "离线",
+      "failed": "同步失败",
+      "toRemote": "同步到远端",
+      "description": "同步待上传内容；没有待上传内容时，重新上传此任务的全部消息。"
+    }
   },
   "signInPage": {
     "welcome": "欢迎使用 Pochi",

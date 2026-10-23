@@ -516,3 +516,146 @@ it("stops an agent waiting for its command without stopping the sibling command"
     await data.manager.dispose();
   }
 });
+
+it.each(["stop", "interrupted", "startup failure"] as const)(
+  "keeps known fork agent %s events local without changing scheduling",
+  async (scenario) => {
+    const data = makeJobStore();
+    data.tasks.set("fork", {
+      id: "fork",
+      background: true,
+      status: "pending-model",
+    } as Task);
+    const executor = new TaskExecutor({
+      store: data.store,
+      blobStore: {} as never,
+      readTaskState: async () => ({ useCase: "auto-memory" }),
+      shouldRunForkTask: () => false,
+      isLocalTask: () => true,
+      createChatKit: vi.fn(),
+      adaptor: {
+        waitUntilReady: async () => {
+          if (scenario === "startup failure")
+            throw new Error("host unavailable");
+        },
+        getRequestGetters: () => getters,
+        executeToolCall: vi.fn(),
+      },
+    });
+    try {
+      if (scenario === "stop") await executor.stopTask("fork");
+      else await executor.drain();
+      expect(data.tasks.get("fork")?.status).toBe("failed");
+      expect(data.commit.mock.calls.flat()).toEqual([
+        expect.objectContaining({
+          name: "v1.ForkAgentLocalEvent",
+          args: expect.objectContaining({
+            name: "v1.TaskFailed",
+          }),
+        }),
+      ]);
+    } finally {
+      await executor.dispose();
+    }
+  },
+);
+
+it("preserves ordinary background failure handling when task metadata cannot be read", async () => {
+  const data = makeJobStore();
+  data.tasks.set("fork", {
+    id: "fork",
+    background: true,
+    status: "pending-model",
+  } as Task);
+  const readTaskState = vi
+    .fn()
+    .mockRejectedValue(new Error("metadata unavailable"));
+  const onTaskError = vi.fn();
+  const executor = new TaskExecutor({
+    store: data.store,
+    blobStore: {} as never,
+    readTaskState,
+    createChatKit: vi.fn(),
+    adaptor: {
+      getRequestGetters: () => getters,
+      executeToolCall: vi.fn(),
+      onTaskError,
+    },
+  });
+  try {
+    await executor.drain();
+    expect(data.tasks.get("fork")?.status).toBe("failed");
+    expect(data.commit.mock.calls.flat()).toEqual([expect.objectContaining({ name: "v1.TaskFailed" })]);
+    expect(readTaskState).toHaveBeenCalledTimes(1);
+    expect(onTaskError).toHaveBeenCalledOnce();
+  } finally {
+    await executor.dispose();
+  }
+});
+
+it("stops a known fork without reading task metadata again", async () => {
+  const data = makeJobStore();
+  data.tasks.set("fork", {
+    id: "fork",
+    background: true,
+    status: "pending-tool",
+  } as Task);
+  const message = assistant([tool("readFile", "read", { path: "memory.md" })]);
+  data.setMessages("fork", [message]);
+  const readTaskState = vi
+    .fn()
+    .mockResolvedValueOnce({ useCase: "auto-memory" })
+    .mockRejectedValue(new Error("host disconnected"));
+  let started!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let aborted = false;
+  const executor = new TaskExecutor({
+    store: data.store,
+    blobStore: {} as never,
+    readTaskState,
+    isLocalTask: () => true,
+    createChatKit: (options) =>
+      new LiveChatKit({
+        ...options,
+        requestUseCase: options.taskState.useCase,
+        persistLocallyOnly: true,
+        chatClass: InMemoryChat,
+      }),
+    adaptor: {
+      getRequestGetters: () => getters,
+      executeToolCall: async ({ abortSignal }) => {
+        started();
+        return new Promise((resolve) =>
+          abortSignal.addEventListener(
+            "abort",
+            () => {
+              aborted = true;
+              resolve({ error: "aborted" });
+            },
+            { once: true },
+          ),
+        );
+      },
+    },
+  });
+  try {
+    executor.start();
+    await ready;
+    await executor.stopTask("fork");
+    expect(aborted).toBe(true);
+    expect(readTaskState).toHaveBeenCalledOnce();
+    expect(data.tasks.get("fork")).toMatchObject({
+      status: "failed",
+      error: { kind: "AbortError" },
+    });
+    expect(
+      data.commit.mock.calls
+        .flat()
+        .every((event) => event.name === "v1.ForkAgentLocalEvent"),
+    ).toBe(true);
+  } finally {
+    await executor.dispose();
+  }
+});

@@ -106,6 +106,8 @@ type CreateTaskExecutorOptions = {
   ) => MaybePromise<BackgroundTaskState | undefined>;
   /** Fork agents from a previous Webview/run should be left interrupted. */
   shouldRunForkTask?: (taskId: string) => boolean;
+  /** Waits for in-flight restoration if the task's persistence policy is unknown. */
+  isLocalTask?: (taskId: string) => MaybePromise<boolean>;
   adaptor: RunningTaskAdaptor;
   clearFileStateCache?: (taskId: string) => MaybePromise<void>;
   createChatKit: CreateRunningTaskChatKit;
@@ -219,15 +221,19 @@ export class TaskExecutor {
       task &&
       (isRunnableTaskStatus(task.status) || this.runningTasks.has(taskId))
     ) {
+      const policy = this.options.isLocalTask?.(taskId) ?? false;
+      const local = typeof policy === "boolean" ? policy : await policy;
       this.options.store.commit(
-        catalog.events.taskFailed({
-          id: taskId,
-          error: {
-            kind: "AbortError",
-            message: "Stopped by user.",
-          },
-          updatedAt: new Date(),
-        }),
+        ...catalog.taskEvents(local, [
+          catalog.events.taskFailed({
+            id: taskId,
+            error: {
+              kind: "AbortError",
+              message: "Stopped by user.",
+            },
+            updatedAt: new Date(),
+          }),
+        ]),
       );
     }
     const runningTask = this.runningTasks.get(taskId);
@@ -408,15 +414,20 @@ class RunningTask {
         this.taskState.useCase !== undefined &&
         this.options.shouldRunForkTask?.(this.options.taskId) === false
       ) {
+        const policy = this.options.isLocalTask?.(this.options.taskId) ?? false;
+        const local = typeof policy === "boolean" ? policy : await policy;
+        this.abortController.signal.throwIfAborted();
         this.options.store.commit(
-          catalog.events.taskFailed({
-            id: this.options.taskId,
-            error: {
-              kind: "AbortError",
-              message: "Interrupted fork agent is not resumed.",
-            },
-            updatedAt: new Date(),
-          }),
+          ...catalog.taskEvents(local, [
+            catalog.events.taskFailed({
+              id: this.options.taskId,
+              error: {
+                kind: "AbortError",
+                message: "Interrupted fork agent is not resumed.",
+              },
+              updatedAt: new Date(),
+            }),
+          ]),
         );
         return;
       }
@@ -461,12 +472,20 @@ class RunningTask {
       if (this.chatKit) {
         await this.chatKit.markAsFailed(normalizedError);
       } else {
+        const policy = this.options.isLocalTask?.(this.options.taskId) ?? false;
+        const local = typeof policy === "boolean" ? policy : await policy;
+        if (this.abortController.signal.aborted) return;
         this.options.store.commit(
-          catalog.events.taskFailed({
-            id: this.options.taskId,
-            error: { kind: "InternalError", message: normalizedError.message },
-            updatedAt: new Date(),
-          }),
+          ...catalog.taskEvents(local, [
+            catalog.events.taskFailed({
+              id: this.options.taskId,
+              error: {
+                kind: "InternalError",
+                message: normalizedError.message,
+              },
+              updatedAt: new Date(),
+            }),
+          ]),
         );
       }
       throw normalizedError;
