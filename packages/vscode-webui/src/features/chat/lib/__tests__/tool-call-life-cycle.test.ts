@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import {
   BackgroundJobManager,
@@ -6,6 +7,7 @@ import {
 } from "@getpochi/livekit";
 import { makeJobStore } from "@getpochi/livekit/testing";
 import type { Todo } from "@getpochi/tools";
+import { blobStore } from "@/lib/remote-blob-store";
 import { ManagedToolCallLifeCycle } from "../tool-call-life-cycle";
 
 const vscodeHostMock = vi.hoisted(() => ({}) as Record<string, unknown>);
@@ -270,6 +272,33 @@ describe("ManagedToolCallLifeCycle", () => {
     expect(lifecycle.complete.result).toEqual({
       error: "Failed to execute tool: checkout failed",
     });
+  });
+
+  it("completes with an error when uploading media output fails", async () => {
+    const put = vi.spyOn(blobStore, "put").mockRejectedValueOnce(
+      new Error("Upload failed (HTTP 429): Too many requests"),
+    );
+    vscodeHostMock.executeToolCall = vi.fn(async () => ({
+      type: "media",
+      mimeType: "image/png",
+      data: btoa("png"),
+    }));
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeStore() as never,
+      { toolName: "readFile", toolCallId: "read-image" },
+      new AbortController().signal,
+    );
+    try {
+      lifecycle.execute({ path: "image.png" });
+
+      await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+      expect(lifecycle.complete.result).toEqual({
+        error:
+          "Failed to execute tool: Upload failed (HTTP 429): Too many requests",
+      });
+    } finally {
+      put.mockRestore();
+    }
   });
 
   it("resolves attemptTodoCompletion newTask results with full todos", async () => {
