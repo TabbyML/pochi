@@ -1,6 +1,16 @@
 import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { BlobStore } from "@getpochi/livekit";
 
+export class UploadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "UploadError";
+  }
+}
+
 class RemoteBlobStore implements BlobStore {
   readonly protocol = "https:";
   async put(
@@ -22,7 +32,12 @@ class RemoteBlobStore implements BlobStore {
     });
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
+      const detail =
+        (await response.text().catch(() => "")).trim() || response.statusText;
+      throw new UploadError(
+        `Upload failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`,
+        response.status,
+      );
     }
 
     const result = await response.json();
