@@ -29,6 +29,18 @@ More below!
 
   Hovering or focusing a management-panel row reveals **Stop** for running jobs, **Copy** for completed jobs, or the subagent's task link in the trailing status slot. [**#1995**](https://github.com/TabbyML/pochi/pull/1995), [**#2003**](https://github.com/TabbyML/pochi/pull/2003)
 
+  <video
+    controls
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/background-job-controls.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
 - **Batch frequent monitor updates while a task is idle:** Pochi collects rapid monitor progress events for about a second and limits automatic progress-only wakeups to once every 10 seconds per task. Monitor endings, other background-job completions, and your follow-up messages still proceed immediately, while requests include the buffered monitor output without dropping or duplicating events. [**#2005**](https://github.com/TabbyML/pochi/pull/2005)
 
 #### 0.80 preview — available in the 0.79.0 prerelease
