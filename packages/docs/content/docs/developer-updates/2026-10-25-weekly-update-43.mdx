@@ -7,7 +7,7 @@ title: 'Weekly Update #43'
 
 This combined update covers October 18–25. Pochi 0.76 shipped on October 9 (with 0.76.1 on October 10), delivering the reliability fixes previewed in our last update. [Pochi 0.78](https://github.com/TabbyML/pochi/releases/tag/vscode%400.78.0) followed on October 20, with 0.78.1 on October 23, bringing unified background-job controls, batched monitor updates, and Browser Agent and model compatibility fixes.
 
-Looking ahead, Pochi 0.80 is expected on October 28. Task mentions, editor review comments, remote sync improvements, and the other previews below are available for testing in the [0.79.0 prerelease](https://github.com/TabbyML/pochi/releases/tag/vscode%400.79.0), but are not yet in the stable 0.78.1 release.
+Looking ahead, Pochi 0.80 is expected on October 28. Task mentions, editor review comments, and the other previews below are available for testing in the [0.79.0 prerelease](https://github.com/TabbyML/pochi/releases/tag/vscode%400.79.0), but are not yet in the stable 0.78.1 release. Remote sync improvements are planned for an upcoming release candidate; the UI is still being refined.
 
 More below!
 
@@ -59,10 +59,6 @@ More below!
     Your browser does not support the video tag.
   </video>
 
-- **More reliable remote task syncing with visible status:** Large initial task histories and forked conversations sync in per-message steps, avoiding a single oversized payload that could block later updates. The Share menu shows **Synced**, **Syncing**, **Offline**, or **Failed**, with a manual sync action when needed. [**#2023**](https://github.com/TabbyML/pochi/pull/2023)
-
-  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Pochi Share menu showing the Sync to remote action and Syncing status](/images/developer-updates/remote-task-sync-status.png)</div>
-
 - **Reduce checkpoint storage growth:** Pochi skips an entire checkpoint if any new or modified file exceeds 100 MiB, prunes checkpoint history older than 90 days while keeping reference tips, and cleans up checkpoint repositories for missing workspaces when repository activity is more than 90 days old. Saving resumes when oversized changes are removed or reduced; the size guard applies to individual changed files, not total storage. [**#2020**](https://github.com/TabbyML/pochi/pull/2020)
 
 ### 🐛 Bug Fixes
@@ -84,5 +80,11 @@ More below!
 - **Send a message while a tool awaits manual approval:** Pressing `Enter` cancels the pending call and sends your message immediately instead of queuing it. [**#2018**](https://github.com/TabbyML/pochi/pull/2018)
 
 ### 👀 Coming Up
+
+- **More reliable remote task syncing with visible status — planned for an upcoming RC:** This work aims to make remote sync status clearer and add a manual sync action. It also targets more reliable syncing of large histories and forked conversations through per-message updates. The final UI is still being refined. [**#2023**](https://github.com/TabbyML/pochi/pull/2023)
+
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Work-in-progress Pochi Share menu showing the Sync to remote action and Syncing status](/images/developer-updates/remote-task-sync-status.png)</div>
+
+  *Work-in-progress UI; the final layout and controls may change.*
 
 - **Send messages to background agents:** Planned backlog work will let you send follow-up instructions directly to a subagent while it is running in the background.
