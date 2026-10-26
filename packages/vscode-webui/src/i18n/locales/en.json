@@ -249,6 +249,7 @@
     }
   },
   "share": {
+    "title": "Share",
     "copyLink": "Copy Link",
     "shareSupport": "Share with Support",
     "shareSupportTitle": "Task shared with the Pochi team",
@@ -259,12 +260,11 @@
     "setPrivate": "Only you",
     "shareFirst": "(Share first)",
     "sync": {
+      "retry": "Retry sync",
       "synced": "Synced",
       "syncing": "Syncing…",
       "offline": "Offline",
-      "failed": "Sync failed",
-      "toRemote": "Sync to remote",
-      "description": "Sync pending changes to remote, or re-upload all messages if there are none."
+      "failed": "Sync failed"
     }
   },
   "signInPage": {
