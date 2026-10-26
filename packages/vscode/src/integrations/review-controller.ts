@@ -32,7 +32,13 @@ export class ReviewController implements vscode.Disposable {
 
   private threads = new Map<string, Thread>();
 
-  private draftThread: vscode.CommentThread | undefined;
+  /**
+   * Ranges temporarily exposed to VS Code's native comment flow so that
+   * "Add Comment" from a regular editor behaves like the diff view gutter
+   * (including auto-focusing the reply input). Keyed by document uri.
+   */
+  private adHocRanges = new Map<string, vscode.Range>();
+  private adHocRangeWaiters = new Map<string, () => void>();
 
   private editingBackup = new Map<string, string | vscode.MarkdownString>();
 
@@ -50,12 +56,18 @@ export class ReviewController implements vscode.Disposable {
       placeHolder: "Leave a comment for Pochi",
     };
     this.controller.commentingRangeProvider = {
-      provideCommentingRanges(
+      provideCommentingRanges: (
         document: vscode.TextDocument,
         _token: vscode.CancellationToken,
-      ) {
+      ) => {
         if (document.uri.scheme === "output") {
           return [];
+        }
+
+        const adHocRange = this.adHocRanges.get(document.uri.toString());
+        if (adHocRange) {
+          this.adHocRangeWaiters.get(document.uri.toString())?.();
+          return [adHocRange];
         }
 
         if (
@@ -136,9 +148,6 @@ export class ReviewController implements vscode.Disposable {
         },
       ];
     } else {
-      if (thread === this.draftThread) {
-        this.draftThread = undefined;
-      }
       const newThread = thread as Thread;
       newThread.id = crypto.randomUUID();
       this.threads.set(newThread.id, newThread);
@@ -239,20 +248,20 @@ export class ReviewController implements vscode.Disposable {
   }
 
   /**
-   * Opens an empty comment thread (with reply input) on the editor's current
-   * selection, or on the whole line `lineNumber` (0-based) when it is given and
-   * not covered by the selection. The thread only becomes a review once the
-   * first comment is added.
+   * Opens an empty comment thread (with a focused reply input) on the editor's
+   * current selection, or on the whole line `lineNumber` (0-based) when it is
+   * given and not covered by the selection. The thread only becomes a review
+   * once the first comment is added.
+   *
+   * Only threads created by VS Code's native "Add Comment" flow get their reply
+   * input focused, and that flow requires a commenting range, so the range is
+   * exposed temporarily.
    */
-  startThreadFromEditor(editor: vscode.TextEditor, lineNumber?: number) {
+  async startThreadFromEditor(editor: vscode.TextEditor, lineNumber?: number) {
     const { selection, document } = editor;
     if (document.uri.scheme === "output") {
       return;
     }
-    // A draft is cleared once it receives its first comment (see `addComment`),
-    // so any remaining one is still empty.
-    this.draftThread?.dispose();
-    this.draftThread = undefined;
 
     let range: vscode.Range = selection;
     if (
@@ -272,8 +281,28 @@ export class ReviewController implements vscode.Disposable {
         document.lineAt(selection.end.line - 1).range.end,
       );
     }
-    // No `canDelete` until the first comment is added (see `addComment`).
-    this.draftThread = this.createExpandedThread(document.uri, range);
+
+    const key = document.uri.toString();
+    this.adHocRanges.set(key, range);
+    try {
+      // Re-assigning the provider makes VS Code re-query the commenting ranges.
+      const provided = new Promise<void>((resolve) => {
+        this.adHocRangeWaiters.set(key, resolve);
+        setTimeout(resolve, 2000);
+      });
+      this.controller.commentingRangeProvider =
+        this.controller.commentingRangeProvider;
+      await provided;
+      // Give VS Code a moment to apply the ranges it just received.
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // The native command acts on the active editor's selection.
+      editor.selection = new vscode.Selection(range.start, range.end);
+      await vscode.commands.executeCommand("workbench.action.addComment");
+    } finally {
+      this.adHocRangeWaiters.delete(key);
+      this.adHocRanges.delete(key);
+    }
   }
 
   private createExpandedThread(uri: vscode.Uri, range: vscode.Range) {
