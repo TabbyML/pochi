@@ -3,10 +3,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotificationStatusIcon } from "@/components/ui/notification-row";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
 import { useSyncStatus } from "@/lib/hooks/use-sync-status";
 import { useDefaultStore } from "@/lib/use-default-store";
@@ -16,6 +23,7 @@ import { getServerBaseUrl } from "@getpochi/common/vscode-webui-bridge";
 import type { Task } from "@getpochi/livekit";
 import {
   CheckIcon,
+  CloudOffIcon,
   CopyIcon,
   MessageSquareShare,
   RefreshCwIcon,
@@ -33,32 +41,58 @@ interface PublicShareButtonProps {
   onUpdateIsPublicShared?: (isPublicShared: boolean) => void;
 }
 
-export function PublicShareButton({
+export function PublicShareButton(props: PublicShareButtonProps) {
+  const [open, setOpen] = useState(false);
+  const syncStatus = useSyncStatus(useDefaultStore(), {
+    taskId: props.task?.id,
+    enabled: open,
+  });
+  return (
+    <PublicShareButtonView
+      {...props}
+      open={open}
+      onOpenChange={setOpen}
+      syncStatus={syncStatus}
+    />
+  );
+}
+
+interface PublicShareButtonViewProps extends PublicShareButtonProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  syncStatus: ReturnType<typeof useSyncStatus>;
+}
+
+export function PublicShareButtonView({
   disabled,
   modelId,
   displayError,
   task,
   onUpdateIsPublicShared,
-}: PublicShareButtonProps) {
+  open,
+  onOpenChange,
+  syncStatus,
+}: PublicShareButtonViewProps) {
   const { t } = useTranslation();
   const menuItemRef = useRef<"share" | "support">(null);
   const shareId = task?.shareId;
   const isPublicShared = task?.isPublicShared;
-  const [open, setOpen] = useState(false);
   const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
-  const syncStatus = useSyncStatus(useDefaultStore(), {
-    taskId: task?.id,
-    enabled: open,
-  });
   const syncLabel = t(
     syncStatus.error ? "share.sync.failed" : `share.sync.${syncStatus.state}`,
   );
+  const hasSyncProblem =
+    Boolean(syncStatus.error) || syncStatus.state === "offline";
+  const isSyncing = syncStatus.isRequesting || syncStatus.state === "syncing";
+  const isSynced = !syncStatus.isLoading && !hasSyncProblem && !isSyncing;
+  const SyncIcon =
+    syncStatus.state === "offline" ? CloudOffIcon : RefreshCwIcon;
 
   const doCopy = (content: string) => {
     if (isCopied) return;
     copyToClipboard(content);
     setTimeout(() => {
-      setOpen(false);
+      onOpenChange(false);
     }, 1000);
   };
 
@@ -139,7 +173,7 @@ ${environmentInfo}
   };
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -155,7 +189,7 @@ ${environmentInfo}
               <span
                 data-testid="sync-status-dot"
                 data-sync-state={syncStatus.state}
-                className="-right-0.5 -bottom-0.5 absolute size-1.5 rounded-full bg-destructive"
+                className="-right-0.5 -bottom-0.5 absolute size-1.5 rounded-full bg-[var(--vscode-notificationsWarningIcon-foreground)]"
               />
             )}
           </span>
@@ -165,41 +199,60 @@ ${environmentInfo}
         align="end"
         className="dropdown-menu animate-in overflow-hidden rounded-md border bg-background p-1 text-popover-foreground shadow"
       >
-        <DropdownMenuItem
-          disabled={syncStatus.isRequesting}
-          aria-busy={syncStatus.isLoading || syncStatus.isRequesting}
-          title={t("share.sync.description")}
-          onSelect={(event) => {
-            event.preventDefault();
-            void syncStatus.sync().catch(() => {});
-          }}
-          className="cursor-pointer py-2 data-[disabled]:opacity-100"
+        <div
+          aria-busy={syncStatus.isLoading || isSyncing}
+          className="flex min-h-9 items-center gap-2 whitespace-nowrap px-2 py-1"
         >
-          <RefreshCwIcon
-            className={
-              !syncStatus.isLoading && syncStatus.state === "syncing"
-                ? "mr-2 size-4 animate-spin"
-                : "mr-2 size-4"
-            }
-          />
-          <div className="flex flex-col gap-0.5">
-            <span>{t("share.sync.toRemote")}</span>
-            {syncStatus.isLoading ? (
-              <Skeleton
-                aria-hidden="true"
-                className="h-2 w-16 bg-[var(--vscode-inputOption-hoverBackground)]"
-              />
-            ) : (
-              <span
-                data-testid="sync-status-label"
-                title={syncStatus.error ?? undefined}
-                className="text-muted-foreground text-xs"
-              >
-                {syncLabel}
-              </span>
-            )}
-          </div>
-        </DropdownMenuItem>
+          <DropdownMenuLabel asChild className="mr-auto p-0">
+            <h3>{t("share.title")}</h3>
+          </DropdownMenuLabel>
+          {syncStatus.isLoading ? (
+            <Skeleton
+              aria-hidden="true"
+              className="h-2 w-8 bg-[var(--vscode-inputOption-hoverBackground)]"
+            />
+          ) : !isSynced ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  data-testid="sync-status-icon"
+                  role="img"
+                  aria-label={syncLabel}
+                  className="inline-flex shrink-0 text-muted-foreground"
+                >
+                  {syncStatus.error ? (
+                    <NotificationStatusIcon status="failed" />
+                  ) : (
+                    <SyncIcon
+                      aria-hidden="true"
+                      className={
+                        isSyncing
+                          ? "size-3.5 motion-safe:animate-spin"
+                          : "size-3.5"
+                      }
+                    />
+                  )}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{syncLabel}</TooltipContent>
+            </Tooltip>
+          ) : null}
+          {!syncStatus.isLoading && hasSyncProblem && !isSyncing ? (
+            <DropdownMenuItem
+              onSelect={(event) => {
+                event.preventDefault();
+                void syncStatus.sync().catch(() => {});
+              }}
+              className="cursor-pointer px-0 py-0 font-medium text-primary text-xs underline-offset-4 hover:underline focus:bg-transparent focus:text-primary focus:underline"
+            >
+              {t("share.sync.retry")}
+            </DropdownMenuItem>
+          ) : !syncStatus.isLoading && isSyncing ? (
+            <span className="text-muted-foreground text-xs">
+              {t("share.sync.syncing")}
+            </span>
+          ) : null}
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={handleUpdatePublicShare}

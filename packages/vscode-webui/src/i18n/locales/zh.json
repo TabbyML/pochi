@@ -244,6 +244,7 @@
     }
   },
   "share": {
+    "title": "分享",
     "copyLink": "复制链接",
     "shareSupport": "与支持团队分享",
     "shareSupportTitle": "任务已与 Pochi 团队分享",
@@ -254,12 +255,11 @@
     "setPrivate": "仅您",
     "shareFirst": "（请先分享）",
     "sync": {
+      "retry": "重试同步",
       "synced": "已同步",
       "syncing": "同步中…",
       "offline": "离线",
-      "failed": "同步失败",
-      "toRemote": "同步到远端",
-      "description": "同步待上传内容；没有待上传内容时，重新上传此任务的全部消息。"
+      "failed": "同步失败"
     }
   },
   "signInPage": {
