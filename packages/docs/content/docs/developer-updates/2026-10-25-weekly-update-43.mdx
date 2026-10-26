@@ -37,6 +37,8 @@ More below!
 
 - **More reliable remote task syncing with visible status:** Large initial task histories and forked conversations sync in per-message steps, avoiding a single oversized payload that could block later updates. The Share menu shows **Synced**, **Syncing**, **Offline**, or **Failed**, with a manual sync action when needed. [**#2023**](https://github.com/TabbyML/pochi/pull/2023)
 
+  <div class="w-12/15 md:ml-8 *:shadow-xl/30 *:rounded-lg">![Pochi Share menu showing the Sync to remote action and Syncing status](/images/developer-updates/remote-task-sync-status.png)</div>
+
 - **Reduce checkpoint storage growth:** Pochi skips an entire checkpoint if any new or modified file exceeds 100 MiB, prunes checkpoint history older than 90 days while keeping reference tips, and cleans up checkpoint repositories for missing workspaces when repository activity is more than 90 days old. Saving resumes when oversized changes are removed or reduced; the size guard applies to individual changed files, not total storage. [**#2020**](https://github.com/TabbyML/pochi/pull/2020)
 
 ### 🐛 Bug Fixes
