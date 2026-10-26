@@ -1,0 +1,60 @@
+---
+title: 'Weekly Update #43'
+---
+# Weekly Update #43
+
+### TL;DR
+
+This combined update covers October 18–25. Pochi 0.76 shipped on October 9 (with 0.76.1 on October 10), delivering the reliability fixes previewed in our last update. [Pochi 0.78](https://github.com/TabbyML/pochi/releases/tag/vscode%400.78.0) followed on October 20, with 0.78.1 on October 23, bringing unified background-job controls, batched monitor updates, and Browser Agent and model compatibility fixes.
+
+Looking ahead, Pochi 0.80 is expected on October 28. Task mentions, editor review comments, remote sync improvements, and the other previews below are available for testing in the [0.79.0 prerelease](https://github.com/TabbyML/pochi/releases/tag/vscode%400.79.0), but are not yet in the stable 0.78.1 release.
+
+More below!
+
+### 🚀 Features
+
+#### 0.80 preview — available in the 0.79.0 prerelease
+
+- **Reference past tasks with `@` mentions:** The composer's `@` menu now includes a **Tasks** section alongside **Files**, letting you attach earlier tasks with saved transcripts as context. Sent messages show clickable task badges that open the referenced conversation, and Pochi can read those transcripts on demand.
+
+  When a new task builds on an earlier investigation, debugging session, or implementation, you can bring in that context without explaining it all again. [**#2011**](https://github.com/TabbyML/pochi/pull/2011)
+
+### ✨ Enhancements
+
+#### Released in 0.78
+
+- **Open running background jobs in the terminal and finished jobs in output files:** Each background command or monitor uses a consistent `%N` job badge on its start card, notifications, and the background-work panel. Click the badge or panel row to open a running job's live terminal, or a completed job's recorded output file. Running jobs without a terminal view, including on Windows, fall back to their output file.
+
+  Hovering or focusing a management-panel row reveals **Stop** for running jobs, **Copy** for completed jobs, or the subagent's task link in the trailing status slot. [**#1995**](https://github.com/TabbyML/pochi/pull/1995), [**#2003**](https://github.com/TabbyML/pochi/pull/2003)
+
+- **Batch frequent monitor updates while a task is idle:** Pochi collects rapid monitor progress events for about a second and limits automatic progress-only wakeups to once every 10 seconds per task. Monitor endings, other background-job completions, and your follow-up messages still proceed immediately, while requests include the buffered monitor output without dropping or duplicating events. [**#2005**](https://github.com/TabbyML/pochi/pull/2005)
+
+#### 0.80 preview — available in the 0.79.0 prerelease
+
+- **Add Pochi review comments from the editor context menu:** Right-click selected code or a line number and choose **Pochi: Add Comment** to open an inline comment thread on those lines. Submitting the first comment turns it into a review in chat. With text selected, `Cmd+Shift+L` (`Ctrl+Shift+L` on Windows and Linux) opens the same flow. [**#2012**](https://github.com/TabbyML/pochi/pull/2012)
+
+- **More reliable remote task syncing with visible status:** Large initial task histories and forked conversations sync in per-message steps, avoiding a single oversized payload that could block later updates. The Share menu shows **Synced**, **Syncing**, **Offline**, or **Failed**, with a manual sync action when needed. [**#2023**](https://github.com/TabbyML/pochi/pull/2023)
+
+- **Reduce checkpoint storage growth:** Pochi skips an entire checkpoint if any new or modified file exceeds 100 MiB, prunes checkpoint history older than 90 days while keeping reference tips, and cleans up checkpoint repositories for missing workspaces when repository activity is more than 90 days old. Saving resumes when oversized changes are removed or reduced; the size guard applies to individual changed files, not total storage. [**#2020**](https://github.com/TabbyML/pochi/pull/2020)
+
+### 🐛 Bug Fixes
+
+#### Released in 0.78
+
+- **Browser Agent sessions connect without repeated prompts:** Local Chrome sessions are reused instead of hanging on startup or re-prompting on each command, with live previews and session cleanup handled reliably. [**#1998**](https://github.com/TabbyML/pochi/pull/1998)
+
+- **Closing a task's last tab stops its background work:** Running commands and their child processes, monitors, and background subagents are stopped instead of being left running. [**#2006**](https://github.com/TabbyML/pochi/pull/2006)
+
+- **BYOK models receive usable tool images:** OpenAI-compatible models receive images from `readFile` and MCP tools as attachments instead of oversized JSON payloads that cannot be inspected and can trigger premature compaction. [**#2002**](https://github.com/TabbyML/pochi/pull/2002)
+
+- **Gemini accepts MCP schemas with empty-string options:** Affected tool schemas retain their empty-string values instead of failing at task startup with a `cannot be empty` validation error. [**#1997**](https://github.com/TabbyML/pochi/pull/1997)
+
+#### 0.80 preview — available in the 0.79.0 prerelease
+
+- **Long model pauses surface as retryable errors:** A stream that sends no data for more than 60 seconds reports a retryable timeout instead of being treated as a user stop. [**#2022**](https://github.com/TabbyML/pochi/pull/2022)
+
+- **Send a message while a tool awaits manual approval:** Pressing `Enter` cancels the pending call and sends your message immediately instead of queuing it. [**#2018**](https://github.com/TabbyML/pochi/pull/2018)
+
+### 👀 Coming Up
+
+- **Send messages to background agents:** Planned backlog work will let you send follow-up instructions directly to a subagent while it is running in the background.
