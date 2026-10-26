@@ -221,17 +221,33 @@ export function useLiveSubTask(
     regenerate,
     clearFileStateCache: () => vscodeHost.clearFileStateCache(uid),
   });
+  // Guards against two retry triggers firing in the same commit (e.g. the init
+  // autostart and a pending retry), which would otherwise both pass the status
+  // check and start two concurrent requests on the same chat.
+  const retryInFlight = useRef(false);
   const retry = useCallback(
     (error?: Error) => {
+      // Read the live chat status rather than the render snapshot: once the
+      // first trigger has called sendMessage, the snapshot still says "ready".
+      const liveStatus = chatKit.chat.status;
       if (
-        !abortController.current.signal.aborted &&
-        isExecuting &&
-        (status === "ready" || status === "error")
+        retryInFlight.current ||
+        abortController.current.signal.aborted ||
+        !isExecuting ||
+        (liveStatus !== "ready" && liveStatus !== "error")
       ) {
-        retryImpl(error ?? new ReadyForRetryError());
+        return;
       }
+      retryInFlight.current = true;
+      Promise.resolve(retryImpl(error ?? new ReadyForRetryError()))
+        .catch(() => {
+          // errors are surfaced through the chat status
+        })
+        .finally(() => {
+          retryInFlight.current = false;
+        });
     },
-    [retryImpl, status, isExecuting],
+    [retryImpl, isExecuting, chatKit.chat],
   );
   const retryWithCount = useCallback(
     (error?: Error) => {
@@ -260,14 +276,31 @@ export function useLiveSubTask(
     setDebouncedPendingErrorForRetry,
   ] = useDebounceState<Error | undefined>(undefined, 1000);
   useEffect(() => {
+    const streamingResult = ensureNewTaskStreamingResult(
+      lifecycle.streamingResult,
+    );
     if (
       isExecuting &&
+      // Don't arm a retry while the lifecycle is still preparing the task
+      // (e.g. creating its isolated worktree); the init autostart sends the
+      // first request once it's ready.
+      streamingResult &&
       errorForRetry &&
       (status === "ready" || status === "error")
     ) {
       setPendingErrorForRetry(errorForRetry);
+    } else {
+      // Cancel any pending retry armed under conditions that no longer hold,
+      // so a stale retry can't fire after a request has started.
+      setPendingErrorForRetry(undefined);
     }
-  }, [errorForRetry, setPendingErrorForRetry, status, isExecuting]);
+  }, [
+    errorForRetry,
+    setPendingErrorForRetry,
+    status,
+    isExecuting,
+    lifecycle.streamingResult,
+  ]);
   useEffect(() => {
     const streamingResult = ensureNewTaskStreamingResult(
       lifecycle.streamingResult,
