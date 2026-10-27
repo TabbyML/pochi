@@ -14,6 +14,7 @@ const simpleGitStub = sinon.stub().returns({
 });
 const getViewColumnForTerminalStub = sinon.stub().returns(undefined);
 const taskHistoryStoreStub = { ready: Promise.resolve(), tasks: { value: {} } };
+const taskDataStoreStub = { getArchivedSignal: () => ({ value: {} }) };
 
 const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
   "@/lib/generate-branch-name": { generateBranchName: generateBranchNameStub },
@@ -56,6 +57,7 @@ describe("WorktreeManager", () => {
         worktreeDataStoreStub,
         pochiConfigurationStub,
         taskHistoryStoreStub,
+        taskDataStoreStub,
       );
     });
 
@@ -192,6 +194,7 @@ describe("WorktreeManager", () => {
         worktreeDataStoreStub,
         pochiConfigurationStub,
         taskHistoryStoreStub,
+        taskDataStoreStub,
       );
     });
 
@@ -329,6 +332,7 @@ prunable gitdir file points to non-existent location
         worktreeDataStoreStub,
         pochiConfigurationStub,
         taskHistoryStoreStub,
+        taskDataStoreStub,
       );
 
       worktreeManager.git = {

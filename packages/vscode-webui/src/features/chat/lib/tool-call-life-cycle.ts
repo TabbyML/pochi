@@ -264,12 +264,13 @@ export class ManagedToolCallLifeCycle
       executePromise = execute();
     }
 
+    // Media upload failures (e.g. HTTP 429) must also become a tool error,
+    // otherwise the lifecycle never leaves the execute state.
     const executeJob = executePromise
+      .then((result) => processContentOutput(blobStore, result, abortSignal))
       .catch((err) => ({
         error: `Failed to execute tool: ${err.message}`,
       }))
-      .then((result) => processContentOutput(blobStore, result, abortSignal))
-
       .then((result) => this.onExecuteDone(result));
 
     this.transitTo("init", {
@@ -302,7 +303,10 @@ export class ManagedToolCallLifeCycle
 
     try {
       if (args.isolation === "worktree") {
-        this.subagentWorktree = await vscodeHost.createSubagentWorktree(uid);
+        this.subagentWorktree = await vscodeHost.createSubagentWorktree(
+          uid,
+          options.taskId,
+        );
         options.abortSignal.throwIfAborted();
       }
 

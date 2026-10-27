@@ -61,14 +61,11 @@ export async function prepareLastMessageForRetry<T extends UIMessage>(
   };
 
   do {
-    if (lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] })) {
-      if (clean && retryStripsCompletedFileRead(lastMessage, message)) {
-        await clean();
-      }
-      return message;
-    }
-
-    if (isAssistantMessageWithNoToolCalls(message)) {
+    if (
+      !lastStepHasIncompleteToolCalls(message) &&
+      (lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] }) ||
+        isAssistantMessageWithNoToolCalls(message))
+    ) {
       if (clean && retryStripsCompletedFileRead(lastMessage, message)) {
         await clean();
       }
@@ -86,6 +83,23 @@ export async function prepareLastMessageForRetry<T extends UIMessage>(
     await clean();
   }
   return null;
+}
+
+// A stream failure marks tool calls that were still streaming input as
+// output-error and keeps the partial input only in rawInput, so a missing
+// input also means the call never completed.
+function lastStepHasIncompleteToolCalls(message: UIMessage): boolean {
+  const lastStepStartIndex = message.parts.findLastIndex(
+    (part) => part.type === "step-start",
+  );
+  return message.parts
+    .slice(lastStepStartIndex + 1)
+    .some(
+      (part) =>
+        isStaticToolUIPart(part) &&
+        (part.state === "input-streaming" ||
+          (part.state === "output-error" && part.input == null)),
+    );
 }
 
 function retryStripsCompletedFileRead(

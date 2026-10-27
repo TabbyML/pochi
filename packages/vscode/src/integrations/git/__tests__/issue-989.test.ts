@@ -53,6 +53,7 @@ describe("WorktreeManager Repro #989", () => {
         worktreeDataStoreStub,
         pochiConfigurationStub,
         { ready: Promise.resolve(), tasks: { value: {} } },
+        { getArchivedSignal: () => ({ value: {} }) },
       );
     });
 

@@ -2,7 +2,7 @@ import { ReadyForRetryError } from "@/features/retry";
 import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useLiveSubTask } from "../use-live-sub-task";
 
 const useLiveChatKitGettersMock = vi.hoisted(() => vi.fn(() => ({})));
@@ -18,6 +18,8 @@ const retryErrorMock = vi.hoisted<{ current: Error | undefined }>(() => ({
   current: undefined,
 }));
 const retryImplMock = vi.hoisted(() => vi.fn());
+// Shared by useLiveChatKit().chat (live status) and useChat() (render status).
+const chatMock = vi.hoisted<{ status: string }>(() => ({ status: "ready" }));
 const streamingResultMock = vi.hoisted<{
   current:
     | {
@@ -84,7 +86,7 @@ vi.mock("@ai-sdk/react", () => ({
     regenerate: vi.fn(),
     sendMessage: vi.fn(),
     setMessages: vi.fn(),
-    status: "ready",
+    status: chatMock.status,
   }),
 }));
 
@@ -98,7 +100,7 @@ vi.mock("@getpochi/livekit", () => ({
 
 vi.mock("@getpochi/livekit/react", () => ({
   useLiveChatKit: () => ({
-    chat: {},
+    chat: chatMock,
   }),
 }));
 
@@ -144,8 +146,17 @@ describe("useLiveSubTask", () => {
     useLiveChatKitGettersMock.mockClear();
     storeMock.useQuery.mockClear();
     retryErrorMock.current = undefined;
-    retryImplMock.mockClear();
+    retryImplMock.mockReset();
+    // Mirror the AI SDK: sending a request moves the chat out of "ready".
+    retryImplMock.mockImplementation(() => {
+      chatMock.status = "submitted";
+    });
+    chatMock.status = "ready";
     streamingResultMock.current = undefined;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("passes audit todos to attemptTodoCompletion subtasks", () => {
@@ -242,5 +253,74 @@ describe("useLiveSubTask", () => {
 
     expect(retryImplMock).not.toHaveBeenCalled();
     vi.useRealTimers();
+  });
+
+  it("sends the first request once when task preparation takes longer than the retry debounce", async () => {
+    vi.useFakeTimers();
+    // A fresh subtask only has the user prompt, which reads as ready-for-retry.
+    retryErrorMock.current = new ReadyForRetryError();
+
+    const { rerender } = renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: true },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+
+    // The lifecycle is still creating the isolated worktree.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_500);
+    });
+    expect(retryImplMock).not.toHaveBeenCalled();
+
+    streamingResultMock.current = {
+      toolName: "newTask",
+      abortSignal: new AbortController().signal,
+      throws: vi.fn(),
+    };
+    await act(async () => {
+      rerender();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(retryImplMock).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending retry once the first request has started", async () => {
+    vi.useFakeTimers();
+    retryErrorMock.current = new ReadyForRetryError();
+    streamingResultMock.current = {
+      toolName: "newTask",
+      abortSignal: new AbortController().signal,
+      throws: vi.fn(),
+    };
+
+    const { rerender } = renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: true },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+    expect(retryImplMock).toHaveBeenCalledOnce();
+
+    // The request is in flight.
+    await act(async () => {
+      rerender();
+    });
+
+    // The first response finishes within the debounce window and its tool
+    // calls are now executing: the chat is ready but must not be retried.
+    chatMock.status = "ready";
+    retryErrorMock.current = undefined;
+    await act(async () => {
+      rerender();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(retryImplMock).toHaveBeenCalledOnce();
   });
 });

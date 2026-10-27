@@ -7,7 +7,10 @@ import { useAttachmentUpload } from "./use-attachment-upload";
 const fileToUri = vi.hoisted(() => vi.fn(async () => "https://blob/uploaded"));
 
 vi.mock("@getpochi/livekit", () => ({ fileToUri }));
-vi.mock("@/lib/remote-blob-store", () => ({ blobStore: {} }));
+vi.mock("@/lib/remote-blob-store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/remote-blob-store")>()),
+  blobStore: {},
+}));
 
 const restoredPart: FileUIPart = {
   type: "file",
@@ -87,6 +90,25 @@ describe("useAttachmentUpload", () => {
         },
       ]);
     });
+  });
+
+  it("shows a rate limit message when the upload returns 429", async () => {
+    const { UploadError } = await import("@/lib/remote-blob-store");
+    fileToUri.mockRejectedValueOnce(
+      new UploadError("Upload failed (HTTP 429): Too many requests", 429),
+    );
+    const { result } = renderHook(() => useAttachmentUpload());
+    const added = new File(["image"], "added.png", { type: "image/png" });
+
+    act(() => result.current.handleFileDrop([added]));
+    await act(async () => {
+      await expect(result.current.upload()).rejects.toThrow("HTTP 429");
+    });
+
+    expect(result.current.error?.message).toBe(
+      "Too many uploads. Please wait a moment and try again.",
+    );
+    expect(result.current.isUploading).toBe(false);
   });
 
   it("counts restored attachments toward the attachment limit", () => {

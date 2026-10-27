@@ -1,5 +1,5 @@
 import { MaxAttachments } from "@/lib/constants";
-import { blobStore } from "@/lib/remote-blob-store";
+import { UploadError, blobStore } from "@/lib/remote-blob-store";
 import { createFileName, validateFile } from "@/lib/utils/attachment";
 import { fileToUri } from "@getpochi/livekit";
 
@@ -172,6 +172,8 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         showError("Upload cancelled");
+      } else if (error instanceof UploadError && error.status === 429) {
+        showError("Too many uploads. Please wait a moment and try again.");
       } else {
         showError("Failed to upload attachments. Please try again.");
       }

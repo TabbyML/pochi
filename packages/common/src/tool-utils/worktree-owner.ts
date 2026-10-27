@@ -6,6 +6,8 @@ export type WorktreeOwner = "user" | "subagent";
 export interface WorktreeOwnerInfo {
   owner: WorktreeOwner;
   taskId?: string;
+  /** The task that spawned the subagent; its archive reclaims the worktree. */
+  parentTaskId?: string;
   branch?: string;
   baseCommit?: string;
 }
@@ -50,6 +52,9 @@ export async function readWorktreeOwnerInfo(
     return {
       owner: "subagent",
       taskId: typeof data.taskId === "string" ? data.taskId : undefined,
+      ...(typeof data.parentTaskId === "string" && {
+        parentTaskId: data.parentTaskId,
+      }),
       branch: typeof data.branch === "string" ? data.branch : undefined,
       baseCommit:
         typeof data.baseCommit === "string" ? data.baseCommit : undefined,

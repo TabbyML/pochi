@@ -245,6 +245,7 @@
     }
   },
   "share": {
+    "title": "공유",
     "copyLink": "링크 복사",
     "shareSupport": "지원팀과 공유",
     "shareSupportTitle": "작업이 Pochi 팀과 공유되었습니다",
@@ -255,12 +256,11 @@
     "setPrivate": "나만",
     "shareFirst": "（먼저 공유）",
     "sync": {
+      "retry": "동기화 재시도",
       "synced": "동기화됨",
       "syncing": "동기화 중…",
       "offline": "오프라인",
-      "failed": "동기화 실패",
-      "toRemote": "원격에 동기화",
-      "description": "대기 중인 변경 사항을 원격에 동기화합니다. 대기 중인 변경 사항이 없으면 이 작업의 모든 메시지를 다시 업로드합니다."
+      "failed": "동기화 실패"
     }
   },
   "signInPage": {
