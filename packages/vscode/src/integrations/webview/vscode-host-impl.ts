@@ -234,11 +234,15 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return this.cwd ? getSubagentWorktreePath(this.cwd, taskId) : undefined;
   };
 
-  createSubagentWorktree = async (taskId: string) => {
+  createSubagentWorktree = async (taskId: string, parentTaskId?: string) => {
     if (!this.cwd) {
       throw new Error("No workspace folder found.");
     }
-    const worktree = await createSubagentWorktreeImpl(this.cwd, taskId);
+    const worktree = await createSubagentWorktreeImpl(
+      this.cwd,
+      taskId,
+      parentTaskId,
+    );
     return { path: worktree.path, branch: worktree.branch };
   };
 

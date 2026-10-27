@@ -155,7 +155,7 @@ const VSCodeHostStub = {
   readSubagentWorktreePath: async (_taskId: string) => {
     return undefined;
   },
-  createSubagentWorktree: async (_taskId: string) => {
+  createSubagentWorktree: async (_taskId: string, _parentTaskId?: string) => {
     return { path: "", branch: "" };
   },
   finalizeSubagentWorktree: async (_taskId: string) => {

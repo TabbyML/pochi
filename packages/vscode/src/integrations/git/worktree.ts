@@ -7,6 +7,8 @@ import { readFileContent } from "@/lib/fs";
 import { generateBranchName } from "@/lib/generate-branch-name";
 import { getLogger } from "@/lib/logger";
 // biome-ignore lint/style/useImportType: needed for dependency injection
+import { TaskDataStore } from "@/lib/task-data-store";
+// biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskHistoryStore } from "@/lib/task-history-store";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { WorkspaceScope } from "@/lib/workspace-scoped";
@@ -19,13 +21,14 @@ import {
   copyWorktreeIncludeFiles,
   isPlainText,
   readWorktreeOwner,
+  removeSubagentWorktrees,
   writeWorktreeOwner,
 } from "@getpochi/common/tool-utils";
 import type {
   CreateWorktreeOptions,
   GitWorktree,
 } from "@getpochi/common/vscode-webui-bridge";
-import { signal } from "@preact/signals-core";
+import { effect, signal } from "@preact/signals-core";
 import * as runExclusive from "run-exclusive";
 import simpleGit, { CheckRepoActions } from "simple-git";
 import { injectable, singleton } from "tsyringe";
@@ -51,6 +54,9 @@ export class WorktreeManager implements vscode.Disposable {
 
   private workspacePath: string | undefined;
   private git: ReturnType<typeof simpleGit>;
+  private archivedTaskIds = new Set<string>();
+  /** Settles once all scheduled subagent worktree removals have finished. */
+  subagentWorktreeRemoval: Promise<void> = Promise.resolve();
 
   get maxWorktrees() {
     return this.pochiConfiguration.detectWorktreesLimit.value;
@@ -62,6 +68,7 @@ export class WorktreeManager implements vscode.Disposable {
     private readonly worktreeInfoProvider: GitWorktreeInfoProvider,
     private readonly pochiConfiguration: PochiConfiguration,
     private readonly taskHistoryStore: TaskHistoryStore,
+    private readonly taskDataStore: TaskDataStore,
   ) {
     // Serialized so a stale update (e.g. a watcher event fired before the
     // owner marker is written) cannot finish after a newer one.
@@ -72,7 +79,57 @@ export class WorktreeManager implements vscode.Disposable {
     this.git = simpleGit(this.workspacePath, {
       timeout: { block: constants.GitOperationTimeoutMs },
     });
+    this.watchArchivedTasks();
     this.init();
+  }
+
+  /**
+   * Discards the isolated worktrees of subagents, changes included, once their
+   * parent task is archived. Runs whenever a task gets archived and once at
+   * startup, which also covers archives made in other windows and earlier
+   * failed attempts.
+   */
+  private watchArchivedTasks() {
+    const workspacePath = this.workspacePath;
+    if (!workspacePath) return;
+    const archivedSignal = this.taskDataStore.getArchivedSignal();
+    this.disposables.push({
+      dispose: effect(() => {
+        const archived = Object.entries(archivedSignal.value)
+          .filter(([, value]) => value)
+          .map(([taskId]) => taskId);
+        const hasNew = archived.some(
+          (taskId) => !this.archivedTaskIds.has(taskId),
+        );
+        this.archivedTaskIds = new Set(archived);
+        if (hasNew) this.removeArchivedSubagentWorktrees(workspacePath);
+      }),
+    });
+  }
+
+  private removeArchivedSubagentWorktrees(workspacePath: string) {
+    this.subagentWorktreeRemoval = this.subagentWorktreeRemoval.then(
+      async () => {
+        if (!this.git) return;
+        try {
+          // Reads the archived set when the run starts, so a task unarchived
+          // in the meantime keeps its subagent worktrees.
+          const removed = await removeSubagentWorktrees(
+            workspacePath,
+            (parentTaskId) => this.archivedTaskIds.has(parentTaskId),
+          );
+          for (const worktreePath of removed) {
+            logger.info(
+              `Removed the subagent worktree ${worktreePath} of an archived task.`,
+            );
+          }
+        } catch (error) {
+          logger.warn(
+            `Failed to remove subagent worktrees: ${toErrorMessage(error)}`,
+          );
+        }
+      },
+    );
   }
 
   public getWorktreeDisplayName(cwd: string): string | undefined {
