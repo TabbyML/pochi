@@ -303,7 +303,10 @@ export class ManagedToolCallLifeCycle
 
     try {
       if (args.isolation === "worktree") {
-        this.subagentWorktree = await vscodeHost.createSubagentWorktree(uid);
+        this.subagentWorktree = await vscodeHost.createSubagentWorktree(
+          uid,
+          options.taskId,
+        );
         options.abortSignal.throwIfAborted();
       }
 

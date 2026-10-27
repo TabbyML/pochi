@@ -15,6 +15,7 @@ import {
   createSubagentWorktree,
   finalizeSubagentWorktree,
   getSubagentWorktreePath,
+  removeSubagentWorktrees,
 } from "../subagent-worktree";
 import * as worktreeInclude from "../worktree-include";
 import { readWorktreeOwnerInfo } from "../worktree-owner";
@@ -201,5 +202,55 @@ describe("subagent worktree", () => {
     await setupRepoWithRemote();
 
     expect(await finalizeSubagentWorktree(repo, taskId)).toBeUndefined();
+  });
+
+  describe("removeSubagentWorktrees", () => {
+    const parentTaskId = "aaaaaaaa-0000-4000-8000-000000000000";
+    const otherTaskId = "2b3c4d5e-0000-4000-8000-000000000000";
+
+    it("discards the worktrees and branches of the matching parent, changes included", async () => {
+      await setupRepoWithRemote();
+      const worktree = await createSubagentWorktree(
+        repo,
+        taskId,
+        parentTaskId,
+      );
+      const other = await createSubagentWorktree(
+        repo,
+        otherTaskId,
+        "bbbbbbbb-0000-4000-8000-000000000000",
+      );
+      expect((await readWorktreeOwnerInfo(worktree.path))?.parentTaskId).toBe(
+        parentTaskId,
+      );
+      await commit(worktree.path, "committed.txt", "committed");
+      await fs.writeFile(path.join(worktree.path, "dirty.txt"), "dirty");
+
+      const removed = await removeSubagentWorktrees(
+        other.path,
+        (id) => id === parentTaskId,
+      );
+
+      expect(removed).toEqual([worktree.path]);
+      await expect(fs.access(worktree.path)).rejects.toThrow();
+      expect(git(repo, "branch", "--list", worktree.branch)).toBe("");
+      await fs.access(other.path);
+      expect(git(repo, "branch", "--list", other.branch)).not.toBe("");
+    });
+
+    it("keeps worktrees without a recorded parent or subagent marker", async () => {
+      await setupRepoWithRemote();
+      const worktree = await createSubagentWorktree(repo, taskId);
+      const userWorktree = path.join(`${repo}.worktree`, "user");
+      git(repo, "worktree", "add", "-q", "-b", "user", userWorktree);
+
+      expect(await removeSubagentWorktrees(repo, () => true)).toEqual([]);
+      await fs.access(worktree.path);
+      await fs.access(userWorktree);
+    });
+
+    it("ignores directories outside a git repository", async () => {
+      expect(await removeSubagentWorktrees(tmpDir, () => true)).toEqual([]);
+    });
   });
 });

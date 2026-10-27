@@ -201,9 +201,13 @@ export interface VSCodeHostApi {
    */
   readSubagentWorktreePath(taskId: string): Promise<string | undefined>;
 
-  /** Create the isolated worktree a subagent task runs in. */
+  /**
+   * Create the isolated worktree a subagent task runs in. It is discarded
+   * once the parent task is archived.
+   */
   createSubagentWorktree(
     taskId: string,
+    parentTaskId?: string,
   ): Promise<{ path: string; branch: string }>;
 
   /**

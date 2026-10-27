@@ -85,6 +85,7 @@ export {
   createSubagentWorktree,
   finalizeSubagentWorktree,
   getSubagentWorktreePath,
+  removeSubagentWorktrees,
 } from "./subagent-worktree";
 export {
   BackgroundCommandRunningHint,

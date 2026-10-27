@@ -130,6 +130,7 @@ async function findSubagentWorktree(
 export async function createSubagentWorktree(
   cwd: string,
   taskId: string,
+  parentTaskId?: string,
 ): Promise<SubagentWorktree> {
   const mainWorktreePath = await getMainWorktreePath(cwd);
   if (!mainWorktreePath) {
@@ -149,6 +150,7 @@ export async function createSubagentWorktree(
   try {
     await writeWorktreeOwner(location.path, "subagent", {
       taskId,
+      parentTaskId,
       branch: location.branch,
       baseCommit,
     });
@@ -192,4 +194,54 @@ export async function finalizeSubagentWorktree(
   }
   await tryGit(mainWorktreePath, ["branch", "-D", worktree.branch]);
   return { worktree, removed: true };
+}
+
+/**
+ * Force-removes, with their branches, the subagent worktrees whose parent
+ * task matches `shouldRemove`, discarding any changes they hold. Only
+ * worktrees that carry a subagent marker at their expected location are
+ * considered.
+ *
+ * @returns the paths of the removed worktrees.
+ */
+export async function removeSubagentWorktrees(
+  cwd: string,
+  shouldRemove: (parentTaskId: string) => boolean,
+): Promise<string[]> {
+  const output = await tryGit(cwd, ["worktree", "list", "--porcelain"]);
+  const paths = (output ?? "")
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.slice("worktree ".length).trim());
+  const [mainWorktreePath, ...linkedPaths] = paths;
+  if (!mainWorktreePath) return [];
+
+  const removed: string[] = [];
+  for (const worktreePath of linkedPaths) {
+    const info = await readWorktreeOwnerInfo(worktreePath);
+    if (
+      info?.owner !== "subagent" ||
+      !info.taskId ||
+      !info.parentTaskId ||
+      !shouldRemove(info.parentTaskId)
+    ) {
+      continue;
+    }
+    const location = getSubagentWorktreeLocation(mainWorktreePath, info.taskId);
+    if (path.resolve(worktreePath) !== path.resolve(location.path)) continue;
+
+    const result = await tryGit(
+      mainWorktreePath,
+      ["worktree", "remove", "--force", worktreePath],
+      constants.WorktreeRemoveTimeoutMs,
+    );
+    if (result === undefined) continue;
+    await tryGit(mainWorktreePath, [
+      "branch",
+      "-D",
+      info.branch ?? location.branch,
+    ]);
+    removed.push(worktreePath);
+  }
+  return removed;
 }
