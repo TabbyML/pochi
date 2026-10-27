@@ -2,7 +2,7 @@ import { verifyJWT } from "@/lib/jwt";
 import { sanitizeMessage } from "@/lib/sanitize-message";
 import type { ShareEvent } from "@getpochi/common/share-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
-import { type Message, catalog } from "@getpochi/livekit";
+import { type Message, catalog, toTaskStatus } from "@getpochi/livekit";
 import type { ClientTools, SubTask } from "@getpochi/tools";
 import type { Store } from "@livestore/livestore";
 import type { UIMessage } from "ai";
@@ -76,7 +76,9 @@ store
       messages: inlineSubTasks(messages, subTasks),
       todos: task.todos as DeepWritable<typeof task.todos>,
       files: files as DeepWritable<typeof files>,
-      isLoading: task.status === "pending-model",
+      isLoading:
+        task.status === "pending-model" &&
+        !endsWithCompletedStep(messages.at(-1) as Message | undefined),
       error: task.error,
       // FIXME: Use the actual user name
       user: {
@@ -158,6 +160,13 @@ app
     await next();
   })
   .route("/stores/:storeId", store);
+
+// Forks are stored as "pending-model" even when they were forked right after a
+// completed turn (e.g. attemptCompletion), so don't treat those as loading.
+function endsWithCompletedStep(message: Message | undefined) {
+  if (message?.metadata?.kind !== "assistant") return false;
+  return toTaskStatus(message, message.metadata.finishReason) === "completed";
+}
 
 function collectSubTasks(store: Store<typeof catalog.schema>, taskId: string) {
   const tasks = store.query(catalog.queries.makeSubTaskQuery(taskId));
