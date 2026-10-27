@@ -2,11 +2,7 @@ import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { deviceLinkClient } from "@getpochi/common/device-link/client";
 import type { McpToolExecutable } from "@getpochi/common/mcp-utils";
-import {
-  type AuthOutput,
-  type ModelOptions,
-  VendorBase,
-} from "@getpochi/common/vendor";
+import { type ModelOptions, VendorBase } from "@getpochi/common/vendor";
 import {
   type PochiCredentials,
   getServerBaseUrl,
@@ -64,12 +60,6 @@ export class Pochi extends VendorBase {
 
   constructor() {
     super(VendorId);
-  }
-
-  override authenticate(): Promise<AuthOutput> {
-    throw new Error(
-      "Please use the VSCode Extension UI to authenticate with Pochi.",
-    );
   }
 
   override async fetchModels(

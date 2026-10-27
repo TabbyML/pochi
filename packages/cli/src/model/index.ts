@@ -1,1 +1,0 @@
-export { registerModelCommand } from "./cmd";

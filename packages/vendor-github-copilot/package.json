@@ -13,8 +13,7 @@
     "@ai-sdk/provider": "catalog:",
     "@getpochi/common": "workspace:*",
     "ai": "catalog:",
-    "@ai-sdk/openai-compatible": "catalog:",
-    "chalk": "^5.3.0"
+    "@ai-sdk/openai-compatible": "catalog:"
   },
   "exports": {
     ".": "./src/node.ts",

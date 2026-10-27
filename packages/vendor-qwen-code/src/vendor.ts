@@ -1,16 +1,12 @@
 import type { UserInfo } from "@getpochi/common/configuration";
 import { VendorBase } from "@getpochi/common/vendor";
-import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
-import { fetchUserInfo, renewCredentials, startOAuthFlow } from "./auth";
+import type { ModelOptions } from "@getpochi/common/vendor";
+import { fetchUserInfo, renewCredentials } from "./auth";
 import { type QwenCoderCredentials, VendorId } from "./types";
 
 export class QwenCode extends VendorBase {
   constructor() {
     super(VendorId);
-  }
-
-  override authenticate(): Promise<AuthOutput> {
-    return startOAuthFlow();
   }
 
   override async renewCredentials(

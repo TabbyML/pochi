@@ -480,34 +480,6 @@ You can also paste in the Vega - Lite JSON spec you receive in response into the
 
 ![Vega Lite Chart](./images/vega-chart-final-image.png)
 
-## Step 7 (Optional): Using the MCP Server with Pochi CLI
-
-So far, we’ve tested our Supabase MCP server in the Inspector, wired it into the Pochi VS Code extension, and also tested via the Pochi chat UI. But Pochi also provides a **[CLI client](https://docs.getpochi.com/cli/)** that can connect to MCP servers directly from your terminal.
-
-This means you can query your database without opening VS Code at all:
-
-```bash
-pochi -p "What are the total sales for Europe region?"
-```
-
-Behind the scenes, the Pochi CLI works the same way as the VS Code extension: it connects to your MCP server via `stdio`, calls the `queryDatabas`e tool, and streams the results back into your terminal. 
-
-
- <video
-        controls
-        style={{
-        width: "100%",
-        borderRadius: "8px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-        }}
-    >
-        <source src="https://assets.docs.getpochi.com/cli-via-pochi-supabase-tutorial.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-    </video>
-
-Invoking via the CLI helps if you spend most of your time in the shell or on remote servers. It also works great over SSH, in Docker containers, or CI/CD pipelines where you don’t have an editor UI. Moreover, you can use in automation workflows by wrapping `pochi -p` commands in scripts to periodically check metrics.
-
-
 ## Conclusion: Improving Developer Workflow for Teams and Enterprises
 
 Whether you're querying user logs, verifying migrations, or building internal dashboards, MCP lets you build custom servers that connect Pochi to your unique internal tools and workflows. This Supabase MCP server is just one example of how Pochi’s powerful extensibility can help your team stay in flow, access real-time context, and reduce the friction of internal data access.
