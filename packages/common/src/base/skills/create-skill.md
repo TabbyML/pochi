@@ -157,12 +157,9 @@ ALWAYS use this exact structure:
 
 ## Reserved Skill Names
 
-The following names are reserved for built-in Pochi skills and cannot be used for custom skills:
+Built-in skills take precedence, so a custom skill with any of these names is ignored:
 
-- `find-skills`
 - `create-skill`
-- `validator`
-- `create-issue`
-- `run`
-- `verify`
-- `run-skill-generator`
+- `find-skills`
+- `widget-guidelines`
+- `worktree-isolation`
