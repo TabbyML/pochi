@@ -1,28 +1,12 @@
 import type { UserInfo } from "@getpochi/common/configuration";
 import { VendorBase } from "@getpochi/common/vendor";
-import type { AuthOutput, ModelOptions } from "@getpochi/common/vendor";
-import chalk from "chalk";
-import { fetchUserInfo, renewCredentials, startDeviceFlow } from "./auth";
+import type { ModelOptions } from "@getpochi/common/vendor";
+import { fetchUserInfo, renewCredentials } from "./auth";
 import { type GithubCopilotCredentials, VendorId } from "./types";
 
 export class GithubCopilot extends VendorBase {
   constructor() {
     super(VendorId);
-  }
-
-  override async authenticate(): Promise<AuthOutput> {
-    const { url, userCode, credentials } = await startDeviceFlow();
-
-    if (userCode) {
-      console.log(
-        chalk.blue(
-          "Please enter the following code on the page to authenticate:",
-        ),
-      );
-      console.log(`Code: ${chalk.bold(userCode)}`);
-    }
-
-    return { url, credentials };
   }
 
   override async renewCredentials(

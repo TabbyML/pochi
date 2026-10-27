@@ -1,1 +1,0 @@
-export { registerAuthCommand } from "./cmd";

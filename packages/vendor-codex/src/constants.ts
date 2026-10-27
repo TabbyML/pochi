@@ -1,14 +1,6 @@
 export const AuthIssuer = "https://auth.openai.com";
 export const ClientId = "app_EMoamEEZ73f0CkXaXp7hrann";
 
-export const OAuthConfig = {
-  clientId: ClientId,
-  scope: "openid profile email offline_access",
-  redirectPath: "/auth/callback",
-  successPath: "/success",
-  cancelPath: "/cancel",
-} as const;
-
 export const DefaultCodexInstructions = `You are Codex, based on GPT-5. You are running as a coding agent in the Codex CLI on a user's computer.
 
 ## General
