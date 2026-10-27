@@ -635,6 +635,50 @@ describe('formatters', () => {
     });
   });
 
+  describe('fillFailedToolCallInput', () => {
+    const failedToolCallMessages = (rawInput: unknown): UIMessage[] => [
+      {
+        id: 'assistant-1',
+        role: 'assistant',
+        parts: [
+          {
+            type: 'tool-writeToFile',
+            toolCallId: 'call-1',
+            state: 'output-error',
+            input: undefined,
+            rawInput,
+            errorText: 'terminated',
+          } as any,
+        ],
+      },
+      {
+        id: 'user-1',
+        role: 'user',
+        parts: [{ type: 'text', text: 'continue' }],
+      },
+    ];
+
+    it('restores a partial rawInput for the LLM and the UI', () => {
+      const messages = failedToolCallMessages({ path: 'src/fo' });
+
+      for (const formatted of [
+        formatters.llm(messages),
+        formatters.ui(messages),
+      ]) {
+        expect((formatted[0].parts[0] as any).input).toEqual({
+          path: 'src/fo',
+        });
+      }
+    });
+
+    it('uses an empty object when no object rawInput is available', () => {
+      for (const rawInput of [undefined, '{"path": "src/fo']) {
+        const formatted = formatters.llm(failedToolCallMessages(rawInput));
+        expect((formatted[0].parts[0] as any).input).toEqual({});
+      }
+    });
+  });
+
   describe('formatters.llm', () => {
     it('keeps the pasted text reminder and removes the UI-only data part', () => {
       const messages = [

@@ -301,6 +301,31 @@ function removeMessagesWithoutTextOrToolCall(
   });
 }
 
+// A tool call can fail before its input is usable: a stream failure keeps the
+// unfinished input only in rawInput, and AI SDK does the same for invalid tool
+// input. Restore an object input so the UI can still show the partial call and
+// providers accept the tool call (e.g. Anthropic requires an object input).
+function fillFailedToolCallInput(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    message.parts = message.parts.map((part) => {
+      if (
+        isStaticToolUIPart(part) &&
+        part.state === "output-error" &&
+        part.input == null
+      ) {
+        const rawInput = part.rawInput;
+        return {
+          ...part,
+          input:
+            typeof rawInput === "object" && rawInput !== null ? rawInput : {},
+        };
+      }
+      return part;
+    });
+    return message;
+  });
+}
+
 function removeToolCallArgumentMetadata(messages: UIMessage[]): UIMessage[] {
   return messages.map((message) => {
     message.parts = message.parts.map((part) => {
@@ -842,6 +867,7 @@ const LLMFormatOps: FormatOp[] = [
   removeMessagesWithoutTextOrToolCall,
   replaceAttemptTodoCompletionForLLM,
   resolvePendingToolCalls,
+  fillFailedToolCallInput,
   addTaskReferenceReminderForLLM,
   stripKnownXMLTags,
   removeToolCallResultMetadata,
@@ -855,6 +881,7 @@ const UIFormatOps = [
   removeEmptyMessages,
   refineDetectedNewPromblems,
   resolvePendingToolCalls,
+  fillFailedToolCallInput,
   removeSystemReminder,
   combineConsecutiveAssistantMessages,
   combineConsecutiveReasoningParts,
