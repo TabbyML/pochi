@@ -4,11 +4,21 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { TaskDataStore } from "@/lib/task-data-store";
-import { WorkspaceScope } from "@/lib/workspace-scoped";
 import { createSubagentWorktree } from "@getpochi/common/tool-utils";
 import { after, afterEach, before, beforeEach, describe, it } from "mocha";
+import proxyquire from "proxyquire";
+import * as sinon from "sinon";
 import type * as vscode from "vscode";
-import { SubagentWorktreeReclaimer } from "../subagent-worktree-reclaimer";
+
+const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
+  "@/lib/generate-branch-name": { generateBranchName: sinon.stub() },
+  "../layout": { getViewColumnForTerminal: sinon.stub().returns(undefined) },
+  "simple-git": sinon.stub().returns({
+    revparse: sinon.stub().resolves("gitdir"),
+    checkIsRepo: sinon.stub().resolves(false),
+    raw: sinon.stub().resolves(""),
+  }),
+});
 
 const parentTaskId = "aaaaaaaa-0000-4000-8000-000000000000";
 const otherParentTaskId = "bbbbbbbb-0000-4000-8000-000000000000";
@@ -39,7 +49,7 @@ function createTaskDataStore() {
   return new TaskDataStore(context);
 }
 
-describe("SubagentWorktreeReclaimer", () => {
+describe("WorktreeManager subagent worktree removal", () => {
   const gitEnv = {
     GIT_AUTHOR_NAME: "test",
     GIT_AUTHOR_EMAIL: "test@example.com",
@@ -49,7 +59,8 @@ describe("SubagentWorktreeReclaimer", () => {
   const savedEnv: Record<string, string | undefined> = {};
   let tmpDir: string;
   let repo: string;
-  let reclaimer: SubagentWorktreeReclaimer | undefined;
+  // biome-ignore lint/suspicious/noExplicitAny: loaded through proxyquire
+  let worktreeManager: any;
 
   before(() => {
     for (const [key, value] of Object.entries(gitEnv)) {
@@ -67,7 +78,7 @@ describe("SubagentWorktreeReclaimer", () => {
 
   beforeEach(async () => {
     tmpDir = await fs.realpath(
-      await fs.mkdtemp(path.join(os.tmpdir(), "pochi-reclaimer-")),
+      await fs.mkdtemp(path.join(os.tmpdir(), "pochi-subagent-removal-")),
     );
     repo = path.join(tmpDir, "repo");
     git(tmpDir, "init", "-q", "--initial-branch=main", repo);
@@ -77,17 +88,21 @@ describe("SubagentWorktreeReclaimer", () => {
   });
 
   afterEach(async () => {
-    reclaimer?.dispose();
-    reclaimer = undefined;
+    worktreeManager?.dispose();
+    worktreeManager = undefined;
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  function createReclaimer(store: TaskDataStore) {
-    reclaimer = new SubagentWorktreeReclaimer(
-      new WorkspaceScope(repo, null),
+  function createWorktreeManager(store: TaskDataStore) {
+    worktreeManager = new WorktreeManager(
+      { workspacePath: repo },
+      {},
+      {},
+      { detectWorktreesLimit: { value: 10 } },
+      { ready: Promise.resolve(), tasks: { value: {} } },
       store,
     );
-    return reclaimer;
+    return worktreeManager;
   }
 
   it("discards the subagent worktrees of a task once it is archived", async () => {
@@ -99,12 +114,12 @@ describe("SubagentWorktreeReclaimer", () => {
     );
     await fs.writeFile(path.join(worktree.path, "dirty.txt"), "dirty");
     const store = createTaskDataStore();
-    const instance = createReclaimer(store);
-    await instance.idle;
+    const manager = createWorktreeManager(store);
+    await manager.subagentWorktreeRemoval;
     assert.ok(await exists(worktree.path));
 
     await store.setArchived({ [parentTaskId]: true });
-    await instance.idle;
+    await manager.subagentWorktreeRemoval;
 
     assert.strictEqual(await exists(worktree.path), false);
     assert.strictEqual(git(repo, "branch", "--list", worktree.branch), "");
@@ -116,7 +131,7 @@ describe("SubagentWorktreeReclaimer", () => {
     const store = createTaskDataStore();
     await store.setArchived({ [parentTaskId]: true });
 
-    await createReclaimer(store).idle;
+    await createWorktreeManager(store).subagentWorktreeRemoval;
 
     assert.strictEqual(await exists(worktree.path), false);
   });
@@ -125,9 +140,9 @@ describe("SubagentWorktreeReclaimer", () => {
     const worktree = await createSubagentWorktree(repo, taskId, parentTaskId);
     const store = createTaskDataStore();
     await store.setArchived({ [otherParentTaskId]: true });
-    const instance = createReclaimer(store);
+    const manager = createWorktreeManager(store);
     await store.setArchived({ [parentTaskId]: false });
-    await instance.idle;
+    await manager.subagentWorktreeRemoval;
 
     assert.ok(await exists(worktree.path));
   });

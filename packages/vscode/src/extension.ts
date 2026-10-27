@@ -28,7 +28,6 @@ import { scheduleOrphanCheckpointCleanup } from "./integrations/checkpoint/orpha
 import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { PochiFileSystemProvider } from "./integrations/editor/pochi-file-system-provider";
-import { SubagentWorktreeReclaimer } from "./integrations/git/subagent-worktree-reclaimer";
 import { WorktreeManager } from "./integrations/git/worktree";
 import { LayoutManager, PochiTaskTabMonitor } from "./integrations/layout";
 import { createMcpHub } from "./integrations/mcp";
@@ -102,7 +101,6 @@ export async function activate(context: vscode.ExtensionContext) {
   container.resolve(TerminalLinkProvider);
   container.resolve(DiffChangesContentProvider);
   container.resolve(WorktreeManager);
-  container.resolve(SubagentWorktreeReclaimer);
   container.resolve(ReviewController);
   container.resolve(PochiFileSystemProvider);
   if (EditorPredictionsAvailable) {

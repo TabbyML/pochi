@@ -130,6 +130,7 @@ describe("worktree owner", () => {
           },
         },
       },
+      { getArchivedSignal: () => ({ value: {} }) },
     );
 
     const all = [
