@@ -82,14 +82,18 @@ describe("ManagedToolCallLifeCycle", () => {
       new AbortController().signal,
     );
 
-    lifecycle.execute({
-      background: false,
-      isolation: "worktree",
-      _meta: { uid: "subtask-1" },
-    });
+    lifecycle.execute(
+      {
+        background: false,
+        isolation: "worktree",
+        _meta: { uid: "subtask-1" },
+      },
+      { taskId: "parent" },
+    );
     await vi.waitFor(() => expect(lifecycle.status).toBe("execute:streaming"));
     expect(vscodeHostMock.createSubagentWorktree).toHaveBeenCalledWith(
       "subtask-1",
+      "parent",
     );
 
 
