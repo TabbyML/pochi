@@ -67,6 +67,23 @@ describe("message-utils", () => {
       expect(after).toBe(1);
     })
 
+    it("strips a step whose tool call failed before its input completed", async () => {
+      const message = await prepareLastMessageForRetry(
+        failedToolCallMessage(undefined),
+      );
+
+      expect(message?.parts).toEqual(
+        failedToolCallMessage(undefined).parts.slice(0, 2),
+      );
+    });
+
+    it("keeps a step whose tool call failed after its input completed", async () => {
+      const lastMessage = failedToolCallMessage({ path: "a.md", content: "a" });
+      const message = await prepareLastMessageForRetry(lastMessage);
+
+      expect(message?.parts).toEqual(lastMessage.parts);
+    });
+
     it("does not run clean when completed readFile remains in the retry message", async () => {
       const clean = vi.fn();
       const message = await prepareLastMessageForRetry(
@@ -110,6 +127,32 @@ function retryableAssistantMessage(): UIMessage {
         toolCallId: "call-exec",
         state: "input-streaming",
         input: null,
+      },
+    ],
+  } as unknown as UIMessage;
+}
+
+function failedToolCallMessage(input: unknown): UIMessage {
+  return {
+    id: "assistant-failed-tool-call",
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-writeToFile",
+        toolCallId: "call-write-done",
+        state: "output-available",
+        input: { path: "done.md", content: "done" },
+        output: { success: true },
+      },
+      { type: "step-start" },
+      { type: "reasoning", text: "Write the next file.", state: "done" },
+      {
+        type: "tool-writeToFile",
+        toolCallId: "call-write-failed",
+        state: "output-error",
+        input,
+        errorText: "terminated",
       },
     ],
   } as unknown as UIMessage;

@@ -304,6 +304,40 @@ describe("LiveChatKit memory lifecycle", () => {
     });
   });
 
+  it("keeps only the raw input of a tool call that failed while streaming input", () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+      }),
+    ]);
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "parent",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+    });
+    chatKit.chat.messages = [
+      userMessage(),
+      assistantReadFileMessage("input-streaming"),
+    ];
+
+    chatKit.chat.fail(new Error("terminated"));
+
+    const savedPart = store.taskMessages("parent").at(-1)?.parts[0];
+    expect(savedPart).toMatchObject({
+      type: "tool-readFile",
+      state: "output-error",
+      rawInput: { path: "README.md" },
+      errorText: "terminated",
+    });
+    expect(savedPart).toHaveProperty("input", undefined);
+  });
+
   it("persists a tool result after remounting during manual execution", () => {
     const store = new FakeStore([
       makeTask({

@@ -130,6 +130,13 @@ function normalizeFailedStreamMessage(
       normalizedPart.output = undefined;
       normalizedPart.errorText = undefined;
       normalizedPart.approval = undefined;
+      if (part.state === "input-streaming") {
+        // The input never finished streaming. Keep the partial value only as
+        // rawInput (AI SDK's convention for unusable input) so retry strips
+        // this call instead of replaying truncated arguments.
+        normalizedPart.input = undefined;
+        normalizedPart.rawInput = part.input;
+      }
 
       return {
         ...normalizedPart,
