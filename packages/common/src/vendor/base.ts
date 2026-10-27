@@ -7,7 +7,7 @@ import {
   updateVendorConfig,
 } from "../configuration";
 import type { McpToolExecutable } from "../mcp-utils";
-import type { AuthOutput, ModelOptions } from "./types";
+import type { ModelOptions } from "./types";
 
 export abstract class VendorBase {
   constructor(readonly vendorId: string) {
@@ -50,8 +50,6 @@ export abstract class VendorBase {
   getTools(): Promise<Record<string, McpTool & McpToolExecutable>> {
     return Promise.resolve({});
   }
-
-  abstract authenticate(): Promise<AuthOutput>;
 
   logout() {
     return updateVendorConfig(this.vendorId, null);

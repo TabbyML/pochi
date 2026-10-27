@@ -1,11 +1,6 @@
-import * as readline from "node:readline/promises";
 import { getLogger } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
-import {
-  type AuthOutput,
-  type ModelOptions,
-  VendorBase,
-} from "@getpochi/common/vendor";
+import { type ModelOptions, VendorBase } from "@getpochi/common/vendor";
 import type { PochiCredentials } from "@getpochi/common/vscode-webui-bridge";
 import { type TabbyCredentials, VendorId } from "./types";
 
@@ -62,31 +57,6 @@ export class Tabby extends VendorBase {
 
   constructor() {
     super(VendorId);
-  }
-
-  override async authenticate(): Promise<AuthOutput> {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-
-    try {
-      const urlInput = await rl.question(
-        "Enter Tabby Server URL (default: http://localhost:8080): ",
-      );
-      const url = urlInput.trim().replace(/\/$/, "") || "http://localhost:8080";
-      const token = await rl.question("Enter Tabby Token: ");
-
-      return {
-        url: "",
-        credentials: Promise.resolve({
-          url,
-          token: token.trim(),
-        }),
-      };
-    } finally {
-      rl.close();
-    }
   }
 
   private async fetchEndpoints(
