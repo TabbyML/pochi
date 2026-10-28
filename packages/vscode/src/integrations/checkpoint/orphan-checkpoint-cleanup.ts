@@ -60,7 +60,10 @@ export async function cleanupOrphanCheckpoints(
     .stat(markerFile)
     .then((stat) => stat.mtimeMs)
     .catch(() => 0);
-  if (Date.now() - lastRunAt < options.intervalMs) {
+  // mtimeMs has sub-millisecond precision while Date.now() is truncated, so a
+  // marker written moments ago can look slightly in the future. A
+  // non-positive interval therefore always runs.
+  if (options.intervalMs > 0 && Date.now() - lastRunAt < options.intervalMs) {
     return [];
   }
   await fs.mkdir(options.globalStorageDir, { recursive: true });
