@@ -83,6 +83,18 @@ describe("browser session lifecycle in the parent task", () => {
     );
   });
 
+  it("keeps the session of a browser task running in the background", () => {
+    const message = browserMessage("output-available");
+    (message.parts[0] as { output: unknown }).output = {
+      result: "started",
+      backgroundJobId: "bgjob-task-browser-task",
+    };
+    renderHook(() =>
+      useManageBrowserSession({ messages: [message, nextMessage] }),
+    );
+    expect(mocks.manager.unregisterSession).not.toHaveBeenCalled();
+  });
+
   it("does not register a default/empty session before a task ID is assigned", () => {
     const message = browserMessage("input-available");
     (message.parts[0] as { input: { _meta: unknown } }).input._meta = undefined;

@@ -19,9 +19,14 @@ const subAgentViewMock = vi.hoisted(() =>
 
 const useStoreFileMock = vi.hoisted(() => vi.fn());
 const subscribeFrameMock = vi.hoisted(() => vi.fn());
+const backgroundStatusMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../new-task/sub-agent-view", () => ({
   SubAgentView: subAgentViewMock,
+}));
+
+vi.mock("../new-task/background-status-icon", () => ({
+  useBackgroundSubagentStatus: backgroundStatusMock,
 }));
 
 vi.mock("@/components/files-provider", () => ({
@@ -102,6 +107,67 @@ describe("BrowserView", () => {
     useStoreFileMock.mockReset();
     subscribeFrameMock.mockReset();
     subscribeFrameMock.mockReturnValue(() => {});
+    backgroundStatusMock.mockReset();
+    backgroundStatusMock.mockReturnValue(undefined);
+  });
+
+  const backgroundTool = {
+    type: "tool-newTask",
+    toolCallId: "browser-call",
+    state: "output-available",
+    input: {
+      agentType: "browser",
+      description: "Use the browser",
+    },
+    output: { result: "", backgroundJobId: "bgjob-task-1" },
+  } as never;
+
+  it("treats a running background browser task as executing", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+    backgroundStatusMock.mockReturnValue("running");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("browserView.runningInBackground")).toBeTruthy();
+    expect(lastSubAgentProps()).toMatchObject({
+      isExecuting: true,
+      isBackground: true,
+      statusOverride: {
+        status: "running",
+        label: "backgroundTasks.running",
+      },
+    });
+  });
+
+  it("shows the recording once a background browser task completes", () => {
+    useStoreFileMock.mockReturnValue({ content: "blob://recording" });
+    backgroundStatusMock.mockReturnValue("completed");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(document.querySelector("video")).toBeTruthy();
+    expect(lastSubAgentProps()).toMatchObject({
+      isExecuting: false,
+      statusOverride: {
+        status: "completed",
+        label: "backgroundTasks.completed",
+      },
+    });
   });
 
   it("keeps the trajectory in the card body until a frame or video exists", () => {

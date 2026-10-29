@@ -6,7 +6,10 @@ import {
   getLogger,
 } from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
+import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
+  type BrowserAgentSettings,
+  type BuiltinSubAgentInfo,
   type CustomAgentFile,
   type DisplayModel,
   type ExecuteCommandResult,
@@ -17,7 +20,10 @@ import {
 import {
   type BackgroundCommandAdaptor,
   type LLMRequestData,
+  type LiveKitStore,
+  type Message,
   type RunningTaskAdaptor,
+  catalog,
   processContentOutput,
 } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -27,6 +33,7 @@ import {
 } from "@quilted/threads/signals";
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
+import { browserSessionManager } from "./browser-session-manager";
 import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
@@ -47,9 +54,13 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
   private readonly taskLLMs = new Map<string, LLMRequestData>();
+  private browserSettings:
+    | Promise<{ readonly value: BrowserAgentSettings }>
+    | undefined;
   private disposed = false;
 
-  constructor() {
+  /** `store` is needed to save browser recordings of background tasks. */
+  constructor(private readonly store?: LiveKitStore) {
     this.ready = this.init().catch((error) => {
       logger.warn("Failed to initialize background task adaptor", error);
     });
@@ -200,10 +211,26 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
     const llm = this.taskLLMs.get(args.taskId) ?? this.getLLM();
+    const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
+      args.agentType === "browser"
+        ? { type: "browser", sessionId: args.taskId }
+        : undefined;
+    if (builtinSubAgentInfo && args.toolName === "executeCommand") {
+      await this.registerBrowserSession(
+        args.taskId,
+        args.storeId,
+        args.abortSignal,
+      );
+      args.abortSignal.throwIfAborted();
+      if (this.disposed) {
+        throw new Error("Background task adaptor is disposed.");
+      }
+    }
     let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
       contentType: llm?.contentType,
+      builtinSubAgentInfo,
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
@@ -231,9 +258,79 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   }
 
   async onTaskFinished(taskId: string) {
+    await this.releaseBrowserSession(taskId);
     const finalized = await vscodeHost.finalizeSubagentWorktree(taskId);
     return (
       finalized && formatSubagentWorktreeNote(finalized, finalized.removed)
+    );
+  }
+
+  /** Starts the live preview and recording of a background browser task. */
+  private async registerBrowserSession(
+    taskId: string,
+    storeId: string,
+    abortSignal: AbortSignal,
+  ) {
+    if (
+      this.disposed ||
+      abortSignal.aborted ||
+      browserSessionManager.isRegistered(taskId)
+    ) {
+      return;
+    }
+    try {
+      this.browserSettings ??= vscodeHost
+        .readBrowserAgentSettings()
+        .then(({ browserSettings }) => threadSignal(browserSettings));
+      const settings = (await this.browserSettings).value;
+      if (this.disposed || abortSignal.aborted) return;
+      await browserSessionManager.registerSession(
+        taskId,
+        decodeStoreId(storeId).taskId,
+        {
+          viewport:
+            settings.runtime.mode === "managed"
+              ? settings.managedBrowser.viewport
+              : undefined,
+        },
+      );
+    } catch (error) {
+      this.browserSettings = undefined;
+      logger.warn({ taskId, error }, "Failed to register browser session");
+    }
+  }
+
+  /**
+   * Saves the recording under the parent's newTask tool call, as the
+   * foreground flow does, and closes the browser session.
+   */
+  private async releaseBrowserSession(taskId: string) {
+    const { store } = this;
+    if (!store) return;
+    const parentId = store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    )?.parentId;
+    if (!parentId) return;
+    const invocation = store
+      .query(catalog.queries.makeMessagesQuery(parentId))
+      .flatMap((row) => (row.data as Message).parts)
+      .find(
+        (part) =>
+          part.type === "tool-newTask" &&
+          part.state !== "input-streaming" &&
+          part.input?._meta?.uid === taskId,
+      );
+    if (
+      invocation?.type !== "tool-newTask" ||
+      invocation.state === "input-streaming" ||
+      invocation.input?.agentType !== "browser"
+    ) {
+      return;
+    }
+    await browserSessionManager.unregisterSession(
+      taskId,
+      invocation.toolCallId,
+      store,
     );
   }
 

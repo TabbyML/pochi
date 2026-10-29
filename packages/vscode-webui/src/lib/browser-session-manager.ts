@@ -5,11 +5,10 @@ import {
   DefaultRecordingViewport,
   getBrowserAgentViewportSize,
 } from "@getpochi/common/vscode-webui-bridge";
-import { catalog } from "@getpochi/livekit";
+import { type LiveKitStore, catalog } from "@getpochi/livekit";
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
 import * as runExclusive from "run-exclusive";
 import { getSupportedRecordingVideoConfig } from "./browser-recording-codecs";
-import type { useDefaultStore } from "./use-default-store";
 import { vscodeHost } from "./vscode";
 
 const logger = getLogger("BrowserRecordingManager");
@@ -230,7 +229,7 @@ export class BrowserRecordingSession {
   });
 
   stopStreaming = runExclusive.buildMethod(
-    async (toolCallId: string, store: ReturnType<typeof useDefaultStore>) => {
+    async (toolCallId: string, store: LiveKitStore) => {
       this.stopped = true;
       // Stop WebSocket
       clearTimeout(this.retryTimeout);
@@ -335,7 +334,7 @@ export class BrowserSessionManager {
   async unregisterSession(
     taskId: string,
     toolCallId: string,
-    store: ReturnType<typeof useDefaultStore>,
+    store: LiveKitStore,
   ) {
     const pending = this.stopping.get(taskId);
     if (pending) return pending;
