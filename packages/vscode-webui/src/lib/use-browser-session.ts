@@ -51,7 +51,10 @@ export const useManageBrowserSession = ({
                 : undefined,
           });
         } else if (
-          part.state === "output-available" ||
+          (part.state === "output-available" &&
+            // A background task keeps the session; the task executor
+            // releases it when the task finishes.
+            !part.output.backgroundJobId) ||
           part.state === "output-error"
         ) {
           void browserSessionManager.unregisterSession(

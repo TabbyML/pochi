@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubAgentView } from "../new-task/sub-agent-view";
+
+const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  isVSCode: false,
+}));
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: () => <div />,
@@ -12,6 +17,14 @@ vi.mock("@/features/chat", () => ({
   FixedStateChatContextProvider: ({ children }: { children: ReactNode }) => (
     <>{children}</>
   ),
+  BackgroundTaskButton: ({
+    taskId,
+    children,
+  }: { taskId: string; children: ReactNode }) => (
+    <button type="button" data-testid={`background-task-${taskId}`}>
+      {children}
+    </button>
+  ),
 }));
 
 vi.mock("../tool-call-lite", () => ({
@@ -19,7 +32,7 @@ vi.mock("../tool-call-lite", () => ({
 }));
 
 vi.mock("@/lib/hooks/use-navigate", () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mocks.navigate,
 }));
 
 vi.mock("@/lib/use-default-store", () => ({
@@ -27,7 +40,11 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
-  isVSCodeEnvironment: () => false,
+  isVSCodeEnvironment: () => mocks.isVSCode,
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock("../status-icon", () => ({
@@ -44,7 +61,14 @@ const browserTool = {
   },
 } as never;
 
+const taskSource = { messages: [], todos: [], parentId: "parent" };
+
 describe("SubAgentView", () => {
+  beforeEach(() => {
+    mocks.navigate.mockReset();
+    mocks.isVSCode = false;
+  });
+
   it("does not render a separator below a header-only card", () => {
     const { container } = render(
       <SubAgentView
@@ -75,5 +99,45 @@ describe("SubAgentView", () => {
 
     const header = container.firstElementChild?.firstElementChild;
     expect(header?.className).toContain("border-b");
+  });
+
+  it("opens a foreground subtask by navigating to it", () => {
+    mocks.isVSCode = true;
+    render(
+      <SubAgentView
+        uid="browser-uid"
+        tool={browserTool}
+        isExecuting={true}
+        taskSource={taskSource}
+      >
+        {null}
+      </SubAgentView>,
+    );
+
+    expect(screen.queryByText("backgroundTasks.background")).toBeNull();
+    fireEvent.click(screen.getByText("Use the browser"));
+    expect(mocks.navigate).toHaveBeenCalled();
+  });
+
+  it("marks a background subtask and inspects it without navigating", () => {
+    mocks.isVSCode = true;
+    render(
+      <SubAgentView
+        uid="browser-uid"
+        tool={browserTool}
+        isExecuting={true}
+        taskSource={taskSource}
+        isBackground={true}
+      >
+        {null}
+      </SubAgentView>,
+    );
+
+    expect(screen.getByText("backgroundTasks.background")).toBeTruthy();
+    expect(screen.getByTestId("background-task-browser-uid").textContent).toBe(
+      "browser",
+    );
+    fireEvent.click(screen.getByText("Use the browser"));
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

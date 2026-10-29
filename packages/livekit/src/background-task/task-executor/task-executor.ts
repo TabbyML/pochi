@@ -62,6 +62,7 @@ interface TaskExecutorToolCallExecution {
   allowBackground?: boolean;
   toolPolicies: CompiledToolPolicies | undefined;
   cwd?: string;
+  agentType?: string;
 }
 
 export interface RunningTaskAdaptor {
@@ -723,6 +724,7 @@ class RunningTask {
         allowBackground: !isForkAgentUseCase(this.taskState.useCase),
         toolPolicies,
         cwd: normalizeCwd(this.task?.cwd),
+        agentType: this.taskState.agentType,
       });
 
       await this.addToolOutput({

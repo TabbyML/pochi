@@ -9,15 +9,29 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
+import { useBackgroundSubagentStatus } from "./background-status-icon";
+import { MoveToBackgroundButton } from "./move-to-background-button";
 import { SubAgentView } from "./sub-agent-view";
 
 const BrowserRecordingVideoOffsetSeconds = 4.5;
 
 export function BrowserView(props: NewTaskToolViewProps) {
-  const { taskSource, uid, tool, toolCallStatusRegistryRef, isExecuting } =
-    props;
+  const {
+    taskSource,
+    uid,
+    tool,
+    toolCallStatusRegistryRef,
+    isExecuting,
+    onMoveToBackground,
+  } = props;
   const { t } = useTranslation();
   const [frame, setFrame] = useState<string | null>(null);
+  // A background task returns from newTask immediately and keeps running.
+  const isBackground =
+    tool.state === "output-available" && !!tool.output.backgroundJobId;
+  const backgroundStatus = useBackgroundSubagentStatus(uid ?? "");
+  const isRunning =
+    isExecuting || (isBackground && backgroundStatus === "running");
 
   useEffect(() => {
     if (!uid) {
@@ -30,7 +44,7 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const videoUrl = file?.content;
   const hasToolSettled =
     tool.state === "output-available" || tool.state === "output-error";
-  const showRecordingVideo = !!videoUrl && (!isExecuting || hasToolSettled);
+  const showRecordingVideo = !!videoUrl && (!isRunning || hasToolSettled);
   const showBrowserFrame = !!frame;
   const showBrowserArtifact = showRecordingVideo || showBrowserFrame;
   const hasTaskThread = !!taskSource && taskSource.messages.length > 1;
@@ -42,11 +56,25 @@ export function BrowserView(props: NewTaskToolViewProps) {
     <SubAgentView
       uid={uid}
       tool={tool}
-      isExecuting={isExecuting}
+      isExecuting={isRunning}
       taskSource={taskSource}
       toolCallStatusRegistryRef={toolCallStatusRegistryRef}
       showToolCall={showBrowserArtifact}
       showTaskThread={showBrowserArtifact}
+      isBackground={isBackground}
+      statusOverride={
+        isBackground && backgroundStatus
+          ? {
+              status: backgroundStatus,
+              label: t(`backgroundTasks.${backgroundStatus}`),
+            }
+          : undefined
+      }
+      headerActions={
+        onMoveToBackground && (
+          <MoveToBackgroundButton onMoveToBackground={onMoveToBackground} />
+        )
+      }
     >
       {showBrowserArtifact ? (
         <div className="aspect-video w-full overflow-hidden">
@@ -80,7 +108,11 @@ export function BrowserView(props: NewTaskToolViewProps) {
       ) : !hidePlaceholder ? (
         <div className="flex aspect-video w-full items-center justify-center overflow-hidden p-3 text-muted-foreground">
           <span className="text-base">
-            {isExecuting ? t("browserView.executing") : t("browserView.paused")}
+            {isBackground && isRunning
+              ? t("browserView.runningInBackground")
+              : isRunning
+                ? t("browserView.executing")
+                : t("browserView.paused")}
           </span>
         </div>
       ) : null}

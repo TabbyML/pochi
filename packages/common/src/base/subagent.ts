@@ -7,13 +7,12 @@ export {
 
 /**
  * Agents that cannot be backgrounded: planner and guide talk to the user
- * through askFollowupQuestion, browser needs the foreground browser session,
- * and the todo audit resolves todos through the foreground result flow.
+ * through askFollowupQuestion, and the todo audit resolves todos through the
+ * foreground result flow.
  */
 const ForegroundAgents = new Set<string>([
   "planner",
   "guide",
-  "browser",
   AttemptTodoCompletionAgentName,
 ]);
 
