@@ -203,9 +203,12 @@ export function FormEditor({
   }, []);
 
   const currentTaskIdRef = useLatest(currentTaskId);
-  // Last fetched tasks, so the mention can decide synchronously whether a query
-  // with spaces still matches a task title.
-  const taskCacheRef = useRef<AutoMemoryTranscriptEntry[]>([]);
+  // Last fetched tasks, served while a stale listing refreshes, and so the
+  // mention can decide synchronously whether a query with spaces still matches
+  // a task title. `undefined` until the first listing resolves.
+  const taskCacheRef = useRef<AutoMemoryTranscriptEntry[] | undefined>(
+    undefined,
+  );
   // Listing tasks reads every transcript header, so share one listing between
   // the keystrokes of a mention instead of listing again for each query.
   const taskListingRef = useRef<
@@ -215,31 +218,39 @@ export function FormEditor({
       }
     | undefined
   >(undefined);
+  const listTasks = useCallback(() => {
+    const listing = taskListingRef.current;
+    if (listing && Date.now() - listing.at <= TaskListingCacheMs) {
+      return listing.promise;
+    }
+    const promise = vscodeHost
+      .listReferenceableTasks(currentTaskIdRef.current)
+      .then((tasks) => {
+        taskCacheRef.current = tasks;
+        return tasks;
+      });
+    taskListingRef.current = { at: Date.now(), promise };
+    promise.catch(() => {
+      if (taskListingRef.current?.promise === promise) {
+        taskListingRef.current = undefined;
+      }
+    });
+    return promise;
+  }, [currentTaskIdRef]);
   const fetchTaskMentionItems = useCallback(
     async (query = "") => {
-      let listing = taskListingRef.current;
-      if (!listing || Date.now() - listing.at > TaskListingCacheMs) {
-        const promise = vscodeHost.listReferenceableTasks(
-          currentTaskIdRef.current,
-        );
-        listing = { at: Date.now(), promise };
-        taskListingRef.current = listing;
-        promise.catch(() => {
-          if (taskListingRef.current?.promise === promise) {
-            taskListingRef.current = undefined;
-          }
-        });
-      }
-      const tasks = await listing.promise;
-      taskCacheRef.current = tasks;
+      const promise = listTasks();
+      // Serve the last listing right away and refresh it in the background,
+      // only waiting when nothing was listed yet.
+      const tasks = taskCacheRef.current ?? (await promise);
       return fuzzySearchTasks(query, tasks);
     },
-    [currentTaskIdRef],
+    [listTasks],
   );
   const hasTaskMatch = useCallback(
     (query: string) =>
       query.trim() !== "" &&
-      fuzzySearchTasks(query, taskCacheRef.current, 1).length > 0,
+      fuzzySearchTasks(query, taskCacheRef.current ?? [], 1).length > 0,
     [],
   );
 
@@ -621,6 +632,8 @@ export function FormEditor({
         onPaste?.(e);
       },
       onFocus(props) {
+        // Warm the task listing so the first `@` opens with tasks shown.
+        listTasks().catch(() => {});
         onFocus?.(props.event);
       },
     },
@@ -841,7 +854,7 @@ export function FormEditor({
   );
 }
 
-const TaskListingCacheMs = 5000;
+const TaskListingCacheMs = 1000 * 60; // 1 minute
 
 const debouncedListFiles = debounceWithCachedValue(
   async () => {

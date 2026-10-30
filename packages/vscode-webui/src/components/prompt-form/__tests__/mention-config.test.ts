@@ -75,3 +75,29 @@ describe("file mention match", () => {
     expect(matchAtEnd("@#12 fix", () => true)).toBeNull();
   });
 });
+
+describe("file mention items", () => {
+  it("waits for the tasks too, so the popup opens with both groups", async () => {
+    let resolveTasks: (tasks: []) => void = () => {};
+    const fetchTasks = vi.fn(
+      () => new Promise<[]>((resolve) => (resolveTasks = resolve)),
+    );
+    const { suggestion } = createFileMentionConfig({
+      fetchItems: async () => [{ filepath: "a.ts" }],
+      fetchTasks,
+      checkHasIssues: async () => false,
+    });
+
+    let settled = false;
+    const items = suggestion.items({ query: "fix" }).then((result) => {
+      settled = true;
+      return result;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(fetchTasks).toHaveBeenCalledWith("fix");
+    expect(settled).toBe(false);
+
+    resolveTasks([]);
+    expect(await items).toEqual([{ filepath: "a.ts" }]);
+  });
+});
