@@ -5,7 +5,7 @@ title: 'Weekly Update #44'
 
 ### TL;DR
 
-When CI checks or logs change, Pochi can bring matching events back into your task while you keep working, and you can revise a queued message before it runs. The 0.75.1 prerelease includes fixes for background work across subagents and Windows; configurable isolated workspaces for subagents remain on the roadmap.
+Watch CI checks or logs without repeatedly polling: Pochi can bring matching events back into your task while you keep working, and you can revise a queued message before it runs. The 0.75.1 prerelease also keeps background work moving when you open a subagent and makes explicitly launched Windows background commands easier to manage.
 
 ### 🚀 Features
 
@@ -20,7 +20,3 @@ When CI checks or logs change, Pochi can bring matching events back into your ta
 - **Preview:** **Keep background work running when opening a subagent:** The 0.75.1 prerelease includes fixes so opening a subagent's details no longer stops the parent task's background commands and monitors. Replies to background notifications also appear after the event they answer, and their tool calls can run instead of staying pending until you reopen the task. [**#1978**](https://github.com/TabbyML/pochi/pull/1978), [**#1990**](https://github.com/TabbyML/pochi/pull/1990)
 
 - **Preview:** **Manage background commands on Windows:** The 0.75.1 prerelease includes fixes that list commands explicitly started in the background on Windows, with controls to open their recorded output and stop them, including their child processes. This does not add automatic background continuation for Windows foreground commands that time out. [**#1985**](https://github.com/TabbyML/pochi/pull/1985)
-
-- **Preview:** **Keep changed-file summaries in sync with notifications:** The 0.75.1 prerelease includes a fix so file edits remain reflected in the chat's changed-files summary when a background-job notification arrives immediately afterward. Previously, that timing could leave an edited file missing from the summary. [**#1958**](https://github.com/TabbyML/pochi/pull/1958)
-
-- **Planned:** **Configure isolated workspaces for subagents:** Roadmap work will add configuration for running subagents in separate Git worktrees, keeping their file changes apart from the main workspace.
