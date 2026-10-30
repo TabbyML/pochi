@@ -1,0 +1,22 @@
+---
+title: 'Weekly Update #44'
+---
+# Weekly Update #44
+
+### TL;DR
+
+Watch CI checks or logs without repeatedly polling: Pochi can bring matching events back into your task while you keep working, and you can revise a queued message before it runs. The 0.75.1 prerelease also keeps background work moving when you open a subagent and makes explicitly launched Windows background commands easier to manage.
+
+### 🚀 Features
+
+- **Monitor ongoing work for matching events:** Pochi can monitor a stream of events, such as matching log messages or CI check changes, and receive updates while continuing other work. New events can resume an idle task, so Pochi can react without repeatedly asking whether anything has changed. Monitors have a time limit by default and can be stopped from the background-work controls. [**#1894**](https://github.com/TabbyML/pochi/pull/1894)
+
+### ✨ Enhancements
+
+- **Edit a queued message before it runs:** Bring a queued message back into the composer to edit it, with its attachments, pasted content, and Todo mode restored. This lets you refine your next instruction without rebuilding it from scratch. Restoring a queued message replaces the current composer contents. [**#1964**](https://github.com/TabbyML/pochi/pull/1964)
+
+### 👀 Coming Up
+
+- **Preview:** **Keep background work running when opening a subagent:** The 0.75.1 prerelease includes fixes so opening a subagent's details no longer stops the parent task's background commands and monitors. Replies to background notifications also appear after the event they answer, and their tool calls can run instead of staying pending until you reopen the task. [**#1978**](https://github.com/TabbyML/pochi/pull/1978), [**#1990**](https://github.com/TabbyML/pochi/pull/1990)
+
+- **Preview:** **Manage background commands on Windows:** The 0.75.1 prerelease includes fixes that list commands explicitly started in the background on Windows, with controls to open their recorded output and stop them, including their child processes. This does not add automatic background continuation for Windows foreground commands that time out. [**#1985**](https://github.com/TabbyML/pochi/pull/1985)
