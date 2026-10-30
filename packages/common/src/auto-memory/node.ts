@@ -60,9 +60,8 @@ export class AutoMemoryManager {
     const cwd = options?.cwd;
     if (!cwd) return undefined;
 
-    const repoRoot = await resolveMainWorktreePath(cwd);
-    const repoKey = sanitizeMemoryRepoKey(repoRoot);
-    const projectRoot = path.join(this.projectsRoot, repoKey);
+    const { repoRoot, repoKey, projectRoot } =
+      await this.resolveProjectRoot(cwd);
     const memoryDir = path.join(projectRoot, "memory");
     const transcriptDir = path.join(projectRoot, "transcripts");
     const indexPath = path.join(memoryDir, AutoMemoryIndexName);
@@ -158,12 +157,15 @@ export class AutoMemoryManager {
     cwd?: string;
     excludeTaskId?: string;
   }): Promise<AutoMemoryTranscriptEntry[]> {
-    const context = await this.readContext(cwd, { ensure: false });
-    if (!context) return [];
+    if (!cwd) return [];
+    // Resolve the transcript directory directly: `readContext` also parses
+    // every memory topic file, which is slow and not needed here.
+    const { projectRoot } = await this.resolveProjectRoot(cwd);
+    const transcriptDir = path.join(projectRoot, "transcripts");
 
     let candidates: AutoMemoryDreamCandidate[];
     try {
-      candidates = await collectDreamCandidates(context.transcriptDir);
+      candidates = await collectDreamCandidates(transcriptDir);
     } catch {
       return [];
     }
@@ -174,11 +176,15 @@ export class AutoMemoryManager {
         taskId: candidate.taskId,
         title: candidate.title,
         updatedAt: candidate.updatedAt,
-        filePath: path.join(
-          context.transcriptDir,
-          candidate.transcriptFilename,
-        ),
+        filePath: path.join(transcriptDir, candidate.transcriptFilename),
       }));
+  }
+
+  private async resolveProjectRoot(cwd: string) {
+    const repoRoot = await resolveMainWorktreePath(cwd);
+    const repoKey = sanitizeMemoryRepoKey(repoRoot);
+    const projectRoot = path.join(this.projectsRoot, repoKey);
+    return { repoRoot, repoKey, projectRoot };
   }
 
   async beginDreamRun({

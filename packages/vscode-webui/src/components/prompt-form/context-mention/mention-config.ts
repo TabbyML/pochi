@@ -237,7 +237,13 @@ export function createFileMentionConfig<T extends { filepath: string }>({
   };
 
   const items = async ({ query }: { query?: string }) => {
-    return fetchItems(query ?? "");
+    // The popup opens once this resolves, so also wait for the tasks: the
+    // list then reads them from the cache and shows both groups together.
+    const [files] = await Promise.all([
+      fetchItems(query ?? ""),
+      fetchTasks?.(query ?? "").catch(() => []),
+    ]);
+    return files;
   };
 
   return {
