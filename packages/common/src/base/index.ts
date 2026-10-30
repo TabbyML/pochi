@@ -73,6 +73,13 @@ export {
   truncateAutoMemoryIndex,
 } from "./prompts/auto-memory";
 
+export {
+  renderTaskIndex,
+  TaskIndexName,
+  type TaskHistoryContext,
+  type TaskIndexEntry,
+} from "./prompts/task-history";
+
 export { serializeTaskTranscript } from "./task-transcript";
 
 export { WebsiteTaskCreateEvent } from "./event";

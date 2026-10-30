@@ -5,8 +5,9 @@ import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-win
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
+
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
-import type { AutoMemoryContext } from "@getpochi/common";
+import type { AutoMemoryContext, TaskHistoryContext } from "@getpochi/common";
 import {
   type DisplayModel,
   type McpConfigOverride,
@@ -105,6 +106,22 @@ export function useLiveChatKitGetters({
     return pending;
   }, []);
 
+  // Snapshot once per panel to keep the prompt cacheable.
+  const taskHistoryCacheRef = useRef<Promise<
+    TaskHistoryContext | undefined
+  > | null>(null);
+  const getTaskHistory = useCallback(() => {
+    if (taskHistoryCacheRef.current) return taskHistoryCacheRef.current;
+    const pending = vscodeHost.readTaskHistoryContext();
+    taskHistoryCacheRef.current = pending;
+    pending.catch(() => {
+      if (taskHistoryCacheRef.current === pending) {
+        taskHistoryCacheRef.current = null;
+      }
+    });
+    return pending;
+  }, []);
+
   return {
     // biome-ignore lint/correctness/useExhaustiveDependencies(llm.current): llm is ref.
     getLLM: useCallback(() => llm.current, []),
@@ -118,6 +135,8 @@ export function useLiveChatKitGetters({
     getEnvironment,
 
     getAutoMemory,
+
+    getTaskHistory,
 
     isTodoModeActive: useCallback(
       () => todoModeActive?.current === true,
