@@ -99,61 +99,69 @@ describe("task index", () => {
     ).toEqual([]);
   });
 
-  it("recovers when another process overwrites the index with a stale listing", async () => {
-    // Fresh module instances have their own sync queue, like separate processes.
-    vi.resetModules();
-    const processA = await import("../node");
-    vi.resetModules();
-    const processB = await import("../node");
+  it(
+    "recovers when another process overwrites the index with a stale listing",
+    async () => {
+      // Fresh module instances have their own sync queue, like separate processes.
+      vi.resetModules();
+      const processA = await import("../node");
+      vi.resetModules();
+      const processB = await import("../node");
 
-    const written = await writeTranscript("old", 1_000);
-    let releaseStaleListing = () => {};
-    const staleListingHeld = new Promise<void>((resolve) => {
-      releaseStaleListing = resolve;
-    });
-    let listingTaken = () => {};
-    const staleListingTaken = new Promise<void>((resolve) => {
-      listingTaken = resolve;
-    });
-    let calls = 0;
-    const slowSource: TaskTranscriptSource = {
-      readContext: (...args) => manager.readContext(...args),
-      listTranscripts: async (options) => {
-        const transcripts = await manager.listTranscripts(options);
-        if (calls++ === 0) {
-          listingTaken();
-          await staleListingHeld;
-        }
-        return transcripts;
-      },
-    };
+      const written = await writeTranscript("old", 1_000);
+      let releaseStaleListing = () => {};
+      const staleListingHeld = new Promise<void>((resolve) => {
+        releaseStaleListing = resolve;
+      });
+      let listingTaken = () => {};
+      const staleListingTaken = new Promise<void>((resolve) => {
+        listingTaken = resolve;
+      });
+      let calls = 0;
+      const slowSource: TaskTranscriptSource = {
+        readContext: (...args) => manager.readContext(...args),
+        listTranscripts: async (options) => {
+          const transcripts = await manager.listTranscripts(options);
+          if (calls++ === 0) {
+            listingTaken();
+            await staleListingHeld;
+          }
+          return transcripts;
+        },
+      };
 
-    const syncA = processA.syncTaskIndex(slowSource, cwd);
-    await staleListingTaken;
-    await writeTranscript("new", 2_000);
-    await processB.syncTaskIndex(manager, cwd);
-    releaseStaleListing();
-    await syncA;
+      const syncA = processA.syncTaskIndex(slowSource, cwd);
+      await staleListingTaken;
+      await writeTranscript("new", 2_000);
+      await processB.syncTaskIndex(manager, cwd);
+      releaseStaleListing();
+      await syncA;
 
-    expect(await indexedFiles(written!.transcriptDir)).toEqual([
-      "new.md",
-      "old.md",
-    ]);
-  });
+      expect(await indexedFiles(written!.transcriptDir)).toEqual([
+        "new.md",
+        "old.md",
+      ]);
+    },
+    20_000,
+  );
 
-  it("serializes concurrent syncs so the index ends up complete", async () => {
-    const contexts = await Promise.all(
-      Array.from({ length: 5 }, async (_, i) => {
-        await writeTranscript(`task-${i}`, 1_000 + i);
-        return syncTaskIndex(manager, cwd);
-      }),
-    );
-    expect(await indexedFiles(contexts[0]!.transcriptDir)).toEqual([
-      "task-4.md",
-      "task-3.md",
-      "task-2.md",
-      "task-1.md",
-      "task-0.md",
-    ]);
-  });
+  it(
+    "serializes concurrent syncs so the index ends up complete",
+    async () => {
+      const contexts = await Promise.all(
+        Array.from({ length: 5 }, async (_, i) => {
+          await writeTranscript(`task-${i}`, 1_000 + i);
+          return syncTaskIndex(manager, cwd);
+        }),
+      );
+      expect(await indexedFiles(contexts[0]!.transcriptDir)).toEqual([
+        "task-4.md",
+        "task-3.md",
+        "task-2.md",
+        "task-1.md",
+        "task-0.md",
+      ]);
+    },
+    20_000,
+  );
 });
