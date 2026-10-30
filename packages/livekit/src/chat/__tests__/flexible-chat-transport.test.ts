@@ -63,6 +63,10 @@ describe("subtask delegation", () => {
             id: "test-model",
             getModel: () => model,
           }),
+          getTaskHistory: async () => ({
+            indexPath: "/projects/repo/transcripts/INDEX.md",
+            transcriptDir: "/projects/repo/transcripts",
+          }),
         },
       });
       const stream = await transport.sendMessages({
@@ -91,6 +95,12 @@ describe("subtask delegation", () => {
       );
       expect(
         system?.content.includes('use the newTask tool with agentType="explore"'),
+      ).toBe(!isSubTask);
+      // Browsing other tasks is left to the top-level agent.
+      expect(
+        system?.content.includes(
+          "Index file: /projects/repo/transcripts/INDEX.md",
+        ),
       ).toBe(!isSubTask);
     },
   );

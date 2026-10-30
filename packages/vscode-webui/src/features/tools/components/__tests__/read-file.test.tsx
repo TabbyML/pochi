@@ -141,6 +141,18 @@ describe("readFileTool", () => {
     expect(container.textContent).toBe("Reading Task title");
   });
 
+  it("shows the task index as a file, not as a task", () => {
+    const path = "/Users/me/.pochi/projects/repo-abc/transcripts/INDEX.md";
+    const { getByTestId, queryByTestId } = renderReadFileTool({
+      path,
+      offset: 1,
+      limit: 50,
+    });
+
+    expect(queryByTestId("task-reference-badge")).toBeNull();
+    expect(getByTestId("file-badge").textContent).toBe(path);
+  });
+
   it("shows the standard reading label with the requested file path", () => {
     const path = "packages/vscode-webui/src/main.tsx";
     const { container } = renderReadFileTool({ path });
