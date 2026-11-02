@@ -75,3 +75,28 @@ describe("fuzzySearchTasks", () => {
     expect(fuzzySearchTasks("   ", tasks, 2)).toEqual(tasks.slice(0, 2));
   });
 });
+
+describe("fuzzySearchTasks by task id", () => {
+  const tasks = [
+    { taskId: "aaaa1111-0000-0000-0000-000000000000", title: "cafe2222 notes" },
+    { taskId: "384b9927-1c2d-4e5f-8a9b-0123456789ab", title: "Fix login bug" },
+    { taskId: "cafe2222-0000-0000-0000-000000000000", title: "Refactor" },
+  ];
+
+  it("matches a task by the short id shown in the tab title", () => {
+    expect(fuzzySearchTasks("384b9927", tasks)).toEqual([tasks[1]]);
+  });
+
+  it("matches the id case-insensitively and by the full id", () => {
+    expect(fuzzySearchTasks("384B9927", tasks)).toEqual([tasks[1]]);
+    expect(fuzzySearchTasks(tasks[1].taskId, tasks)).toEqual([tasks[1]]);
+  });
+
+  it("ranks id matches before title matches", () => {
+    expect(fuzzySearchTasks("cafe2222", tasks)).toEqual([tasks[2], tasks[0]]);
+  });
+
+  it("ignores id prefixes that are too short", () => {
+    expect(fuzzySearchTasks("384", tasks)).toEqual([]);
+  });
+});
