@@ -224,8 +224,6 @@ describe("parseTaskTranscriptFilePath", () => {
       "/work/repo/docs/transcripts/intro.md",
       "/Users/me/.pochi/projects/repo-abc123/memory/MEMORY.md",
       "/Users/me/.pochi/projects/repo-abc123/transcripts/sub/task-1.md",
-      "/Users/me/.pochi/projects/repo-abc123/transcripts/INDEX.md",
-      "pochi://$/transcripts/INDEX.md",
       "pochi://$/transcripts",
     ]) {
       expect(parseTaskTranscriptFilePath(path)).toBeUndefined();

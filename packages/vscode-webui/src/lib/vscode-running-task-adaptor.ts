@@ -347,11 +347,13 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
 
     const pending = vscodeHost.readTaskHistoryContext();
     this.taskHistoryCache = pending;
-    pending.catch(() => {
+    // No index yet (e.g. it could not be written): retry on the next request.
+    const retry = () => {
       if (this.taskHistoryCache === pending) {
         this.taskHistoryCache = null;
       }
-    });
+    };
+    pending.then((context) => context || retry(), retry);
     return pending;
   }
 }

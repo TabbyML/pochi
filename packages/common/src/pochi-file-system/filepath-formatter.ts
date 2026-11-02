@@ -1,5 +1,3 @@
-import { TaskIndexName } from "../base/prompts/task-history";
-
 const builtInAssetPatterns = [
   /(?:^|\/)\.vscode(?:-[^/]+)?\/extensions\/[^/]+\/assets\/(skills|agents)\/(.+)$/i,
   /(?:^|\/)packages\/vscode\/assets\/(skills|agents)\/(.+)$/i,
@@ -56,9 +54,7 @@ export function parseTaskTranscriptFilePath(
     /^pochi:\/\/\$\/transcripts\/([^/]+)\.md$|(?:^|\/)\.pochi\/projects\/[^/]+\/transcripts\/([^/]+)\.md$/,
   );
   const taskId = match?.[1] ?? match?.[2];
-  // The generated index sits next to the transcripts but is not a task.
-  if (!taskId || `${taskId}.md` === TaskIndexName) return undefined;
-  return { taskId };
+  return taskId ? { taskId } : undefined;
 }
 
 export function formatPochiFileDisplayPath(

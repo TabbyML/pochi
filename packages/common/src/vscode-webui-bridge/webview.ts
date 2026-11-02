@@ -594,8 +594,9 @@ export interface VSCodeHostApi {
   ): Promise<AutoMemoryTranscriptEntry[]>;
 
   /**
-   * Where the workspace repository's task transcripts and their index live.
-   * Brings the index up to date before returning.
+   * Where the workspace repository's task transcripts and their index live,
+   * or undefined when there is no readable index. An existing index is
+   * returned at once and refreshed in the background.
    */
   readTaskHistoryContext(): Promise<TaskHistoryContext | undefined>;
 

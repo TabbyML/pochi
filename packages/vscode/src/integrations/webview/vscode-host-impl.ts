@@ -81,7 +81,10 @@ import type { McpStatus } from "@getpochi/common/mcp-utils";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { McpHub } from "@getpochi/common/mcp-utils";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
-import { syncTaskIndex } from "@getpochi/common/task-history/node";
+import {
+  readTaskIndex,
+  syncTaskIndex,
+} from "@getpochi/common/task-history/node";
 import {
   GitStatusReader,
   createSubagentWorktree as createSubagentWorktreeImpl,
@@ -1424,13 +1427,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     const api = this.autoMemoryManager.readHostApi();
     return {
       ...api,
-      // Every written transcript is reflected in the task index.
+      // Every written transcript is reflected in the task index, in the
+      // background so the turn end never waits for the transcript scan.
       writeTaskTranscript: async (
         options: Parameters<typeof api.writeTaskTranscript>[0],
       ) => {
         const written = await api.writeTaskTranscript(options);
         if (written) {
-          await syncTaskIndex(
+          void syncTaskIndex(
             this.autoMemoryManager,
             options.cwd ?? this.cwd ?? undefined,
           );
@@ -1445,7 +1449,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
   };
 
   readTaskHistoryContext = async () => {
-    return syncTaskIndex(this.autoMemoryManager, this.cwd ?? undefined);
+    return readTaskIndex(this.autoMemoryManager, this.cwd ?? undefined);
   };
 
   readAutoMemoryEnabled = async (): Promise<{

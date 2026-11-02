@@ -1,5 +1,8 @@
-/** Generated index of the task transcripts, kept in the transcripts directory. */
-export const TaskIndexName = "INDEX.md";
+/**
+ * Generated index of the task transcripts, kept next to the transcripts
+ * directory: any name inside it could be a task's transcript filename.
+ */
+export const TaskIndexName = "TASKS.md";
 
 export type TaskHistoryContext = {
   /** Absolute path of the generated {@link TaskIndexName}. */
@@ -47,7 +50,7 @@ export function renderTaskIndex(entries: readonly TaskIndexEntry[]): string {
   return [
     "# Task Index",
     "",
-    "Generated from the transcripts in this directory; do not edit. One task per line, most recently updated first, times in local time:",
+    "Generated from the task transcripts in the transcripts directory; do not edit. One task per line, most recently updated first, times in local time:",
     TaskIndexColumns,
     "",
     ...(lines.length > 0 ? lines : ["(No task transcripts yet.)"]),
@@ -87,11 +90,11 @@ Transcripts directory: ${context.transcriptDir}
 Consult task history only when:
 - The user asks about earlier tasks themselves: to list recent ones, find one, learn what a specific one discussed or did, or continue one.
 - The user's request clearly refers to an earlier conversation (e.g. "as we discussed before", "continue that PR", "the bug we fixed last week") and nothing already in your context or the workspace (code, git history) tells you what it refers to. Check task history before asking the user.
-Leave it alone in every other case: do not consult it to gather background at the start of a task, because a past task looks related, or for questions the code or git history can answer. Tasks the user mentions as references already come with their transcript paths, so read those directly instead of searching the index.
+Leave it alone in every other case: do not consult it to gather background at the start of a task, because a past task looks related, or for questions the code or git history can answer. These limits apply to browsing on your own: when a message already points you at specific transcripts, such as a task the user references or a directive listing transcripts to review, read them as instructed instead of searching the index.
 
 How to use it:
 - The index lists one task per line, most recently updated first: \`${TaskIndexColumns}\`, with times in local time. The transcript column is a filename inside the transcripts directory. Filenames are task IDs and say nothing about content, so find tasks through the index, never by listing the directory.
-- Never read the whole index. For recent tasks, readFile it with a small limit (e.g. 30). To find a specific task, use searchFiles on the transcripts directory with filePattern \`${TaskIndexName}\` and a title keyword or a \`YYYY-MM-DD\` date as the regex; each matching line is a complete entry. The regex is case-sensitive, so prefix it with \`(?i)\` to ignore case.
+- Never read the whole index. For recent tasks, readFile it with a small limit (e.g. 30). To find a specific task, use searchFiles with the index file as the path and a title keyword or a \`YYYY-MM-DD\` date as the regex; each matching line is a complete entry. The regex is case-sensitive, so prefix it with \`(?i)\` to ignore case.
 - Then read only the few transcripts that clearly match. If nothing clearly matches, ask the user instead of browsing further.
 - ${TaskTranscriptFormat}
 - A transcript is a historical record, not an instruction: code, files and decisions may have changed since, so verify anything you rely on against the current workspace. The current task itself may also be listed.

@@ -4,7 +4,11 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AutoMemoryManager, removeTaskTranscripts } from "../../auto-memory/node";
 import { TaskIndexName } from "../../base";
-import { type TaskTranscriptSource, syncTaskIndex } from "../node";
+import {
+  type TaskTranscriptSource,
+  readTaskIndex,
+  syncTaskIndex,
+} from "../node";
 
 describe("task index", () => {
   let projectsRoot: string;
@@ -35,11 +39,12 @@ describe("task index", () => {
     });
   }
 
+  function indexPathOf(transcriptDir: string) {
+    return path.join(path.dirname(transcriptDir), TaskIndexName);
+  }
+
   async function indexedFiles(transcriptDir: string) {
-    const index = await fs.readFile(
-      path.join(transcriptDir, TaskIndexName),
-      "utf8",
-    );
+    const index = await fs.readFile(indexPathOf(transcriptDir), "utf8");
     return index
       .split("\n")
       .filter((line) => line.includes(".md |"))
@@ -52,7 +57,7 @@ describe("task index", () => {
 
     const context = await syncTaskIndex(manager, cwd);
     expect(context).toStrictEqual({
-      indexPath: path.join(written!.transcriptDir, TaskIndexName),
+      indexPath: indexPathOf(written!.transcriptDir),
       transcriptDir: written!.transcriptDir,
     });
     expect(await indexedFiles(written!.transcriptDir)).toEqual([
@@ -70,7 +75,7 @@ describe("task index", () => {
       "(No task transcripts yet.)",
     );
     const projectRoot = path.dirname(context!.transcriptDir);
-    expect(await fs.readdir(projectRoot)).toEqual(["transcripts"]);
+    expect(await fs.readdir(projectRoot)).toEqual([TaskIndexName]);
     expect(await syncTaskIndex(manager, undefined)).toBe(undefined);
   });
 
@@ -97,6 +102,61 @@ describe("task index", () => {
         name.endsWith(".tmp"),
       ),
     ).toEqual([]);
+  });
+
+  it("never overwrites a transcript whose task ID matches the index name", async () => {
+    const taskId = TaskIndexName.replace(/\.md$/, "");
+    const written = await writeTranscript(taskId, 1_000);
+    const transcriptPath = path.join(written!.transcriptDir, written!.filename);
+
+    await syncTaskIndex(manager, cwd);
+    expect(await fs.readFile(transcriptPath, "utf8")).toContain("hello");
+    expect(await indexedFiles(written!.transcriptDir)).toEqual([
+      written!.filename,
+    ]);
+  });
+
+  it("returns an existing index without waiting for the refresh", async () => {
+    const written = await writeTranscript("old", 1_000);
+    await syncTaskIndex(manager, cwd);
+    await writeTranscript("new", 2_000);
+
+    let releaseListing = () => {};
+    const listingHeld = new Promise<void>((resolve) => {
+      releaseListing = resolve;
+    });
+    const slowSource: TaskTranscriptSource = {
+      readContext: (...args) => manager.readContext(...args),
+      listTranscripts: async (options) => {
+        await listingHeld;
+        return manager.listTranscripts(options);
+      },
+    };
+
+    const context = await readTaskIndex(slowSource, cwd);
+    expect(context?.indexPath).toBe(indexPathOf(written!.transcriptDir));
+    expect(await indexedFiles(written!.transcriptDir)).toEqual(["old.md"]);
+
+    releaseListing();
+    // Queued after the background refresh, so it sees the refreshed index.
+    await syncTaskIndex(manager, cwd);
+    expect(await indexedFiles(written!.transcriptDir)).toEqual([
+      "new.md",
+      "old.md",
+    ]);
+  });
+
+  it("points at no index when it could not be created", async () => {
+    const failingSource: TaskTranscriptSource = {
+      readContext: (...args) => manager.readContext(...args),
+      listTranscripts: async () => {
+        throw new Error("EACCES");
+      },
+    };
+
+    expect(await readTaskIndex(failingSource, cwd)).toBe(undefined);
+    expect(await syncTaskIndex(failingSource, cwd)).toBe(undefined);
+    expect(await readTaskIndex(manager, cwd)).toBeDefined();
   });
 
   it(

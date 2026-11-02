@@ -64,7 +64,7 @@ describe("subtask delegation", () => {
             getModel: () => model,
           }),
           getTaskHistory: async () => ({
-            indexPath: "/projects/repo/transcripts/INDEX.md",
+            indexPath: "/projects/repo/TASKS.md",
             transcriptDir: "/projects/repo/transcripts",
           }),
         },
@@ -99,7 +99,7 @@ describe("subtask delegation", () => {
       // Browsing other tasks is left to the top-level agent.
       expect(
         system?.content.includes(
-          "Index file: /projects/repo/transcripts/INDEX.md",
+          "Index file: /projects/repo/TASKS.md",
         ),
       ).toBe(!isSubTask);
     },

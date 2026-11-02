@@ -8,7 +8,7 @@ import {
 } from "../task-history";
 
 const taskHistory = {
-  indexPath: "/home/user/.pochi/projects/repo-key/transcripts/INDEX.md",
+  indexPath: "/home/user/.pochi/projects/repo-key/TASKS.md",
   transcriptDir: "/home/user/.pochi/projects/repo-key/transcripts",
 };
 
@@ -75,7 +75,9 @@ describe("task history prompt", () => {
     );
     expect(prompt).toContain("Consult task history only when:");
     expect(prompt).toContain("Never read the whole index.");
-    expect(prompt).toContain("filePattern `INDEX.md`");
+    expect(prompt).toContain(
+      "use searchFiles with the index file as the path",
+    );
     expect(prompt).toContain(TaskTranscriptFormat);
   });
 

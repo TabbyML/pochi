@@ -5,7 +5,6 @@ import { useEffectiveContextWindow } from "@/lib/hooks/use-effective-context-win
 import { useLatest } from "@/lib/hooks/use-latest";
 import { useMcp } from "@/lib/hooks/use-mcp";
 import { useSkills } from "@/lib/hooks/use-skills";
-
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import type { AutoMemoryContext, TaskHistoryContext } from "@getpochi/common";
 import {
@@ -114,11 +113,13 @@ export function useLiveChatKitGetters({
     if (taskHistoryCacheRef.current) return taskHistoryCacheRef.current;
     const pending = vscodeHost.readTaskHistoryContext();
     taskHistoryCacheRef.current = pending;
-    pending.catch(() => {
+    // No index yet (e.g. it could not be written): retry on the next request.
+    const retry = () => {
       if (taskHistoryCacheRef.current === pending) {
         taskHistoryCacheRef.current = null;
       }
-    });
+    };
+    pending.then((context) => context || retry(), retry);
     return pending;
   }, []);
 
