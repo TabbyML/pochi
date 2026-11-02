@@ -7,6 +7,7 @@ import { createFileMentionConfig } from "../context-mention/mention-config";
 
 // The mention list imports the host bridge, which needs a real webview.
 vi.mock("@/lib/vscode", () => ({ vscodeHost: {} }));
+vi.mock("@/features/tools", () => ({ FileIcon: () => null }));
 
 let editor: Editor | undefined;
 
@@ -77,11 +78,8 @@ describe("file mention match", () => {
 });
 
 describe("file mention items", () => {
-  it("waits for the tasks too, so the popup opens with both groups", async () => {
-    let resolveTasks: (tasks: []) => void = () => {};
-    const fetchTasks = vi.fn(
-      () => new Promise<[]>((resolve) => (resolveTasks = resolve)),
-    );
+  it("returns files without waiting for or searching tasks", async () => {
+    const fetchTasks = vi.fn(() => new Promise<[]>(() => {}));
     const { suggestion } = createFileMentionConfig({
       fetchItems: async () => [{ filepath: "a.ts" }],
       fetchTasks,
@@ -93,11 +91,9 @@ describe("file mention items", () => {
       settled = true;
       return result;
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(fetchTasks).toHaveBeenCalledWith("fix");
-    expect(settled).toBe(false);
+    await vi.waitFor(() => expect(settled).toBe(true));
+    expect(fetchTasks).not.toHaveBeenCalled();
 
-    resolveTasks([]);
     expect(await items).toEqual([{ filepath: "a.ts" }]);
   });
 });

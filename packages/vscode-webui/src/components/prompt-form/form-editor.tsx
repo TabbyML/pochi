@@ -203,12 +203,9 @@ export function FormEditor({
   }, []);
 
   const currentTaskIdRef = useLatest(currentTaskId);
-  // Last fetched tasks, served while a stale listing refreshes, and so the
-  // mention can decide synchronously whether a query with spaces still matches
-  // a task title. `undefined` until the first listing resolves.
-  const taskCacheRef = useRef<AutoMemoryTranscriptEntry[] | undefined>(
-    undefined,
-  );
+  // Last fetched tasks, so the mention can decide synchronously whether a query
+  // with spaces still matches a task title.
+  const taskCacheRef = useRef<AutoMemoryTranscriptEntry[]>([]);
   // Listing tasks reads every transcript header, so share one listing between
   // the keystrokes of a mention instead of listing again for each query.
   const taskListingRef = useRef<
@@ -239,10 +236,7 @@ export function FormEditor({
   }, [currentTaskIdRef]);
   const fetchTaskMentionItems = useCallback(
     async (query = "") => {
-      const promise = listTasks();
-      // Serve the last listing right away and refresh it in the background,
-      // only waiting when nothing was listed yet.
-      const tasks = taskCacheRef.current ?? (await promise);
+      const tasks = await listTasks().catch(() => taskCacheRef.current);
       return fuzzySearchTasks(query, tasks);
     },
     [listTasks],
@@ -250,7 +244,7 @@ export function FormEditor({
   const hasTaskMatch = useCallback(
     (query: string) =>
       query.trim() !== "" &&
-      fuzzySearchTasks(query, taskCacheRef.current ?? [], 1).length > 0,
+      fuzzySearchTasks(query, taskCacheRef.current, 1).length > 0,
     [],
   );
 
@@ -632,8 +626,10 @@ export function FormEditor({
         onPaste?.(e);
       },
       onFocus(props) {
-        // Warm the task listing so the first `@` opens with tasks shown.
-        listTasks().catch(() => {});
+        // Skip placeholder editors, which have no task and are replaced on load.
+        if (currentTaskIdRef.current) {
+          listTasks().catch(() => {});
+        }
         onFocus?.(props.event);
       },
     },
