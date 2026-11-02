@@ -479,6 +479,12 @@ export interface VSCodeHostApi {
       preserveFocus?: boolean;
       preview?: boolean;
       /**
+       * If true, open the task tab without leaving it in front: the tab is
+       * shown just long enough for its webview to start, then the previously
+       * active tab of that editor group is restored.
+       */
+      background?: boolean;
+      /**
        * If true, show the file changes diff view after opening the task panel.
        * When pochi layout is enabled, waits for the layout to be applied first.
        */

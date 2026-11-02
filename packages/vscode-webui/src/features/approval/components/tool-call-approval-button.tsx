@@ -19,7 +19,10 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import { isBackgroundSubAgentRequested } from "@getpochi/common";
+import {
+  isBackgroundSubAgentRequested,
+  isTopLevelTaskSpawn,
+} from "@getpochi/common";
 import type { BuiltinSubAgentInfo } from "@getpochi/common/vscode-webui-bridge";
 import { compileToolPolicies } from "@getpochi/tools";
 import { getStaticToolName } from "ai";
@@ -137,10 +140,12 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
             tool.input?.agentType === "guide"));
       // Only an explicit background request overrides running the subtask
       // manually; the background default yields to the user's choice.
+      // A spawned top-level task runs in its own tab, never as a subtask here.
       if (
         tool.type === "tool-newTask" &&
         runManually &&
-        !isBackgroundSubAgentRequested(tool.input)
+        !isBackgroundSubAgentRequested(tool.input) &&
+        !isTopLevelTaskSpawn(tool.input)
       ) {
         const subtaskUid = tool.input?._meta?.uid;
         if (subtaskUid) {

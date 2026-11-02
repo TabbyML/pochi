@@ -1113,6 +1113,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       keepEditor?: boolean;
       preserveFocus?: boolean;
       preview?: boolean;
+      background?: boolean;
       showFileChanges?: boolean;
     },
   ): Promise<void> => {

@@ -1,5 +1,6 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
+import { isTopLevelTaskSpawn } from "@getpochi/common";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
@@ -36,7 +37,9 @@ export const useManageBrowserSession = ({
       for (const part of message.parts) {
         if (
           part.type !== "tool-newTask" ||
-          part.input?.agentType !== "browser"
+          part.input?.agentType !== "browser" ||
+          // A spawned task registers its own browser sessions.
+          isTopLevelTaskSpawn(part.input)
         ) {
           continue;
         }

@@ -3,6 +3,7 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { isTopLevelTaskSpawn } from "@getpochi/common";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
@@ -92,12 +93,35 @@ export function createNewTaskMiddleware(
                 });
               }
 
+              const uid = crypto.randomUUID();
+
+              // A top-level task is created by its own tab, in its own store,
+              // so only its id is assigned here. The agent's isolation applies
+              // once the new task invokes the agent itself.
+              if (isTopLevelTaskSpawn(args)) {
+                if (agent?._internal) {
+                  throw new InvalidToolInputError({
+                    toolName: chunk.toolName,
+                    toolInput: chunk.input,
+                    cause: new Error(
+                      `Agent ${agent.name} cannot run as a top-level task.`,
+                    ),
+                  });
+                }
+                args._meta = { uid };
+                controller.enqueue({
+                  ...chunk,
+                  input: JSON.stringify(args),
+                });
+                toolCallId = "";
+                return;
+              }
+
               const isolation = args.isolation ?? agent?.isolation;
               if (isolation) {
                 args.isolation = isolation;
               }
 
-              const uid = crypto.randomUUID();
               let taskCwd = cwd;
               if (args.isolation === "worktree") {
                 taskCwd = await getSubagentWorktreePath?.(uid);

@@ -16,7 +16,10 @@ import { useDebounceState } from "@/lib/hooks/use-debounce-state";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { isVSCodeEnvironment } from "@/lib/vscode";
-import { shouldRunSubAgentInBackground } from "@getpochi/common";
+import {
+  isTopLevelTaskSpawn,
+  shouldRunSubAgentInBackground,
+} from "@getpochi/common";
 import { getStaticToolName } from "ai";
 import { SendToBack } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
@@ -32,6 +35,7 @@ import { BackgroundSubagentStatusIcon } from "./background-status-icon";
 import { BrowserView } from "./browser-view";
 import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
+import { SpawnedTaskView } from "./spawned-task-view";
 import { TodoDetail } from "./todo-detail";
 import { SubagentWorktreeBadge } from "./worktree-badge";
 
@@ -43,6 +47,15 @@ interface NewTaskToolProps extends ToolProps<"newTask"> {
 }
 
 export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
+  if (isTopLevelTaskSpawn(props.tool.input)) {
+    return (
+      <SpawnedTaskView tool={props.tool} isExecuting={props.isExecuting} />
+    );
+  }
+  return <SubTaskToolView {...props} />;
+};
+
+function SubTaskToolView(props: NewTaskToolProps) {
   const { tool, taskThreadSource } = props;
   const uid = tool.input?._meta?.uid;
 
@@ -60,7 +73,7 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   }
 
   return <NewTaskToolView {...props} taskSource={taskSource} uid={uid} />;
-};
+}
 
 function LiveSubTaskToolView(props: NewTaskToolProps & { uid: string }) {
   const { tool, isExecuting, uid } = props;

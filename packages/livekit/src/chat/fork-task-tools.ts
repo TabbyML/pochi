@@ -1,6 +1,7 @@
 import {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
+  isTopLevelTaskSpawn,
 } from "@getpochi/common";
 import type { UIMessagePart } from "ai";
 import type { tables } from "../livestore/default-schema";
@@ -210,15 +211,18 @@ const replaceTaskIdInMessages = (
     ...message,
     parts: message.parts.map((part) => {
       if (part.type === "tool-newTask") {
-        const input = part.input?._meta?.uid
-          ? {
-              ...part.input,
-              _meta: {
-                ...part.input._meta,
-                uid: getNewTaskId(part.input._meta.uid),
-              },
-            }
-          : part.input;
+        // A spawned top-level task is not part of this conversation, so the
+        // fork keeps referring to the same task.
+        const input =
+          part.input?._meta?.uid && !isTopLevelTaskSpawn(part.input)
+            ? {
+                ...part.input,
+                _meta: {
+                  ...part.input._meta,
+                  uid: getNewTaskId(part.input._meta.uid),
+                },
+              }
+            : part.input;
         if (part.state === "output-available" && part.output.backgroundJobId) {
           const oldJobId = part.output.backgroundJobId;
           const newJobId = replaceBackgroundJobId(oldJobId);

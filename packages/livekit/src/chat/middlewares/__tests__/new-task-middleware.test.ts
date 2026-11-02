@@ -12,6 +12,12 @@ const customAgents: CustomAgent[] = [
     isolation: "worktree",
   },
   { name: "explore", description: "Explores", systemPrompt: "Explore." },
+  {
+    name: "audit",
+    description: "Internal audit",
+    systemPrompt: "Audit.",
+    _internal: {},
+  },
 ];
 
 async function callNewTask(
@@ -56,8 +62,43 @@ async function callNewTask(
   const taskInited = commit.mock.calls
     .map(([event]) => event)
     .find((event) => event.name === "v1.TaskInited");
-  return { args, taskCwd: taskInited?.args.cwd as string | undefined };
+  return {
+    args,
+    taskInited,
+    taskCwd: taskInited?.args.cwd as string | undefined,
+  };
 }
+
+describe("createNewTaskMiddleware top-level task", () => {
+  const base = { description: "Task", prompt: "Do it", spawn: "task" };
+
+  it("assigns an id without creating a subtask", async () => {
+    const getSubagentWorktreePath = vi.fn(async () => "/unused");
+    const { args, taskInited } = await callNewTask(
+      { ...base, agentType: "fixer" },
+      getSubagentWorktreePath,
+    );
+    expect(args._meta.uid).toEqual(expect.any(String));
+    expect(taskInited).toBeUndefined();
+    expect(getSubagentWorktreePath).not.toHaveBeenCalled();
+  });
+
+  it("does not inherit the agent's isolation", async () => {
+    const { args } = await callNewTask({ ...base, agentType: "fixer" });
+    expect(args.isolation).toBeUndefined();
+  });
+
+  it("keeps an explicit worktree request", async () => {
+    const { args } = await callNewTask({ ...base, isolation: "worktree" });
+    expect(args.isolation).toBe("worktree");
+  });
+
+  it("rejects internal agents", async () => {
+    await expect(callNewTask({ ...base, agentType: "audit" })).rejects.toThrow(
+      "cannot run as a top-level task",
+    );
+  });
+});
 
 describe("createNewTaskMiddleware isolation", () => {
   const base = { description: "Task", prompt: "Do it" };

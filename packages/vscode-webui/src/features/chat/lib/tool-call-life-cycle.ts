@@ -3,9 +3,11 @@ import { vscodeHost } from "@/lib/vscode";
 import {
   constants,
   createBackgroundSubAgentStartedResult,
+  createTopLevelTaskStartedResult,
   formatSubagentWorktreeNote,
   getLogger,
   getSubAgentBackgroundJobId,
+  isTopLevelTaskSpawn,
   shouldRunSubAgentInBackground,
   toErrorMessage,
 } from "@getpochi/common";
@@ -49,7 +51,21 @@ type NewTaskReturnType = {
   /** The subtask was converted to a background subagent task. */
   background?: boolean;
 };
+/** newTask started a top-level task, which never reports back to this call. */
+type SpawnedTaskReturnType = {
+  spawned: true;
+  result: string;
+};
 type SubagentWorktree = { path: string; branch: string };
+
+function isSpawnedTaskResult(result: unknown): result is SpawnedTaskReturnType {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "spawned" in result &&
+    result.spawned === true
+  );
+}
 type ExecuteReturnType = ExecuteCommandReturnType | NewTaskReturnType | unknown;
 
 export type StreamingResult =
@@ -288,7 +304,7 @@ export class ManagedToolCallLifeCycle
       taskId?: string;
       abortSignal: AbortSignal;
     },
-  ): Promise<NewTaskReturnType> {
+  ): Promise<NewTaskReturnType | SpawnedTaskReturnType> {
     options.abortSignal.throwIfAborted();
     // Validate the agent type pattern policy, throw if failed
     validateAgentTypePatternPolicy(
@@ -299,6 +315,10 @@ export class ManagedToolCallLifeCycle
     const uid = args._meta?.uid;
     if (!uid) {
       throw new Error("Missing uid in newTask arguments");
+    }
+
+    if (isTopLevelTaskSpawn(args)) {
+      return this.spawnTopLevelTask(args, uid, options);
     }
 
     try {
@@ -337,6 +357,50 @@ export class ManagedToolCallLifeCycle
       await this.finalizeSubagentWorktree(uid);
       throw error;
     }
+  }
+
+  /**
+   * Starts an independent top-level task in its own tab. The tab creates the
+   * task in its own store, so the call completes as soon as the tab opens.
+   */
+  private async spawnTopLevelTask(
+    args: NewTaskParameterType,
+    uid: string,
+    options: { taskId?: string; abortSignal: AbortSignal },
+  ): Promise<SpawnedTaskReturnType> {
+    let cwd = options.taskId
+      ? this.store.query(catalog.queries.makeTaskQuery(options.taskId))?.cwd
+      : undefined;
+    let worktree: { path: string; branch?: string } | undefined;
+    if (args.isolation === "worktree") {
+      const created = await vscodeHost.createWorktree({
+        generateBranchName: { prompt: args.description || args.prompt },
+      });
+      if (!created) {
+        throw new Error("Failed to create a worktree for the task.");
+      }
+      worktree = { path: created.path, branch: created.branch };
+      cwd = created.path;
+    }
+    if (!cwd) {
+      throw new Error("Cannot start a task without a working directory.");
+    }
+    options.abortSignal.throwIfAborted();
+
+    await vscodeHost.openTaskInPanel(
+      {
+        type: "new-task",
+        uid,
+        cwd,
+        prompt: args.prompt,
+        invokedCustomAgents: args.agentType ? [args.agentType] : undefined,
+      },
+      { preview: false, background: true },
+    );
+    return {
+      spawned: true,
+      result: createTopLevelTaskStartedResult(uid, worktree),
+    };
   }
 
   addResult(result: unknown): void {
@@ -449,7 +513,7 @@ export class ManagedToolCallLifeCycle
     // Cancellation may have settled the lifecycle while host preparation
     // was still running. Its late result must not transition it again.
     if (this.state.type !== "execute" || this.state.abortSignal.aborted) {
-      if (this.toolName === "newTask") {
+      if (this.toolName === "newTask" && !isSpawnedTaskResult(result)) {
         const prepared = result as NewTaskReturnType;
         // Background worktrees belong to the executor after handoff. A
         // foreground result still needs its streaming listener to take over.
@@ -472,6 +536,12 @@ export class ManagedToolCallLifeCycle
       "streamingOutput" in result
     ) {
       this.onExecuteCommand(result as ExecuteCommandReturnType);
+    } else if (this.toolName === "newTask" && isSpawnedTaskResult(result)) {
+      this.transitTo("execute", {
+        type: "complete",
+        result: { result: result.result },
+        reason: "execute-finish",
+      });
     } else if (
       this.toolName === "newTask" &&
       !(typeof result === "object" && result !== null && "error" in result)

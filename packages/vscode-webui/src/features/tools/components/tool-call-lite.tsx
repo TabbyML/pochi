@@ -1,5 +1,6 @@
 import { useTaskReference } from "@/components/message/task-reference-badge";
 import { cn } from "@/lib/utils";
+import { isTopLevelTaskSpawn } from "@getpochi/common";
 import {
   formatPochiFileDisplayPath,
   parseTaskTranscriptFilePath,
@@ -336,7 +337,8 @@ const NewTaskTool = ({ tool }: ToolCallLiteViewProps<"newTask">) => {
   const description = tool.input?.description ?? "";
 
   const agentType = tool.input?.agentType;
-  const toolTitle = agentType?.trim() || "Subtask";
+  const toolTitle =
+    agentType?.trim() || (isTopLevelTaskSpawn(tool.input) ? "Task" : "Subtask");
 
   return (
     <div>

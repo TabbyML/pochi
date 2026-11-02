@@ -237,6 +237,7 @@ export class PochiTaskEditorProvider
       viewColumn?: vscode.ViewColumn;
       preserveFocus?: boolean;
       preview?: boolean;
+      background?: boolean;
     },
   ) {
     try {
@@ -397,6 +398,7 @@ async function openTaskInColumn(
     viewColumn?: vscode.ViewColumn;
     preserveFocus?: boolean;
     preview?: boolean;
+    background?: boolean;
   },
 ) {
   const params = PochiTaskEditorProvider.parseTaskUri(uri);
@@ -412,17 +414,112 @@ async function openTaskInColumn(
   }
 
   const viewColumn = options?.viewColumn ?? getViewColumnForPochiPanel();
+  const open = () =>
+    vscode.commands.executeCommand(
+      "vscode.openWith",
+      uri,
+      PochiTaskEditorProvider.viewType,
+      {
+        viewColumn,
+        preserveFocus: options?.background ? true : options?.preserveFocus,
+        preview: options?.preview ?? true,
+      },
+    );
 
-  await vscode.commands.executeCommand(
-    "vscode.openWith",
-    uri,
-    PochiTaskEditorProvider.viewType,
-    {
-      viewColumn,
-      preserveFocus: options?.preserveFocus,
-      preview: options?.preview ?? true,
-    },
+  if (options?.background) {
+    await openTaskInBackground(uri, open);
+    return;
+  }
+  await open();
+}
+
+// Background opens run one at a time: each restores the tab that was active
+// before it, which must not be a task tab that another open just showed.
+let backgroundOpenQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Opens a task tab without leaving it in front. VS Code only resolves a custom
+ * editor once it is shown, so the tab is shown first and then the previously
+ * active tab of its group is restored; the task keeps running while hidden
+ * because the webview retains its context.
+ */
+function openTaskInBackground(uri: vscode.Uri, open: () => Thenable<unknown>) {
+  const run = async () => {
+    const previousTabs = new Map<vscode.ViewColumn, vscode.Tab | undefined>(
+      vscode.window.tabGroups.all.map((group) => [
+        group.viewColumn,
+        group.activeTab,
+      ]),
+    );
+    const activeColumn = vscode.window.tabGroups.activeTabGroup.viewColumn;
+
+    await open();
+
+    const group = vscode.window.tabGroups.all.find((group) =>
+      group.tabs.some((tab) => isTaskTab(tab, uri)),
+    );
+    if (!group?.activeTab || !isTaskTab(group.activeTab, uri)) return;
+    const previous = previousTabs.get(group.viewColumn);
+    if (!previous || isTaskTab(previous, uri)) return;
+    // Hand the focus back only if it was in this group before.
+    const preserveFocus = group.viewColumn !== activeColumn;
+    await reopenTab(previous, group.viewColumn, preserveFocus).catch(
+      (error) => {
+        logger.warn(
+          `Failed to restore the previous tab: ${toErrorMessage(error)}`,
+        );
+      },
+    );
+  };
+  const result = backgroundOpenQueue.then(run, run);
+  backgroundOpenQueue = result.catch(() => undefined);
+  return result;
+}
+
+function isTaskTab(tab: vscode.Tab, uri: vscode.Uri) {
+  return (
+    tab.input instanceof vscode.TabInputCustom &&
+    tab.input.viewType === PochiTaskEditorProvider.viewType &&
+    tab.input.uri.toString() === uri.toString()
   );
+}
+
+/** Shows an existing tab again. Tabs that cannot be reopened are left as is. */
+async function reopenTab(
+  tab: vscode.Tab,
+  viewColumn: vscode.ViewColumn,
+  preserveFocus: boolean,
+) {
+  const options = { viewColumn, preserveFocus, preview: tab.isPreview };
+  const input = tab.input;
+  if (input instanceof vscode.TabInputCustom) {
+    await vscode.commands.executeCommand(
+      "vscode.openWith",
+      input.uri,
+      input.viewType,
+      options,
+    );
+  } else if (input instanceof vscode.TabInputNotebook) {
+    await vscode.commands.executeCommand(
+      "vscode.openWith",
+      input.uri,
+      input.notebookType,
+      options,
+    );
+  } else if (input instanceof vscode.TabInputText) {
+    await vscode.commands.executeCommand("vscode.open", input.uri, options);
+  } else if (
+    input instanceof vscode.TabInputTextDiff ||
+    input instanceof vscode.TabInputNotebookDiff
+  ) {
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      input.original,
+      input.modified,
+      tab.label,
+      options,
+    );
+  }
 }
 
 const TaskUri = z.object({

@@ -363,6 +363,38 @@ describe("prepareForkTaskData", () => {
     );
   });
 
+  it("keeps the id of a spawned top-level task", () => {
+    const messageWithTool = {
+      id: "msg-tool",
+      taskId: oldTaskId,
+      data: {
+        id: "msg-tool",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-newTask",
+            input: { spawn: "task", _meta: { uid: "top-level-task-id" } },
+          },
+        ],
+      },
+    } as any;
+
+    const result = prepareForkTaskData({
+      tasks: [mockTask],
+      messages: [messageWithTool],
+      files: [],
+      oldTaskId,
+      commitId: "none",
+      messageId: "msg-tool",
+      newTaskId,
+      newTaskTitle: "New Task",
+    });
+
+    const toolPart = result.messages[0].data.parts[0] as any;
+    expect(toolPart.input._meta.uid).toBe("top-level-task-id");
+    expect(result.tasks).toHaveLength(1);
+  });
+
   it("should not copy certain fields like todos, lineChanges, and totalTokens", () => {
     const taskWithExtraFields = {
       ...mockTask,
