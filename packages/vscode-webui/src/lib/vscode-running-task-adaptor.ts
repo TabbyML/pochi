@@ -19,6 +19,7 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BackgroundCommandAdaptor,
+  BackgroundJobManager,
   type LLMRequestData,
   type LiveKitStore,
   type Message,
@@ -38,6 +39,7 @@ import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
+const ReleaseBrowserSessionTimeoutMs = 5_000;
 
 export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   readonly homeDir = globalThis.POCHI_HOME_DIR;
@@ -61,6 +63,14 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
 
   /** `store` is needed to save browser recordings of background tasks. */
   constructor(private readonly store?: LiveKitStore) {
+    if (store) {
+      const manager = BackgroundJobManager.forStore(store);
+      this.unsubscribers.push(
+        manager.subscribe(() => {
+          this.releaseSettledBrowserSessions(store, manager);
+        }),
+      );
+    }
     this.ready = this.init().catch((error) => {
       logger.warn("Failed to initialize background task adaptor", error);
     });
@@ -327,11 +337,46 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     ) {
       return;
     }
-    await browserSessionManager.unregisterSession(
-      taskId,
-      invocation.toolCallId,
-      store,
-    );
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        browserSessionManager.unregisterSession(
+          taskId,
+          invocation.toolCallId,
+          store,
+        ),
+        new Promise<void>((resolve) => {
+          timeoutId = setTimeout(resolve, ReleaseBrowserSessionTimeoutMs);
+        }),
+      ]);
+    } catch (error) {
+      logger.warn({ taskId, error }, "Failed to release browser session");
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  /**
+   * A foreground browser task moved to the background already owns a session.
+   * If it settles while still queued, no RunningTask runs onTaskFinished, so
+   * release its leftover session from the panel-scoped adaptor.
+   */
+  private releaseSettledBrowserSessions(
+    store: LiveKitStore,
+    manager: BackgroundJobManager,
+  ) {
+    if (this.disposed) return;
+    for (const task of store.query(catalog.queries.backgroundTasks$)) {
+      if (
+        browserSessionManager.isRegistered(task.id) &&
+        (task.status === "completed" || task.status === "failed") &&
+        !manager.isTaskPending(task.id)
+      ) {
+        void this.releaseBrowserSession(task.id);
+      }
+    }
   }
 
   private async init() {

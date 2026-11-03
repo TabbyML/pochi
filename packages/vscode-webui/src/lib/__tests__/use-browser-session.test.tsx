@@ -23,6 +23,7 @@ import { useManageBrowserSession } from "../use-browser-session";
 const browserMessage = (
   state: string,
   uid: string | undefined = "browser-task",
+  background?: boolean,
 ) =>
   ({
     id: "browser-call-message",
@@ -32,7 +33,11 @@ const browserMessage = (
         type: "tool-newTask",
         toolCallId: "call",
         state,
-        input: { agentType: "browser", _meta: { uid } },
+        input: {
+          agentType: "browser",
+          ...(background === undefined ? {} : { background }),
+          _meta: { uid },
+        },
         ...(state === "output-available" ? { output: { result: "done" } } : {}),
       },
     ],
@@ -51,7 +56,11 @@ describe("browser session lifecycle in the parent task", () => {
       const { rerender } = renderHook(
         ({ messages }) => useManageBrowserSession({ messages }),
         {
-          initialProps: { messages: [browserMessage("input-available")] },
+          initialProps: {
+            messages: [
+              browserMessage("input-available", "browser-task", false),
+            ],
+          },
         },
       );
       expect(mocks.manager.registerSession).toHaveBeenCalledWith(
@@ -59,7 +68,9 @@ describe("browser session lifecycle in the parent task", () => {
         "parent",
         { viewport: undefined },
       );
-      rerender({ messages: [browserMessage(state), nextMessage] });
+      rerender({
+        messages: [browserMessage(state, "browser-task", false), nextMessage],
+      });
       await waitFor(() =>
         expect(mocks.manager.unregisterSession).toHaveBeenCalledWith(
           "browser-task",
@@ -70,10 +81,13 @@ describe("browser session lifecycle in the parent task", () => {
     },
   );
 
-  it("recovers an active browser session preceding a newer message", () => {
+  it("recovers an active foreground browser session preceding a newer message", () => {
     renderHook(() =>
       useManageBrowserSession({
-        messages: [browserMessage("input-available"), nextMessage],
+        messages: [
+          browserMessage("input-available", "browser-task", false),
+          nextMessage,
+        ],
       }),
     );
     expect(mocks.manager.registerSession).toHaveBeenCalledWith(
@@ -81,6 +95,15 @@ describe("browser session lifecycle in the parent task", () => {
       "parent",
       { viewport: undefined },
     );
+  });
+
+  it("does not pre-register a background browser task before it starts executing", () => {
+    renderHook(() =>
+      useManageBrowserSession({
+        messages: [browserMessage("input-available")],
+      }),
+    );
+    expect(mocks.manager.registerSession).not.toHaveBeenCalled();
   });
 
   it("keeps the session of a browser task running in the background", () => {
@@ -96,7 +119,7 @@ describe("browser session lifecycle in the parent task", () => {
   });
 
   it("does not register a default/empty session before a task ID is assigned", () => {
-    const message = browserMessage("input-available");
+    const message = browserMessage("input-available", "browser-task", false);
     (message.parts[0] as { input: { _meta: unknown } }).input._meta = undefined;
     renderHook(() => useManageBrowserSession({ messages: [message] }));
     expect(mocks.manager.registerSession).not.toHaveBeenCalled();
