@@ -16,10 +16,6 @@ vi.mock("@/components/message/task-reference-badge", () => ({
   useTaskReference: () => ({ task: undefined, displayTitle: "" }),
 }));
 
-vi.mock("../use-background-job-running-status", () => ({
-  useBackgroundJobRunningStatus: () => undefined,
-}));
-
 vi.mock("../status-icon", () => ({
   StatusIcon: () => <div data-testid="status-icon" />,
 }));
