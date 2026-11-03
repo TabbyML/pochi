@@ -51,8 +51,7 @@ export {
   FileStateCache,
   type RecentFileState,
   FileUnchangedStub,
-  checkStaleness,
-  withFileStateCacheGuard,
+  withWriteFileCache,
   withReadFileCache,
   isVirtualPath,
 } from "./file-state-cache";

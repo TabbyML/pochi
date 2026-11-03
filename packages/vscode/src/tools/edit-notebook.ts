@@ -5,7 +5,7 @@ import {
   parseNotebook,
   serializeNotebook,
   validateNotebookPath,
-  withFileStateCacheGuard,
+  withWriteFileCache,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
@@ -17,12 +17,11 @@ export const editNotebook: ToolFunctionType<
 
     validateNotebookPath(filePath);
 
-    return await withFileStateCacheGuard({
+    return await withWriteFileCache({
       cache: options.fileStateCache,
       path: filePath,
       cwd,
       getMtime: getFileModificationTime,
-      operation: "editing",
       doWork: async (resolvedPath) => {
         const fileContent = await fs.readFile(resolvedPath, "utf-8");
         const notebook = parseNotebook(fileContent);

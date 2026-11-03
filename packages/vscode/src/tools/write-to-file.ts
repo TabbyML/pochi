@@ -2,7 +2,7 @@ import { getVscodeFileMtime } from "@/lib/fs";
 import { getLogger } from "@/lib/logger";
 import { writeTextDocument } from "@/lib/write-text-document";
 import { fixCodeGenerationOutput } from "@getpochi/common/message-utils";
-import { withFileStateCacheGuard } from "@getpochi/common/tool-utils";
+import { withWriteFileCache } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 
 const logger = getLogger("writeToFileTool");
@@ -17,12 +17,11 @@ export const writeToFile: ToolFunctionType<ClientTools["writeToFile"]> = async (
 ) => {
   const { abortSignal, cwd } = options;
 
-  return withFileStateCacheGuard({
+  return withWriteFileCache({
     cache: options.fileStateCache,
     path,
     cwd,
     getMtime: getVscodeFileMtime,
-    operation: "writing",
     doWork: async () => {
       const processedContent = fixCodeGenerationOutput(content);
 

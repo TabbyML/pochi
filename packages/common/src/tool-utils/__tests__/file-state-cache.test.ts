@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  checkStaleness,
   FileStateCache,
-  withFileStateCacheGuard,
   withReadFileCache,
+  withWriteFileCache,
 } from "../file-state-cache";
 
 describe("FileStateCache", () => {
@@ -45,68 +44,6 @@ describe("FileStateCache", () => {
     expect(cache.sizeBytes).toBe(0);
   });
 
-  // A deleted file cannot be re-read, so rejecting would block re-creating it.
-  it("allows writing a deleted file and retains its baseline", async () => {
-    const cache = new FileStateCache();
-    cache.set("/tmp/file.txt", {
-      content: "hello",
-      timestamp: 1,
-      startLine: 1,
-      endLine: 1,
-    });
-
-    await expect(
-      checkStaleness(cache, "/tmp/file.txt", async () => undefined, "writing"),
-    ).resolves.toBeUndefined();
-    expect(cache.get("/tmp/file.txt")).toMatchObject({
-      content: "hello",
-      timestamp: 1,
-    });
-  });
-
-  it("allows edits when the mtime still matches the cached state", async () => {
-    const cache = new FileStateCache();
-    cache.set("/tmp/file.txt", {
-      content: "hello",
-      timestamp: 1,
-      startLine: 1,
-      endLine: 1,
-    });
-
-    await expect(
-      checkStaleness(cache, "/tmp/file.txt", async () => 1, "editing"),
-    ).resolves.toBeUndefined();
-  });
-
-  it("allows editing an existing file when no cached baseline is available", async () => {
-    const cache = new FileStateCache();
-
-    await expect(
-      checkStaleness(cache, "/tmp/file.txt", async () => 1234, "editing"),
-    ).resolves.toBeUndefined();
-  });
-
-  it("allows writing an existing file when no cached baseline is available", async () => {
-    const cache = new FileStateCache();
-
-    await expect(
-      checkStaleness(cache, "/tmp/file.txt", async () => 1234, "writing"),
-    ).resolves.toBeUndefined();
-  });
-
-  it("allows writing a new file when no cached baseline is available", async () => {
-    const cache = new FileStateCache();
-
-    await expect(
-      checkStaleness(
-        cache,
-        "/tmp/new-file.txt",
-        async () => undefined,
-        "writing",
-      ),
-    ).resolves.toBeUndefined();
-  });
-
   it("returns recent files in LRU order", () => {
     const cache = new FileStateCache();
     cache.set("/tmp/a.txt", {
@@ -140,8 +77,8 @@ describe("FileStateCache", () => {
 
   // markAllAsWritten is used when the read tool_results that populated the
   // cache leave the conversation (compaction / retry-strip). It must retain
-  // their staleness baselines while disabling dedup.
-  it("keeps entries editable but stops read dedup after markAllAsWritten", async () => {
+  // the entries while disabling dedup.
+  it("keeps entries but stops read dedup after markAllAsWritten", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/file.txt", {
       content: "hello",
@@ -154,11 +91,6 @@ describe("FileStateCache", () => {
 
     // Entry is retained and downgraded to a write-sourced state.
     expect(cache.get("/tmp/file.txt")?.fromWrite).toBe(true);
-
-    // Editing an already-read file is still allowed (no false "not read").
-    await expect(
-      checkStaleness(cache, "/tmp/file.txt", async () => 1, "editing"),
-    ).resolves.toBeUndefined();
 
     // A re-read of the same range is no longer deduplicated, so it cannot
     // dangle onto a tool_result that left the conversation.
@@ -209,84 +141,34 @@ describe("FileStateCache", () => {
   });
 });
 
-describe("withFileStateCacheGuard", () => {
-  it("preserves the baseline after a missing-file edit fails and blocks external recreation", async () => {
+describe("withWriteFileCache", () => {
+  it("keeps the cached entry when the write fails", async () => {
     const cache = new FileStateCache();
-    const baseline = {
+    const entry = {
       content: "old content",
       timestamp: 1,
       startLine: 1,
       endLine: 1,
     };
-    cache.set("/tmp/file.txt", baseline);
-    const missingError = Object.assign(new Error("File not found"), {
-      code: "ENOENT",
-    });
-    const getMtime = vi
-      .fn<() => Promise<number | undefined>>()
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValue(2000);
-    const edit = vi.fn().mockRejectedValue(missingError);
-    const opts = { cache, path: "/tmp/file.txt", cwd: "/tmp", getMtime };
+    cache.set("/tmp/file.txt", entry);
+    const writeError = new Error("Permission denied");
+    const getMtime = vi.fn(async () => 2000);
 
     await expect(
-      withFileStateCacheGuard({ ...opts, operation: "editing", doWork: edit }),
-    ).rejects.toBe(missingError);
-    expect(edit).toHaveBeenCalledOnce();
-    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
-
-    // Another process re-creates the file before the next write.
-    const write = vi.fn(async () => ({
-      result: { success: true as const },
-      fileCacheContent: "replacement",
-    }));
-    await expect(
-      withFileStateCacheGuard({ ...opts, operation: "writing", doWork: write }),
-    ).rejects.toThrow("File has been modified since it was last read");
-    expect(write).not.toHaveBeenCalled();
-  });
-
-  it("preserves the baseline after a stat error and checks it again on retry", async () => {
-    const cache = new FileStateCache();
-    const baseline = {
-      content: "old content",
-      timestamp: 1,
-      startLine: 1,
-      endLine: 1,
-    };
-    cache.set("/tmp/file.txt", baseline);
-    const permissionError = Object.assign(new Error("Permission denied"), {
-      code: "EACCES",
-    });
-    const getMtime = vi
-      .fn<() => Promise<number | undefined>>()
-      .mockRejectedValueOnce(permissionError)
-      .mockResolvedValue(2000);
-    const doWork = vi.fn(async () => ({
-      result: { success: true as const },
-      fileCacheContent: "replacement",
-    }));
-    const opts = {
-      cache,
-      path: "/tmp/file.txt",
-      cwd: "/tmp",
-      getMtime,
-      operation: "writing" as const,
-      doWork,
-    };
-
-    await expect(withFileStateCacheGuard(opts)).rejects.toBe(permissionError);
-    expect(doWork).not.toHaveBeenCalled();
-    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
-
-    await expect(withFileStateCacheGuard(opts)).rejects.toThrow(
-      "File has been modified since it was last read",
-    );
-    expect(doWork).not.toHaveBeenCalled();
+      withWriteFileCache({
+        cache,
+        path: "/tmp/file.txt",
+        cwd: "/tmp",
+        getMtime,
+        doWork: vi.fn().mockRejectedValue(writeError),
+      }),
+    ).rejects.toBe(writeError);
+    expect(getMtime).not.toHaveBeenCalled();
+    expect(cache.get("/tmp/file.txt")).toEqual(entry);
   });
 
   it.each(["missing", "error"] as const)(
-    "drops the old baseline after a successful write when its mtime is unavailable (%s)",
+    "drops the old entry after a successful write when its mtime is unavailable (%s)",
     async (failure) => {
       const cache = new FileStateCache();
       cache.set("/tmp/file.txt", {
@@ -295,9 +177,7 @@ describe("withFileStateCacheGuard", () => {
         startLine: 1,
         endLine: 1,
       });
-      const getMtime = vi
-        .fn<() => Promise<number | undefined>>()
-        .mockResolvedValueOnce(1);
+      const getMtime = vi.fn<() => Promise<number | undefined>>();
       if (failure === "error") {
         getMtime.mockRejectedValueOnce(new Error("File system unavailable"));
       } else {
@@ -313,19 +193,17 @@ describe("withFileStateCacheGuard", () => {
         path: "/tmp/file.txt",
         cwd: "/tmp",
         getMtime,
-        operation: "writing" as const,
         doWork,
       };
 
-      await expect(withFileStateCacheGuard(opts)).resolves.toEqual({
+      await expect(withWriteFileCache(opts)).resolves.toEqual({
         success: true,
       });
       expect(doWork).toHaveBeenCalledOnce();
       expect(cache.has("/tmp/file.txt")).toBe(false);
       expect(cache.getRecentFiles()).toEqual([]);
 
-      // A subsequent write must not be blocked by the superseded baseline.
-      await expect(withFileStateCacheGuard(opts)).resolves.toEqual({
+      await expect(withWriteFileCache(opts)).resolves.toEqual({
         success: true,
       });
       expect(doWork).toHaveBeenCalledTimes(2);
@@ -337,7 +215,7 @@ describe("withFileStateCacheGuard", () => {
     },
   );
 
-  it("rejects editing a file that changed from its cached baseline", async () => {
+  it("allows editing a file that changed since it was last read", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/existing.txt", {
       content: "old content",
@@ -351,28 +229,31 @@ describe("withFileStateCacheGuard", () => {
     }));
 
     await expect(
-      withFileStateCacheGuard({
+      withWriteFileCache({
         cache,
         path: "/tmp/existing.txt",
         cwd: "/tmp",
         getMtime: async () => 1000,
-        operation: "editing",
         doWork,
       }),
-    ).rejects.toThrow("File has been modified since it was last read");
-    expect(doWork).not.toHaveBeenCalled();
+    ).resolves.toEqual({ success: true });
+    expect(doWork).toHaveBeenCalledOnce();
+    expect(cache.get("/tmp/existing.txt")).toMatchObject({
+      content: "new content",
+      timestamp: 1000,
+      fromWrite: true,
+    });
   });
 
-  it("allows editing an existing file without a cached baseline", async () => {
+  it("allows editing an existing file without a cached entry", async () => {
     const cache = new FileStateCache();
 
     await expect(
-      withFileStateCacheGuard({
+      withWriteFileCache({
         cache,
         path: "/tmp/existing.txt",
         cwd: "/tmp",
         getMtime: async () => 1000,
-        operation: "editing",
         doWork: async () => ({
           result: { success: true as const },
           fileCacheContent: "new content",
@@ -386,7 +267,7 @@ describe("withFileStateCacheGuard", () => {
     });
   });
 
-  it("allows editing after the cached baseline is evicted", async () => {
+  it("allows editing after the cached entry is evicted", async () => {
     const cache = new FileStateCache();
     cache.set("/tmp/evicted.txt", {
       content: "old content",
@@ -405,12 +286,11 @@ describe("withFileStateCacheGuard", () => {
     expect(cache.has("/tmp/evicted.txt")).toBe(false);
 
     await expect(
-      withFileStateCacheGuard({
+      withWriteFileCache({
         cache,
         path: "/tmp/evicted.txt",
         cwd: "/tmp",
         getMtime: async () => 1000,
-        operation: "editing",
         doWork: async () => ({
           result: { success: true as const },
           fileCacheContent: "new content",
@@ -437,12 +317,11 @@ describe("withFileStateCacheGuard", () => {
     });
 
     await expect(
-      withFileStateCacheGuard({
+      withWriteFileCache({
         cache,
         path: "/tmp/deleted.txt",
         cwd: "/tmp",
         getMtime: async () => mtime,
-        operation: "writing",
         doWork,
       }),
     ).resolves.toEqual({ success: true });
@@ -460,12 +339,11 @@ describe("withFileStateCacheGuard", () => {
     const getMtime = async (_path: string) => undefined;
 
     await expect(
-      withFileStateCacheGuard({
+      withWriteFileCache({
         cache,
         path: "/tmp/brand-new.txt",
         cwd: "/tmp",
         getMtime,
-        operation: "writing",
         doWork: async () => ({
           result: { success: true as const },
           fileCacheContent: "hello",
@@ -477,7 +355,7 @@ describe("withFileStateCacheGuard", () => {
 
 describe("withReadFileCache", () => {
   it.each(["missing", "error"] as const)(
-    "returns fresh content and drops the old baseline when mtime is unavailable (%s)",
+    "returns fresh content and drops the old entry when mtime is unavailable (%s)",
     async (failure) => {
       const cache = new FileStateCache();
       cache.set("/tmp/file.txt", {
@@ -523,12 +401,11 @@ describe("withReadFileCache", () => {
         fileCacheContent: "edited content",
       }));
       await expect(
-        withFileStateCacheGuard({
+        withWriteFileCache({
           cache,
           path: "/tmp/file.txt",
           cwd: "/tmp",
           getMtime,
-          operation: "editing",
           doWork,
         }),
       ).resolves.toEqual({ success: true });
@@ -541,15 +418,15 @@ describe("withReadFileCache", () => {
     },
   );
 
-  it("retains the baseline when both stat and the actual read fail", async () => {
+  it("retains the entry when both stat and the actual read fail", async () => {
     const cache = new FileStateCache();
-    const baseline = {
+    const entry = {
       content: "old content",
       timestamp: 1,
       startLine: 1,
       endLine: 1,
     };
-    cache.set("/tmp/file.txt", baseline);
+    cache.set("/tmp/file.txt", entry);
     const getMtime = vi.fn().mockRejectedValue(new Error("Stat failed"));
     const readError = Object.assign(new Error("Permission denied"), {
       code: "EACCES",
@@ -569,6 +446,6 @@ describe("withReadFileCache", () => {
     ).rejects.toBe(readError);
     expect(doRead).toHaveBeenCalledOnce();
     expect(getMtime).toHaveBeenCalledOnce();
-    expect(cache.get("/tmp/file.txt")).toEqual(baseline);
+    expect(cache.get("/tmp/file.txt")).toEqual(entry);
   });
 });
