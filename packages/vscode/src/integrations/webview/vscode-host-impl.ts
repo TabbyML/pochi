@@ -724,7 +724,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         taskId,
         rootTaskId,
         fileStateCache,
-        allowBackground: options.allowBackground,
+        // Subtasks share the root task's store but must not own background jobs.
+        allowBackground:
+          options.allowBackground !== false && taskId === rootTaskId,
       }),
     );
 
