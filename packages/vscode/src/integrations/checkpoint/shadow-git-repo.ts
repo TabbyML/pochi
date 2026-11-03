@@ -29,6 +29,71 @@ function splitLines(output: string): string[] {
     .filter(Boolean);
 }
 
+export type DiffEntry = {
+  // First letter of the git status, e.g. A, D, M, R, C.
+  status: string;
+  filepath: string;
+  // Source path of a rename or copy.
+  oldFilepath?: string;
+};
+
+export type DiffStat = DiffEntry & {
+  added: number;
+  removed: number;
+  // Git reports no line counts for binary files.
+  binary: boolean;
+};
+
+/** Parses `git diff --name-status -z` output. */
+function parseNameStatusOutput(output: string): DiffEntry[] {
+  const tokens = output.split("\0");
+  const entries: DiffEntry[] = [];
+  let i = 0;
+  while (i < tokens.length) {
+    const status = tokens[i++];
+    if (!status) continue;
+    if (status.startsWith("R") || status.startsWith("C")) {
+      const oldFilepath = tokens[i++];
+      const filepath = tokens[i++];
+      entries.push({ status: status[0], oldFilepath, filepath });
+    } else {
+      entries.push({ status: status[0], filepath: tokens[i++] });
+    }
+  }
+  return entries;
+}
+
+/**
+ * Parses `git diff --numstat -z` output into counts keyed by the new path.
+ * Renames and copies print an empty path followed by the old and new paths.
+ */
+function parseNumstatOutput(
+  output: string,
+): Map<string, Pick<DiffStat, "added" | "removed" | "binary">> {
+  const tokens = output.split("\0");
+  const counts = new Map<
+    string,
+    Pick<DiffStat, "added" | "removed" | "binary">
+  >();
+  let i = 0;
+  while (i < tokens.length) {
+    const match = /^(-|\d+)\t(-|\d+)\t(.*)$/s.exec(tokens[i++]);
+    if (!match) continue;
+    let filepath = match[3];
+    if (!filepath) {
+      i++; // Skip the old path.
+      filepath = tokens[i++];
+    }
+    const binary = match[1] === "-" || match[2] === "-";
+    counts.set(filepath, {
+      added: binary ? 0 : Number(match[1]),
+      removed: binary ? 0 : Number(match[2]),
+      binary,
+    });
+  }
+  return counts;
+}
+
 let gitUnavailableNotified = false;
 
 function notifyGitUnavailable(errorMessage: string) {
@@ -509,24 +574,73 @@ export class ShadowGitRepo implements vscode.Disposable {
     to?: string,
     files?: string[],
   ): Promise<FileChange[]> {
+    const entries = await this.listDiffEntries(from, to, files);
+    return this.readDiffContents(entries, from, to);
+  }
+
+  /**
+   * Lists changed files with line counts computed by git, without loading
+   * file contents into memory. Binary files are flagged instead of counted.
+   */
+  async getDiffStats(
+    from: string,
+    to?: string,
+    files?: string[],
+  ): Promise<DiffStat[]> {
+    const [entries, numstatOutput] = await Promise.all([
+      this.listDiffEntries(from, to, files),
+      this.git.raw(this.diffCommand("--numstat", from, to, files)),
+    ]);
+    const counts = parseNumstatOutput(numstatOutput);
+    return entries.map((entry) => ({
+      ...entry,
+      ...(counts.get(entry.filepath) ?? {
+        added: 0,
+        removed: 0,
+        binary: false,
+      }),
+    }));
+  }
+
+  private diffCommand(
+    format: string,
+    from: string,
+    to?: string,
+    files?: string[],
+  ) {
     const diffRange = to ? `${from}..${to}` : from;
     // For bare repository with worktree, use --work-tree flag like in reset method
-    let command = [
+    const command = [
       "--work-tree",
       this.workspaceDir,
       "diff",
-      "--name-status",
+      format,
+      "-z",
       diffRange,
     ];
-    if (files) {
-      command = [...command, "--", ...files];
-    }
-    const diffSummaryOutput = await this.git.raw(command);
+    return files ? [...command, "--", ...files] : command;
+  }
 
-    const parsedDiffs = this.parseDiffOutput(diffSummaryOutput);
+  private async listDiffEntries(
+    from: string,
+    to?: string,
+    files?: string[],
+  ): Promise<DiffEntry[]> {
+    const output = await this.git.raw(
+      this.diffCommand("--name-status", from, to, files),
+    );
+    return parseNameStatusOutput(output);
+  }
+
+  /** Loads the before / after contents of the given diff entries. */
+  async readDiffContents(
+    entries: DiffEntry[],
+    from: string,
+    to?: string,
+  ): Promise<FileChange[]> {
     const result: FileChange[] = [];
 
-    for (const diffEntry of parsedDiffs) {
+    for (const diffEntry of entries) {
       const { status, filepath, oldFilepath } = diffEntry;
       let beforeContent: string | null = null;
       let afterContent: string | null = null;
@@ -594,25 +708,6 @@ export class ShadowGitRepo implements vscode.Disposable {
       });
     }
     return result;
-  }
-
-  private parseDiffOutput(
-    diffOutput: string,
-  ): Array<{ status: string; filepath: string; oldFilepath?: string }> {
-    const lines = diffOutput
-      .trim()
-      .split("\n")
-      .filter((line) => line.trim());
-    return lines.map((line) => {
-      const parts = line.split("\t");
-      const status = parts[0].trim();
-      if (status.startsWith("R") || status.startsWith("C")) {
-        // Renamed or Copied file
-        return { status: status[0], oldFilepath: parts[1], filepath: parts[2] };
-      }
-      // For other statuses, filepath is parts[1]
-      return { status: status[0], filepath: parts[1] };
-    });
   }
 
   async fileExistsInCommit(

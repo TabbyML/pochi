@@ -235,6 +235,88 @@ describe("ShadowGitRepo", () => {
     });
   });
 
+  describe("getDiffStats", () => {
+    it("reports git line counts and flags binary files", async () => {
+      await writeFile("edit.txt", "a\nb\nc\n");
+      await writeFile("gone.txt", "x\ny\n");
+      await writeFile("model.glb", new Uint8Array([0, 1, 2, 0]));
+      await writeFile("moved.txt", "one\ntwo\nthree\nfour\nfive\n");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+
+      await writeFile("edit.txt", "a\nB\nc\nd\n");
+      await fs.rm(path.join(workspaceDir, "gone.txt"));
+      await writeFile("model.glb", new Uint8Array([0, 3, 4, 0]));
+      await fs.rename(
+        path.join(workspaceDir, "moved.txt"),
+        path.join(workspaceDir, "renamed.txt"),
+      );
+      await writeFile("新 file.txt", "hello\n");
+      assert.strictEqual(await repo.stageAll(), true);
+
+      const stats = await repo.getDiffStats(from);
+      const byPath = Object.fromEntries(stats.map((s) => [s.filepath, s]));
+      assert.deepStrictEqual(Object.keys(byPath).sort(), [
+        "edit.txt",
+        "gone.txt",
+        "model.glb",
+        "renamed.txt",
+        "新 file.txt",
+      ]);
+      assert.deepStrictEqual(byPath["edit.txt"], {
+        status: "M",
+        filepath: "edit.txt",
+        added: 2,
+        removed: 1,
+        binary: false,
+      });
+      assert.deepStrictEqual(byPath["gone.txt"], {
+        status: "D",
+        filepath: "gone.txt",
+        added: 0,
+        removed: 2,
+        binary: false,
+      });
+      assert.strictEqual(byPath["model.glb"].binary, true);
+      assert.deepStrictEqual(byPath["renamed.txt"], {
+        status: "R",
+        filepath: "renamed.txt",
+        oldFilepath: "moved.txt",
+        added: 0,
+        removed: 0,
+        binary: false,
+      });
+      assert.deepStrictEqual(byPath["新 file.txt"], {
+        status: "A",
+        filepath: "新 file.txt",
+        added: 1,
+        removed: 0,
+        binary: false,
+      });
+
+      const changes = await repo.getDiff(from, undefined, ["renamed.txt"]);
+      assert.deepStrictEqual(changes, [
+        {
+          filepath: "renamed.txt",
+          before: null,
+          after: "one\ntwo\nthree\nfour\nfive\n",
+        },
+      ]);
+      const unicode = await repo.readDiffContents(
+        [byPath["新 file.txt"], byPath["renamed.txt"]],
+        from,
+      );
+      assert.deepStrictEqual(unicode, [
+        { filepath: "新 file.txt", before: null, after: "hello\n" },
+        {
+          filepath: "renamed.txt",
+          before: "one\ntwo\nthree\nfour\nfive\n",
+          after: "one\ntwo\nthree\nfour\nfive\n",
+        },
+      ]);
+    });
+  });
+
   describe("pruneCheckpoints", () => {
     it("deletes old checkpoints and keeps recent hashes", async () => {
       await writeFile("file.txt", "initial");
