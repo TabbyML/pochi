@@ -38,7 +38,12 @@ export function SpawnedTaskView({
         </Badge>
         {started && uid && isVSCodeEnvironment() ? (
           <span data-testid="spawned-task-link">
-            <TaskReferenceBadge id={uid} title={description} />
+            {/* Match the 20px line of the badge and status icon. */}
+            <TaskReferenceBadge
+              id={uid}
+              title={description}
+              className="py-0 text-sm/5"
+            />
           </span>
         ) : (
           description && (
