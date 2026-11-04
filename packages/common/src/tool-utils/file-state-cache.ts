@@ -33,17 +33,13 @@ const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 /**
  * LRU cache that tracks what file content the model has "seen".
  *
- * this serves three purposes:
+ * this serves two purposes:
  *
  * 1. **Read deduplication**: When a file is read again with the same range and
  *    unchanged mtime, the tool returns a "file_unchanged" stub instead of the
  *    full content, saving tokens.
  *
- * 2. **Edit/Write staleness guard**: Before applying an edit or writing a file,
- *    the tool checks that the file hasn't been modified externally since the
- *    model last read it (by comparing the current mtime with the cached timestamp).
- *
- * 3. **Post-write cache update**: After a successful edit or write, the cache
+ * 2. **Post-write cache update**: After a successful edit or write, the cache
  *    is updated with the new content and mtime so subsequent reads can dedup.
  *
  * The cache uses an LRU eviction policy with both entry-count and byte-size limits.
@@ -120,7 +116,7 @@ export class FileStateCache {
    *
    * Used when the read tool_results that populated the cache are about to
    * leave the conversation — a compaction summary, or a retry that strips a
-   * completed read. Keeping the entries preserves their staleness baselines,
+   * completed read. Keeping the entries preserves recent-file tracking,
    * while `fromWrite: true` stops them from producing a "File unchanged"
    * dedup stub that would dangle onto a tool_result no longer present in the
    * conversation.
@@ -202,46 +198,6 @@ export class FileStateCache {
 }
 
 /**
- * Check if a file has been modified externally since the model last read it.
- * Throws an error if the file is stale, preventing silent data loss during
- * edit/write operations. Missing files are allowed so they can be re-created;
- * their cached baseline is retained until a successful read or write refreshes
- * or invalidates it.
- *
- * @param cache - The FileStateCache to check against
- * @param resolvedPath - Absolute path of the file
- * @param getMtime - Returns the current mtime, undefined only for missing files,
- *                  and throws on other stat errors
- * @param operation - "editing" or "writing" — used in error message
- */
-export async function checkStaleness(
-  cache: IFileStateCache,
-  resolvedPath: string,
-  getMtime: (path: string) => Promise<number | undefined>,
-  operation: "editing" | "writing" = "editing",
-): Promise<void> {
-  const cachedState = cache.get(resolvedPath);
-  // A cache miss is not proof that the file was never read. Entries can be
-  // evicted or skipped because of cache limits, so only validate files for
-  // which a trustworthy baseline is still available.
-  if (!cachedState) return;
-
-  const currentMtime = await getMtime(resolvedPath);
-  if (currentMtime === cachedState.timestamp) return;
-
-  // A deleted file cannot be re-read to refresh the baseline, so rejecting
-  // here would block every later write. Keep the baseline so that a failed
-  // operation followed by external re-creation still triggers the guard.
-  if (currentMtime === undefined) {
-    return;
-  }
-
-  throw new Error(
-    `File has been modified since it was last read (expected mtime ${cachedState.timestamp}, got ${currentMtime}). Please read the file again before ${operation}.`,
-  );
-}
-
-/**
  * Update the cache after a successful edit or write operation.
  * Sets startLine/endLine to undefined so this entry won't trigger
  * false read-dedup matches (only read-sourced entries can do that).
@@ -268,45 +224,38 @@ async function updateCacheAfterWrite(
       fromWrite: true,
     });
   } else {
-    // The completed write supersedes the old content and staleness baseline.
+    // The completed write supersedes the old cached content.
     cache.delete(resolvedPath);
   }
 }
 
 /**
- * Wraps a file-editing callback with a best-effort staleness guard before the
- * write and a cache update afterward. Cache misses are allowed because entries
- * may have been evicted or skipped due to cache limits.
+ * Wraps a file-editing callback with a cache update afterward, so later reads
+ * of the written content can be deduplicated.
  *
  * Path resolution and virtual-path detection are handled automatically:
  * `pochi://` URIs are passed through as-is and skip all cache operations,
  * while regular paths are resolved against `cwd`.
  *
- * @param opts.cache        - The file state cache (may be undefined; if so, the guard/update are skipped)
+ * @param opts.cache        - The file state cache (may be undefined; if so, the update is skipped)
  * @param opts.path         - Raw path from the tool input (may be relative or a `pochi://` URI)
  * @param opts.cwd          - Working directory used to resolve relative paths
  * @param opts.getMtime     - Platform-specific function to get current file mtime
- * @param opts.operation    - "editing" or "writing" — used in the staleness error message
  * @param opts.doWork       - Callback that performs the actual edit/write. Receives the resolved
  *                            absolute path and returns `{ result, fileCacheContent }`.
  * @returns The `result` value produced by `doWork`
  */
-export async function withFileStateCacheGuard<T>(opts: {
+export async function withWriteFileCache<T>(opts: {
   cache: IFileStateCache | undefined;
   path: string;
   cwd: string;
   getMtime: (path: string) => Promise<number | undefined>;
-  operation: "editing" | "writing";
   doWork: (resolvedPath: string) => Promise<FileCacheCallbackResult<T>>;
 }): Promise<T> {
-  const { cache, path: inputPath, cwd, getMtime, operation, doWork } = opts;
+  const { cache, path: inputPath, cwd, getMtime, doWork } = opts;
 
   const isVirtual = isVirtualPath(inputPath);
   const resolvedPath = isVirtual ? inputPath : resolvePath(inputPath, cwd);
-
-  if (!isVirtual && cache) {
-    await checkStaleness(cache, resolvedPath, getMtime, operation);
-  }
 
   const { result, fileCacheContent } = await doWork(resolvedPath);
 
@@ -413,8 +362,7 @@ export async function withReadFileCache<T>(opts: {
     await doRead(resolvedPath);
 
   // --- Populate cache ---
-  // Store what the model has "seen" so that future reads can dedup,
-  // and edit/write tools can detect external modifications.
+  // Store what the model has "seen" so that future reads can dedup.
   // fileCacheContent === null means the doRead served actual binary content —
   // nothing the model "sees" as text, so skip caching.
   if (shouldCache && fileCacheContent !== null) {

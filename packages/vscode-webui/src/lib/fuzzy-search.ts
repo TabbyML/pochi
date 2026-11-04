@@ -122,12 +122,15 @@ function mergeUniqueFileItems(...items: FileItem[][]): FileItem[] {
 const MaxTaskResult = 10;
 // Task titles are sentences: let the words of the needle match in any order.
 const MaxTaskOutOfOrderTerms = 5;
+// Shorter id prefixes would match too many unrelated tasks.
+const MinTaskIdQueryLength = 4;
 
 /**
- * Fuzzy search past tasks by title. Without a needle the most recent tasks are
- * returned; `tasks` is expected to be sorted by recency already.
+ * Fuzzy search past tasks by title, or by an id prefix such as the short id
+ * shown in the task tab title. Id matches come first. Without a needle the most
+ * recent tasks are returned; `tasks` is expected to be sorted by recency already.
  */
-export function fuzzySearchTasks<T extends { title?: string }>(
+export function fuzzySearchTasks<T extends { taskId?: string; title?: string }>(
   needle: string | undefined,
   tasks: T[],
   limit = MaxTaskResult,
@@ -135,11 +138,17 @@ export function fuzzySearchTasks<T extends { title?: string }>(
   const trimmed = needle?.trim();
   if (!trimmed) return tasks.slice(0, limit);
 
-  return fuzzySearchStrings(
+  const idQuery = trimmed.toLowerCase();
+  const idMatches =
+    idQuery.length >= MinTaskIdQueryLength
+      ? tasks.filter((task) => task.taskId?.toLowerCase().startsWith(idQuery))
+      : [];
+
+  const titleMatches = fuzzySearchStrings(
     trimmed,
     tasks.map((task) => task.title ?? ""),
     MaxTaskOutOfOrderTerms,
-  )
-    .map(({ idx }) => tasks[idx])
-    .slice(0, limit);
+  ).map(({ idx }) => tasks[idx]);
+
+  return [...new Set([...idMatches, ...titleMatches])].slice(0, limit);
 }

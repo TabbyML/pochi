@@ -629,7 +629,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       builtInSubAgentInfo.sessionId,
     );
 
-    return envs;
+    const localChrome = pochiConfig.value.browserAgentSettings?.localChrome;
+    return {
+      ...envs,
+      POCHI_LOCAL_CHROME_PATH: localChrome?.chromePath ?? "",
+      POCHI_LOCAL_CHROME_START_PARAMS: localChrome?.startParams ?? "",
+    };
   };
 
   executeToolCall = async (
@@ -724,7 +729,9 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         taskId,
         rootTaskId,
         fileStateCache,
-        allowBackground: options.allowBackground,
+        // Subtasks share the root task's store but must not own background jobs.
+        allowBackground:
+          options.allowBackground !== false && taskId === rootTaskId,
       }),
     );
 

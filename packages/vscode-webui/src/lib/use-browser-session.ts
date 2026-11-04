@@ -1,6 +1,9 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
-import { isTopLevelTaskSpawn } from "@getpochi/common";
+import {
+  isTopLevelTaskSpawn,
+  shouldRunSubAgentInBackground,
+} from "@getpochi/common";
 import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import type { Message } from "@getpochi/livekit";
 import { threadSignal } from "@quilted/threads/signals";
@@ -47,14 +50,21 @@ export const useManageBrowserSession = ({
         if (!taskId) continue;
 
         if (part.state === "input-available") {
-          void browserSessionManager.registerSession(taskId, parentId, {
-            viewport:
-              browserSettings.runtime.mode === "managed"
-                ? browserSettings.managedBrowser.viewport
-                : undefined,
-          });
+          // Background tasks register when the executor runs their first command,
+          // so a task stopped while still queued never leaks a browser session.
+          if (!shouldRunSubAgentInBackground(part.input)) {
+            void browserSessionManager.registerSession(taskId, parentId, {
+              viewport:
+                browserSettings.runtime.mode === "managed"
+                  ? browserSettings.managedBrowser.viewport
+                  : undefined,
+            });
+          }
         } else if (
-          part.state === "output-available" ||
+          (part.state === "output-available" &&
+            // A background task keeps the session; the panel-scoped task adaptor
+            // releases it when the task settles.
+            !part.output.backgroundJobId) ||
           part.state === "output-error"
         ) {
           void browserSessionManager.unregisterSession(

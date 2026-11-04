@@ -659,6 +659,7 @@
   "browserView": {
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
+    "runningInBackground": "Running in background...",
     "paused": "Paused"
   },
   "attemptTodoCompletionView": {

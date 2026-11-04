@@ -215,26 +215,31 @@ export function FormEditor({
       }
     | undefined
   >(undefined);
+  const listTasks = useCallback(() => {
+    const listing = taskListingRef.current;
+    if (listing && Date.now() - listing.at <= TaskListingCacheMs) {
+      return listing.promise;
+    }
+    const promise = vscodeHost
+      .listReferenceableTasks(currentTaskIdRef.current)
+      .then((tasks) => {
+        taskCacheRef.current = tasks;
+        return tasks;
+      });
+    taskListingRef.current = { at: Date.now(), promise };
+    promise.catch(() => {
+      if (taskListingRef.current?.promise === promise) {
+        taskListingRef.current = undefined;
+      }
+    });
+    return promise;
+  }, [currentTaskIdRef]);
   const fetchTaskMentionItems = useCallback(
     async (query = "") => {
-      let listing = taskListingRef.current;
-      if (!listing || Date.now() - listing.at > TaskListingCacheMs) {
-        const promise = vscodeHost.listReferenceableTasks(
-          currentTaskIdRef.current,
-        );
-        listing = { at: Date.now(), promise };
-        taskListingRef.current = listing;
-        promise.catch(() => {
-          if (taskListingRef.current?.promise === promise) {
-            taskListingRef.current = undefined;
-          }
-        });
-      }
-      const tasks = await listing.promise;
-      taskCacheRef.current = tasks;
+      const tasks = await listTasks().catch(() => taskCacheRef.current);
       return fuzzySearchTasks(query, tasks);
     },
-    [currentTaskIdRef],
+    [listTasks],
   );
   const hasTaskMatch = useCallback(
     (query: string) =>
@@ -621,6 +626,10 @@ export function FormEditor({
         onPaste?.(e);
       },
       onFocus(props) {
+        // Skip placeholder editors, which have no task and are replaced on load.
+        if (currentTaskIdRef.current) {
+          listTasks().catch(() => {});
+        }
         onFocus?.(props.event);
       },
     },
@@ -841,7 +850,7 @@ export function FormEditor({
   );
 }
 
-const TaskListingCacheMs = 5000;
+const TaskListingCacheMs = 1000 * 60; // 1 minute
 
 const debouncedListFiles = debounceWithCachedValue(
   async () => {
