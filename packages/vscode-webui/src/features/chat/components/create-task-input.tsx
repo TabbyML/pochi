@@ -1,4 +1,5 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
+import { ErrorMessage } from "@/components/error-message";
 import { ModelSelect } from "@/components/model-select";
 import { TodoModeBadge } from "@/components/prompt-form/todo-mode-badge";
 import { SubmitDropdownButton } from "@/components/submit-dropdown-button";
@@ -25,6 +26,7 @@ import type {
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { initTodoModeTodos } from "@getpochi/tools";
+import type { FileUIPart } from "ai";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveSlashMentions } from "../hooks/resolve-slash-mentions";
@@ -102,6 +104,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     clearFiles,
     upload,
     isUploading: isUploadingAttachments,
+    error: uploadError,
     fileInputRef,
     removeFile,
     handleFileSelect,
@@ -334,43 +337,52 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       setIsCreatingTask(true);
       setDebouncedIsCreatingTask(true);
 
-      // Upload files if present
-      let uploadedFiles: Array<{
-        contentType: string;
-        name: string;
-        url: string;
-      }> = [];
+      try {
+        // Upload files if present
+        let uploadedFiles: Array<{
+          contentType: string;
+          name: string;
+          url: string;
+        }> = [];
 
-      if (files.length > 0) {
-        const uploadedAttachments = await upload();
-        uploadedFiles = uploadedAttachments.map((x) => ({
-          contentType: x.mediaType,
-          name: x.filename ?? "attachment",
-          url: x.url,
-        }));
-      } else {
-        clearUploadError();
+        if (files.length > 0) {
+          let uploadedAttachments: FileUIPart[];
+          try {
+            uploadedAttachments = await upload();
+          } catch {
+            // The hook reports the error; keep the input so the user can retry.
+            return;
+          }
+          uploadedFiles = uploadedAttachments.map((x) => ({
+            contentType: x.mediaType,
+            name: x.filename ?? "attachment",
+            url: x.url,
+          }));
+        } else {
+          clearUploadError();
+        }
+
+        // Create worktree and open task
+        await createWorktreeAndOpenTask({
+          content,
+          shouldCreateWorktree:
+            shouldCreateWorktree === true ||
+            selectedWorktree === "new-worktree",
+          uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
+          shouldCreateTodo,
+          invokedSkills: validationResult.invokedSkills,
+          invokedCustomAgents,
+          pastedTexts: currentInput.pastedTexts,
+        });
+
+        // Reset submit mode after each submission
+        setPlanMode(false);
+        setTodoModeSelected(false);
+      } finally {
+        // Hide loading and unfreeze input
+        setIsCreatingTask(false);
+        setDebouncedIsCreatingTask(false);
       }
-
-      // Create worktree and open task
-      await createWorktreeAndOpenTask({
-        content,
-        shouldCreateWorktree:
-          shouldCreateWorktree === true || selectedWorktree === "new-worktree",
-        uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
-        shouldCreateTodo,
-        invokedSkills: validationResult.invokedSkills,
-        invokedCustomAgents,
-        pastedTexts: currentInput.pastedTexts,
-      });
-
-      // Set isCreatingTask state false
-      // Hide loading and unfreeze input
-      setIsCreatingTask(false);
-      setDebouncedIsCreatingTask(false);
-      // Reset submit mode after each submission
-      setPlanMode(false);
-      setTodoModeSelected(false);
     },
     [
       input,
@@ -457,6 +469,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           />
         )}
       </ChatInputForm>
+
+      <ErrorMessage error={uploadError} />
 
       {/* Hidden file input for image uploads */}
       <input
