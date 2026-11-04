@@ -19,14 +19,25 @@ const ForegroundAgents = new Set<string>([
 export type SubAgentBackgroundInput = {
   background?: boolean;
   agentType?: string;
+  spawn?: string;
 };
+
+/**
+ * True when newTask starts an independent top-level task in its own tab
+ * instead of a subagent of the calling task.
+ */
+export function isTopLevelTaskSpawn(input?: { spawn?: string }): boolean {
+  return input?.spawn === "task";
+}
 
 /** Subagents run in the background unless the caller opts out with `background: false`. */
 export function shouldRunSubAgentInBackground(
   input?: SubAgentBackgroundInput,
 ): boolean {
   return (
-    input?.background !== false && !ForegroundAgents.has(input?.agentType ?? "")
+    !isTopLevelTaskSpawn(input) &&
+    input?.background !== false &&
+    !ForegroundAgents.has(input?.agentType ?? "")
   );
 }
 
@@ -74,6 +85,18 @@ export function formatSubagentWorktreeNote(
     return `The subagent's changes are in the ${location}; they were not applied to the current workspace.`;
   }
   return `The subagent works in an ${location}, created from the latest default branch. If it makes no changes, the worktree is removed when it finishes; otherwise its changes stay there and are not applied to the current workspace.`;
+}
+
+/** Tool result returned by newTask when it spawns a top-level task. */
+export function createTopLevelTaskStartedResult(
+  taskId: string,
+  worktree?: { path: string; branch?: string },
+): string {
+  const location = worktree
+    ? `\nIt works in the worktree at ${worktree.path}${worktree.branch ? ` (branch ${worktree.branch})` : ""}, created from the HEAD commit of the current working directory; its changes are not applied to the current workspace.`
+    : "";
+  return `Started top-level task ${taskId} in its own tab. It runs independently and the user can follow and continue it there; its result is not returned to you.${location}
+Its transcript is updated at the end of each of its turns at pochi://$/transcripts/${taskId}.md. Read it only when you need its progress or outcome.`;
 }
 
 /** Tool result returned by newTask when the subagent starts in the background. */

@@ -3,6 +3,7 @@ import type {
   LanguageModelV3StreamPart,
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
+import { isTopLevelTaskSpawn } from "@getpochi/common";
 import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
@@ -77,6 +78,31 @@ export function createNewTaskMiddleware(
               }
 
               const args = parsedResult.value;
+
+              // A top-level task is created by its own tab, in its own store,
+              // so only its id is assigned here. It always runs the default
+              // agent: the tab has no way to run a custom agent at the top
+              // level, and delegating to one would put its work in a subagent
+              // (and possibly a subagent worktree) rather than the new task.
+              if (isTopLevelTaskSpawn(args)) {
+                if (args.agentType) {
+                  throw new InvalidToolInputError({
+                    toolName: chunk.toolName,
+                    toolInput: chunk.input,
+                    cause: new Error(
+                      'agentType is not supported with spawn "task"; a spawned task always runs the default agent. Leave agentType empty and describe the work in the prompt.',
+                    ),
+                  });
+                }
+                args._meta = { uid: crypto.randomUUID() };
+                controller.enqueue({
+                  ...chunk,
+                  input: JSON.stringify(args),
+                });
+                toolCallId = "";
+                return;
+              }
+
               const agent = customAgents?.find(
                 (a) => a.name === args.agentType,
               );

@@ -57,6 +57,187 @@ async function makeStreamingNewTaskLifecycle(
   return lifecycle;
 }
 
+describe("ManagedToolCallLifeCycle top-level task spawn", () => {
+  function makeParentStore() {
+    return {
+      storeId: "store-1",
+      query: vi.fn(() => ({ id: "parent", cwd: "/repo" })),
+      subscribe: vi.fn(() => vi.fn()),
+    };
+  }
+
+  it("opens the task in a background tab and completes immediately", async () => {
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
+    vscodeHostMock.createWorktree = vi.fn();
+    const store = makeParentStore();
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "newTask", toolCallId: "spawn-1" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        _meta: { uid: "task-1" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.createWorktree).not.toHaveBeenCalled();
+    expect(vscodeHostMock.openTaskInPanel).toHaveBeenCalledWith(
+      {
+        type: "new-task",
+        uid: "task-1",
+        cwd: "/repo",
+        prompt: "Fix the bug",
+      },
+      { preview: false, background: true },
+    );
+    expect(store.subscribe).not.toHaveBeenCalled();
+    expect(lifecycle.complete.reason).toBe("execute-finish");
+    const { result } = lifecycle.complete.result as { result: string };
+    expect(result).toContain("Started top-level task task-1");
+    expect(result).toContain("pochi://$/transcripts/task-1.md");
+  });
+
+  it("starts the task in a new worktree from the parent's HEAD", async () => {
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
+    vscodeHostMock.createWorktree = vi.fn(async () => ({
+      path: "/repo.worktree/fix-it",
+      branch: "fix-it",
+    }));
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeParentStore() as never,
+      { toolName: "newTask", toolCallId: "spawn-2" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        isolation: "worktree",
+        _meta: { uid: "task-2" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.createWorktree).toHaveBeenCalledWith({
+      baseCwd: "/repo",
+      generateBranchName: { prompt: "Fix it" },
+    });
+    expect(vscodeHostMock.openTaskInPanel).toHaveBeenCalledWith(
+      expect.objectContaining({ cwd: "/repo.worktree/fix-it" }),
+      { preview: false, background: true },
+    );
+    const { result } = lifecycle.complete.result as { result: string };
+    expect(result).toContain("/repo.worktree/fix-it (branch fix-it)");
+  });
+
+  it("fails without opening a tab when the worktree cannot be created", async () => {
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
+    vscodeHostMock.createWorktree = vi.fn(async () => null);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeParentStore() as never,
+      { toolName: "newTask", toolCallId: "spawn-3" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        isolation: "worktree",
+        _meta: { uid: "task-3" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.openTaskInPanel).not.toHaveBeenCalled();
+    expect(lifecycle.complete.result).toEqual({
+      error: "Failed to execute tool: Failed to create a worktree for the task.",
+    });
+  });
+
+  it("reports an error and removes the worktree when the tab fails to open", async () => {
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => {
+      throw new Error("Failed to open the task tab.");
+    });
+    vscodeHostMock.createWorktree = vi.fn(async () => ({
+      path: "/repo.worktree/fix-it",
+      branch: "fix-it",
+    }));
+    vscodeHostMock.deleteWorktree = vi.fn(async () => true);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeParentStore() as never,
+      { toolName: "newTask", toolCallId: "spawn-4" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        isolation: "worktree",
+        _meta: { uid: "task-4" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.deleteWorktree).toHaveBeenCalledWith(
+      "/repo.worktree/fix-it",
+      { deleteBranch: true },
+    );
+    expect(lifecycle.complete.result).toEqual({
+      error: "Failed to execute tool: Failed to open the task tab.",
+    });
+  });
+
+  it("removes the worktree when aborted before the tab opens", async () => {
+    const abortController = new AbortController();
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
+    vscodeHostMock.createWorktree = vi.fn(async () => {
+      abortController.abort();
+      return { path: "/repo.worktree/fix-it", branch: "fix-it" };
+    });
+    vscodeHostMock.deleteWorktree = vi.fn(async () => true);
+    const lifecycle = new ManagedToolCallLifeCycle(
+      makeParentStore() as never,
+      { toolName: "newTask", toolCallId: "spawn-5" },
+      abortController.signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        isolation: "worktree",
+        _meta: { uid: "task-5" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() =>
+      expect(vscodeHostMock.deleteWorktree).toHaveBeenCalledWith(
+        "/repo.worktree/fix-it",
+        { deleteBranch: true },
+      ),
+    );
+    expect(vscodeHostMock.openTaskInPanel).not.toHaveBeenCalled();
+  });
+});
+
 describe("ManagedToolCallLifeCycle", () => {
   it("starts recording before running a command in a manually opened browser subtask", async () => {
     const store = { ...makeStore(), storeId: encodeStoreId(null, "parent") };

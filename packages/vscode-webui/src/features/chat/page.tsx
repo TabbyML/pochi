@@ -15,7 +15,7 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { vscodeHost } from "@/lib/vscode";
 import { useChat } from "@ai-sdk/react";
-import { constants, formatters } from "@getpochi/common";
+import { constants, formatters, isTopLevelTaskSpawn } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
@@ -554,6 +554,7 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
   const lastToolPart = messages.at(-1)?.parts.at(-1);
   return (
     lastToolPart?.type === "tool-newTask" &&
+    !isTopLevelTaskSpawn(lastToolPart.input) &&
     ["planner", "reviewer"].includes(lastToolPart?.input?.agentType || "") &&
     lastToolPart?.state === "output-available"
   );

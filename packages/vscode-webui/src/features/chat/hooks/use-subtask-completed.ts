@@ -1,6 +1,10 @@
 import { useDefaultStore } from "@/lib/use-default-store";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { constants, toErrorMessage } from "@getpochi/common";
+import {
+  constants,
+  isTopLevelTaskSpawn,
+  toErrorMessage,
+} from "@getpochi/common";
 import { type Message, catalog, extractTaskResult } from "@getpochi/livekit";
 import {
   Todo as TodoSchema,
@@ -66,7 +70,9 @@ export const useAddSubtaskResult = ({
     for (const toolPart of lastMessage.parts) {
       if (
         toolPart.type !== "tool-newTask" ||
-        toolPart.state !== "input-available"
+        toolPart.state !== "input-available" ||
+        // A spawned top-level task lives in another store and never reports back.
+        isTopLevelTaskSpawn(toolPart.input)
       ) {
         continue;
       }

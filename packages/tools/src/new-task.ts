@@ -12,6 +12,9 @@ export type SubTask = {
 export const SubagentIsolation = z.enum(["worktree"]);
 export type SubagentIsolation = z.infer<typeof SubagentIsolation>;
 
+export const NewTaskSpawn = z.enum(["subagent", "task"]);
+export type NewTaskSpawn = z.infer<typeof NewTaskSpawn>;
+
 export const CustomAgent = z.object({
   name: z.string().describe("The name of the custom agent."),
   description: z.string().describe("A brief description of the custom agent."),
@@ -85,7 +88,10 @@ export const inputSchema = z.object({
       "Optional, defaults to true. Background returns a backgroundJobId immediately and delivers the result later as a system notification; false blocks until the result is available.",
     ),
   isolation: SubagentIsolation.optional().describe(
-    'Optional. Set to "worktree" to run the agent in a temporary git worktree created from the latest default branch, so its file changes do not touch the current workspace. The worktree is removed if the agent makes no changes; otherwise its path and branch are reported back.',
+    'Optional. Set to "worktree" to run the agent in a temporary git worktree created from the latest default branch, so its file changes do not touch the current workspace. The worktree is removed if the agent makes no changes; otherwise its path and branch are reported back. With spawn "task", it instead creates a regular worktree from the HEAD commit of the current working directory (uncommitted changes are not carried over) that stays after the task ends.',
+  ),
+  spawn: NewTaskSpawn.optional().describe(
+    'Optional, defaults to "subagent". Set to "task" only when the user explicitly asks for a new or separate task; it starts an independent top-level task in its own editor tab instead of a subagent. The task shows up in the user\'s task list, the user can follow and continue it, and it can launch its own agents. It always runs the default agent, so leave agentType empty. Only its task id and transcript path come back to you; background is ignored.',
   ),
   _meta: z
     .object({
@@ -130,6 +136,12 @@ Usage notes:
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
 7. Subagents run in the background by default; the result arrives later in a system notification. Set background to false when your next step depends on the result and you have nothing else to do meanwhile.
+8. Set spawn to "task" only when the user explicitly asks you to start a new or separate task. Otherwise, always launch a subagent. A spawned task differs from a subagent:
+   - The call returns right away with only the task id and transcript path. No result or completion notification follows, so do not wait for one.
+   - The user follows and continues the task in its own tab, so you do not need to relay its result.
+   - It does not see your conversation. Write a self-contained prompt with all the context it needs; do not ask it to report back to you.
+   - It always runs the default agent. Leave agentType empty; if the work suits a specialized agent, say so in the prompt.
+   - To check its progress or outcome later, read its transcript with readFile.
       `.trim(),
     inputSchema,
     outputSchema: z.object({

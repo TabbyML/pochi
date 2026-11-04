@@ -1124,6 +1124,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       keepEditor?: boolean;
       preserveFocus?: boolean;
       preview?: boolean;
+      background?: boolean;
       showFileChanges?: boolean;
     },
   ): Promise<void> => {
@@ -1290,8 +1291,14 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     return await this.worktreeManager.createWorktree(options);
   };
 
-  deleteWorktree = async (worktreePath: string): Promise<boolean> => {
-    const success = await this.worktreeManager.deleteWorktree(worktreePath);
+  deleteWorktree = async (
+    worktreePath: string,
+    options?: { deleteBranch?: boolean },
+  ): Promise<boolean> => {
+    const success = await this.worktreeManager.deleteWorktree(
+      worktreePath,
+      options,
+    );
     if (success) {
       // Auto-archive all tasks belonging to the deleted worktree
       const tasks = this.taskHistoryStore.tasks.value;
