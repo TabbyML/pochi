@@ -11,8 +11,9 @@ import {
   writeWorktreeOwner,
 } from "@getpochi/common/tool-utils";
 
+const generateBranchName = sinon.stub();
 const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
-  "@/lib/generate-branch-name": { generateBranchName: sinon.stub() },
+  "@/lib/generate-branch-name": { generateBranchName },
   "../layout": { getViewColumnForTerminal: sinon.stub().returns(undefined) },
   "simple-git": sinon.stub().returns({
     revparse: sinon.stub().resolves("gitdir"),
@@ -86,6 +87,41 @@ describe("worktree owner", () => {
 
     assert.strictEqual(await readWorktreeOwner(worktreePath), undefined);
     assert.strictEqual(await readWorktreeOwner(repo), undefined);
+  });
+
+  it("claims only the worktree created by each concurrent request", async () => {
+    generateBranchName.callsFake(async ({ prompt }) => prompt);
+    const manager = new WorktreeManager(
+      { workspacePath: repo },
+      { getRepository: () => undefined },
+      { get: () => undefined },
+      { detectWorktreesLimit: { value: 10 } },
+      { ready: Promise.resolve(), tasks: { value: {} } },
+      { getArchivedSignal: () => ({ value: {} }) },
+    );
+    // Run each git command synchronously so all three adds finish before any
+    // request resumes to list worktrees. The third add hits a branch collision.
+    sinon.stub(manager, "isGitRepository").resolves(true);
+    manager.git = {
+      branch: async () => ({ all: [] }),
+      raw: async (args: string[]) => git(repo, ...args),
+    };
+    try {
+      const spawn = (prompt: string) =>
+        manager.createWorktree({ generateBranchName: { prompt } });
+      const [first, second, duplicate] = await Promise.all([
+        spawn("first"),
+        spawn("second"),
+        spawn("first"),
+      ]);
+      assert.strictEqual(first?.branch, "first");
+      assert.strictEqual(second?.branch, "second");
+      assert.strictEqual(duplicate, null);
+      assert.strictEqual(await readWorktreeOwner(first.path), "user");
+      assert.strictEqual(await readWorktreeOwner(second.path), "user");
+    } finally {
+      manager.dispose();
+    }
   });
 
   it("rejects writing a marker to the main worktree", async () => {

@@ -263,10 +263,7 @@ export class WorktreeManager implements vscode.Disposable {
       return null;
     }
 
-    const existingPaths = new Set(
-      (await this.listGitWorktrees()).map((wt) => wt.path),
-    );
-
+    let newWorktree: GitWorktree | undefined;
     if (options?.generateBranchName) {
       // Generate branch name and create worktree
       const { worktreePath, branchName } =
@@ -276,20 +273,23 @@ export class WorktreeManager implements vscode.Disposable {
           files: options.generateBranchName.files,
         });
 
-      await this.createWorktreeImpl({
+      newWorktree = await this.createWorktreeImpl({
         worktreePath,
         branchName,
         workspacePath: mainWorktreePath,
         commitish: options?.baseBranch ?? "HEAD",
       });
     } else {
-      // User interactive
+      // The interactive command does not return the selected worktree.
+      const existingPaths = new Set(
+        (await this.listGitWorktrees()).map((wt) => wt.path),
+      );
       await vscode.commands.executeCommand("git.createWorktree");
+      newWorktree = (await this.listGitWorktrees()).findLast(
+        (wt) => !existingPaths.has(wt.path),
+      );
     }
 
-    const newWorktree = (await this.listGitWorktrees()).findLast(
-      (wt) => !existingPaths.has(wt.path),
-    );
     if (newWorktree) {
       logger.debug(`New worktree created at: ${newWorktree.path}`);
       await writeWorktreeOwner(newWorktree.path, "user").catch((error) => {
@@ -617,30 +617,18 @@ export class WorktreeManager implements vscode.Disposable {
     worktreePath: string;
     branchName: string;
     commitish: string;
-  }) {
+  }): Promise<GitWorktree | undefined> {
     const { workspacePath, worktreePath, branchName, commitish } = params;
     const repository = this.gitState.getRepository(workspacePath);
 
-    if (
-      repository &&
-      "createWorktree" in repository &&
-      typeof repository.createWorktree === "function"
-    ) {
-      // Use vscode git extension api
-      try {
+    try {
+      if (typeof repository?.createWorktree === "function") {
         await repository.createWorktree({
           path: worktreePath,
           branch: branchName,
           commitish,
         });
-        logger.debug(`Created worktree ${branchName}`);
-      } catch (e) {
-        logger.debug("Failed to create worktree", e);
-        return null;
-      }
-    } else {
-      // Use git command
-      try {
+      } else {
         await this.git.raw([
           "worktree",
           "add",
@@ -649,12 +637,16 @@ export class WorktreeManager implements vscode.Disposable {
           worktreePath,
           commitish,
         ]);
-        logger.debug(`Created worktree ${branchName} using raw command`);
-      } catch (e) {
-        logger.debug("Failed to create worktree using raw command", e);
-        return null;
       }
+    } catch (error) {
+      logger.debug(`Failed to create worktree ${branchName}`, error);
+      return undefined;
     }
+
+    // This call created a new branch. Concurrent adds may also be listed.
+    return (await this.listGitWorktrees()).find(
+      (wt) => wt.branch === branchName,
+    );
   }
 
   dispose() {
