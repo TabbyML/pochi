@@ -28,7 +28,7 @@ export const TaskTranscriptFormat =
 const TaskIndexColumns = "updated | transcript | title";
 
 /**
- * Renders INDEX.md: one self-contained line per task, most recently updated
+ * Renders {@link TaskIndexName} with one line per task, most recently updated
  * first, so reading the top of the file yields the recent tasks and a single
  * matching line from searchFiles carries everything needed to pick a task.
  */

@@ -99,11 +99,6 @@ describe("task index", () => {
 
     await removeTaskTranscripts(["second"], { projectsRoot });
     expect(await indexedFiles(written!.transcriptDir)).toEqual(["first.md"]);
-    expect(
-      (await fs.readdir(written!.transcriptDir)).filter((name) =>
-        name.endsWith(".tmp"),
-      ),
-    ).toEqual([]);
   });
 
   it("refreshes each affected project even if its worktree no longer exists", async () => {
@@ -126,6 +121,41 @@ describe("task index", () => {
         "(No task transcripts yet.)",
       );
     }
+  });
+
+  it("publishes the remaining entries when a transcript disappears after readdir", async () => {
+    const removed = await writeTranscript("expired", 1_000);
+    await syncTaskIndex(transcriptDir);
+    await writeTranscript("new", 2_000);
+
+    const expiredPath = path.join(transcriptDir, removed!.filename);
+    const open = fs.open.bind(fs);
+    vi.spyOn(fs, "open").mockImplementation(async (file, ...args) => {
+      if (file === expiredPath) await fs.unlink(expiredPath);
+      return open(file, ...args);
+    });
+
+    await syncTaskIndex(transcriptDir);
+    expect(await indexedFiles(transcriptDir)).toEqual(["new.md"]);
+  });
+
+  it("removes its temporary index when replacement fails and can retry", async () => {
+    await writeTranscript("saved", 1_000);
+    await syncTaskIndex(transcriptDir);
+    const projectRoot = path.dirname(transcriptDir);
+    await fs.writeFile(path.join(projectRoot, `${TaskIndexName}.other.tmp`), "in use");
+    const before = (await fs.readdir(projectRoot)).sort();
+    await writeTranscript("new", 2_000);
+    vi.spyOn(fs, "rename").mockRejectedValueOnce(
+      Object.assign(new Error("file in use"), { code: "EBUSY" }),
+    );
+
+    await syncTaskIndex(transcriptDir);
+    expect(await indexedFiles(transcriptDir)).toEqual(["saved.md"]);
+    expect((await fs.readdir(projectRoot)).sort()).toEqual(before);
+
+    await syncTaskIndex(transcriptDir);
+    expect(await indexedFiles(transcriptDir)).toEqual(["new.md", "saved.md"]);
   });
 
   it("preserves the last good index when the directory or a transcript cannot be read", async () => {

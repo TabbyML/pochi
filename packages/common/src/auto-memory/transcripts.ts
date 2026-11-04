@@ -17,9 +17,15 @@ export async function listTranscriptCandidates(
   for (const entry of entries) {
     if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
     const filePath = path.join(transcriptDir, entry.name);
+    const file = await fs.open(filePath, "r").catch((error) => {
+      // Another window can remove an expired transcript after readdir.
+      if (error.code === "ENOENT" || !requireComplete) return undefined;
+      throw error;
+    });
+    if (!file) continue;
+
     const parsed = await parseMarkdownWithFrontmatter(filePath, async () => {
       // Read only the metadata header: a complete transcript can be large.
-      const file = await fs.open(filePath, "r");
       try {
         const lines: string[] = [];
         for await (const line of file.readLines()) {

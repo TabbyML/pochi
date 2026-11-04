@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { AutoMemoryManager } from "../auto-memory/node";
@@ -79,9 +80,18 @@ async function writeTaskIndex(transcriptDir: string): Promise<boolean> {
       if (existing === content) return true;
       // Atomic replace, so readers never see a partial file.
       await fs.mkdir(path.dirname(indexPath), { recursive: true });
-      const tmpPath = `${indexPath}.${process.pid}.${Date.now()}.tmp`;
-      await fs.writeFile(tmpPath, content);
-      await fs.rename(tmpPath, indexPath);
+      const tmpPath = `${indexPath}.${randomUUID()}.tmp`;
+      try {
+        await fs.writeFile(tmpPath, content);
+        await fs.rename(tmpPath, indexPath);
+      } catch (error) {
+        await fs.rm(tmpPath, { force: true }).catch((cleanupError) => {
+          logger.warn(
+            `Failed to remove temporary task index: ${toErrorMessage(cleanupError)}`,
+          );
+        });
+        throw error;
+      }
     }
     logger.warn("Task index kept changing; leaving the next sync to settle it");
     return true;
