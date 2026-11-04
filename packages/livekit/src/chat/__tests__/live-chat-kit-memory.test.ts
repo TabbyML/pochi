@@ -2,6 +2,7 @@ import { Schema } from "@livestore/livestore";
 import { defaultCatalog as catalog } from "../../livestore";
 import type {
   AutoMemoryContext,
+  AutoMemoryManager,
   AutoMemoryTaskState,
   BackgroundTaskState,
   TaskMemoryState,
@@ -19,6 +20,8 @@ import {
   type Task,
 } from "../..";
 import { LiveChatKit } from "../live-chat-kit";
+import type { OnStartCallback } from "../flexible-chat-transport";
+import * as titleModel from "../llm/generate-task-title";
 import type { TaskExecutor } from "../../background-task/task-executor/task-executor";
 import { resetTokenCalibration } from "../token-utils";
 
@@ -800,6 +803,69 @@ describe("LiveChatKit memory lifecycle", () => {
     ]);
   });
 
+  it.each(["before", "after"] as const)(
+    "persists the final title when title generation finishes %s the turn",
+    async (timing) => {
+      const task = makeTask({
+        id: "parent",
+        status: "pending-model",
+        background: false,
+        title: "Original",
+      });
+      const store = new FakeStore([task]);
+      const manager = makeAutoMemoryManager();
+      const getters = { getLLM: () => ({ id: "test-model" }) as never };
+      const kit = new LiveChatKit<FakeChat>({
+        taskId: task.id,
+        store: store as unknown as LiveKitStore,
+        blobStore: {} as BlobStore,
+        chatClass: FakeChat,
+        getters,
+        backgroundJobManager: makeBackgroundJobs(store),
+        projectMemory: { manager },
+      });
+      const pendingTitle = Promise.withResolvers<string>();
+      const generate = vi
+        .spyOn(titleModel, "generateTaskTitle")
+        .mockReturnValue(pendingTitle.promise);
+      vi.spyOn(kit, "inited", "get").mockReturnValue(true);
+      try {
+        kit.chat.messages = [userMessage()];
+        await (kit as unknown as { onStart: OnStartCallback }).onStart({
+          messages: kit.chat.messages,
+          getters,
+        });
+        await vi.waitFor(() => expect(generate).toHaveBeenCalled());
+        if (timing === "before") {
+          pendingTitle.resolve("Final title");
+          await vi.waitFor(() => expect(kit.task?.title).toBe("Final title"));
+          expect(manager.writeTaskTranscript).not.toHaveBeenCalled();
+        }
+
+        kit.chat.finish(assistantMessage());
+        await kit.drainBackgroundTasksAndSettleMemory();
+        expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1);
+        const [first] = manager.writeTaskTranscript.mock.calls[0];
+        if (timing === "after") {
+          expect(first.title).toBe("Original");
+          pendingTitle.resolve("Final title");
+          await vi.waitFor(() =>
+            expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(2),
+          );
+        }
+
+        expect(manager.writeTaskTranscript).toHaveBeenLastCalledWith({
+          ...first,
+          title: "Final title",
+        });
+        expect(first.transcript).toContain("attemptCompletion");
+      } finally {
+        pendingTitle.resolve("Final title");
+        generate.mockRestore();
+      }
+    },
+  );
+
   it("settles task-memory after the background task completes", async () => {
     const store = new FakeStore([
       makeTask({
@@ -928,10 +994,12 @@ const autoMemoryContext: AutoMemoryContext = {
 function makeAutoMemoryManager() {
   return {
     readContext: vi.fn(async () => autoMemoryContext),
-    writeTaskTranscript: vi.fn(async () => ({
-      transcriptDir: autoMemoryContext.transcriptDir,
-      filename: "parent.md",
-    })),
+    writeTaskTranscript: vi.fn<AutoMemoryManager["writeTaskTranscript"]>(
+      async () => ({
+        transcriptDir: autoMemoryContext.transcriptDir,
+        filename: "parent.md",
+      }),
+    ),
     beginDreamRun: vi.fn(async () => undefined),
     finishDreamRun: vi.fn(async () => undefined),
     clearProjectMemory: vi.fn(async () => undefined),
@@ -1023,6 +1091,25 @@ class FakeStore {
   }
 
   private applyEvent(event: { name: string; args: Record<string, unknown> }) {
+    if (event.name === "v1.UpdateTitle") {
+      const id = event.args.id as string;
+      const task = this.tasks.get(id)!;
+      this.tasks.set(id, {
+        ...task,
+        title: event.args.title as string,
+        updatedAt: event.args.updatedAt as Date,
+      });
+      return;
+    }
+    if (event.name === "v1.ChatStreamStarted") {
+      const id = event.args.id as string;
+      this.updateTaskStatus(id, "pending-model");
+      this.applyEvent({
+        name: "v1.MessageUpserted",
+        args: { taskId: id, data: event.args.data },
+      });
+      return;
+    }
     if (event.name === "v1.MessageUpserted") {
       const taskId = event.args.taskId as string;
       const message = event.args.data as Message;

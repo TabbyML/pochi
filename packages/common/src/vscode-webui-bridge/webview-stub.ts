@@ -10,6 +10,7 @@ import type {
   BackgroundTaskState,
   ContextWindowUsage,
   Environment,
+  TaskHistoryContext,
   TaskMemoryState,
 } from "../base";
 import type { BrowserSession } from "../browser/types";
@@ -476,6 +477,8 @@ const VSCodeHostStub = {
     clearProjectMemory: async () => undefined,
   }),
   listReferenceableTasks: async (): Promise<AutoMemoryTranscriptEntry[]> => [],
+  readTaskHistoryContext: async (): Promise<TaskHistoryContext | undefined> =>
+    undefined,
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;

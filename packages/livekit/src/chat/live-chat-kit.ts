@@ -1131,12 +1131,17 @@ export class LiveChatKit<
       }
       if (!task.background) {
         const getModel = () => createModel({ llm, taskId: this.taskId });
+        const writer = this.transcriptWriter;
         scheduleGenerateTitleJob({
           taskId: this.taskId,
           store,
           blobStore: this.blobStore,
           messages,
           getModel,
+          onTitleUpdated:
+            writer &&
+            ((previousTask) =>
+              this.trackMemoryOperation(writer.refreshTitle(previousTask))),
         });
       }
 

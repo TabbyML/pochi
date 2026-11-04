@@ -3,6 +3,10 @@ import { AttemptTodoCompletionAgentName } from "../constants";
 import type { Environment } from "../environment";
 import type { AutoMemoryContext } from "./auto-memory";
 import { buildAutoMemoryStaticPrompt } from "./auto-memory";
+import {
+  type TaskHistoryContext,
+  buildTaskHistoryPrompt,
+} from "./task-history";
 
 type CustomRules = Environment["info"]["customRules"];
 
@@ -10,6 +14,8 @@ export interface SystemPromptOptions {
   todoModeEnabled?: boolean;
   todos?: readonly Todo[];
   newTaskEnabled?: boolean;
+  /** Enables the TASK HISTORY section; independent of long-term memory. */
+  taskHistory?: TaskHistoryContext;
 }
 
 const TodosPlaceholder = "{{TODOS}}";
@@ -48,6 +54,7 @@ IMPORTANT: You must NEVER generate or guess URLs for the user unless you are con
     getTodoListPrompt(options),
     getRulesPrompt(options),
     autoMemoryPrompt,
+    buildTaskHistoryPrompt(options?.taskHistory),
     customRulesPrompt,
     mcpInstructionsPrompt,
   ]

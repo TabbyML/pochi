@@ -11,6 +11,7 @@ import type {
   ContextWindowUsage,
   Environment,
   PastedTextFile,
+  TaskHistoryContext,
   TaskMemoryState,
   TerminalTextSelection,
 } from "../base";
@@ -591,6 +592,13 @@ export interface VSCodeHostApi {
   listReferenceableTasks(
     excludeTaskId?: string,
   ): Promise<AutoMemoryTranscriptEntry[]>;
+
+  /**
+   * Where the workspace repository's task transcripts and their index live,
+   * or undefined when there is no readable index. An existing index is
+   * returned at once and refreshed in the background.
+   */
+  readTaskHistoryContext(): Promise<TaskHistoryContext | undefined>;
 
   readBackgroundTaskState(taskId: string): Promise<{
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;

@@ -2,6 +2,7 @@ import { resolveModelFromId } from "@/lib/utils/resolve-model-from-id";
 import { vscodeAutoMemoryManager, vscodeHost } from "@/lib/vscode";
 import {
   type AutoMemoryContext,
+  type TaskHistoryContext,
   formatSubagentWorktreeNote,
   getLogger,
 } from "@getpochi/common";
@@ -52,6 +53,8 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private skills: SkillFile[] = [];
   private effectiveContextWindow: number | undefined = undefined;
   private autoMemoryCache: Promise<AutoMemoryContext | undefined> | null = null;
+  private taskHistoryCache: Promise<TaskHistoryContext | undefined> | null =
+    null;
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
   private readonly taskLLMs = new Map<string, LLMRequestData>();
@@ -154,6 +157,7 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
           omitCustomRules: context.omitCustomRules,
         }),
       getAutoMemory: () => this.getAutoMemory(),
+      getTaskHistory: () => this.getTaskHistory(),
       getMcpInfo: () => ({
         toolset: this.mcpStatus.toolset,
         instructions: this.mcpStatus.instructions,
@@ -438,6 +442,21 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         this.autoMemoryCache = null;
       }
     });
+    return pending;
+  }
+
+  private getTaskHistory() {
+    if (this.taskHistoryCache) return this.taskHistoryCache;
+
+    const pending = vscodeHost.readTaskHistoryContext();
+    this.taskHistoryCache = pending;
+    // No index yet (e.g. it could not be written): retry on the next request.
+    const retry = () => {
+      if (this.taskHistoryCache === pending) {
+        this.taskHistoryCache = null;
+      }
+    };
+    pending.then((context) => context || retry(), retry);
     return pending;
   }
 }

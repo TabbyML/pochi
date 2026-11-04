@@ -6,6 +6,7 @@ import type {
   MessageMetadata,
   PochiProviderOptions,
   PochiRequestUseCase,
+  TaskHistoryContext,
 } from "@getpochi/common";
 import {
   BackgroundJobNotification,
@@ -189,6 +190,8 @@ export type PrepareRequestGetters = {
   getEffectiveContextWindow?: () => number | undefined;
   getEnvironment?: () => Promise<Environment>;
   getAutoMemory?: () => Promise<AutoMemoryContext | undefined>;
+  /** Task transcript index; available even when long-term memory is off. */
+  getTaskHistory?: () => Promise<TaskHistoryContext | undefined>;
   isTodoModeActive?: () => boolean;
   getMcpInfo?: () => {
     toolset: Record<string, McpTool>;
@@ -268,6 +271,10 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
     const llm = await this.getters.getLLM();
     const environment = await this.getters.getEnvironment?.();
     const autoMemory = await this.getters.getAutoMemory?.();
+    // Browsing other tasks is the top-level agent's job, not a subagent's.
+    const taskHistory = this.isSubTask
+      ? undefined
+      : await this.getters.getTaskHistory?.();
     messages = prompts.injectEnvironment(messages, environment) as Message[];
     messages = prompts.injectAutoMemory(messages, autoMemory) as Message[];
     const mcpInfo = this.getters.getMcpInfo?.();
@@ -341,6 +348,7 @@ export class FlexibleChatTransport implements ChatTransport<Message> {
         todoModeEnabled,
         todos: environment?.todos,
         newTaskEnabled: !!tools.newTask,
+        taskHistory,
       },
     );
     const systemPrompt = this.systemPromptOverride ?? generatedSystemPrompt;
