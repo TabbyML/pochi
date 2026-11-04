@@ -3,8 +3,8 @@ import {
   getLogger,
   serializeTaskTranscript,
 } from "@getpochi/common";
-import { makeTaskQuery } from "../livestore/default-queries";
-import type { LiveKitStore, Message } from "../types";
+import { makeMessagesQuery, makeTaskQuery } from "../livestore/default-queries";
+import type { LiveKitStore, Message, Task } from "../types";
 
 const logger = getLogger("TaskTranscript");
 
@@ -31,12 +31,27 @@ export class TaskTranscriptWriter {
     },
   ) {}
 
+  refreshTitle(previousTask: Task): Promise<void> {
+    if (!TurnEndStatuses.has(previousTask.status)) return Promise.resolve();
+    const { store, taskId } = this.options;
+    const messages = store
+      .query(makeMessagesQuery(taskId))
+      .map((row) => row.data as Message);
+    return this.write({
+      messages,
+      status: previousTask.status,
+      updatedAt: previousTask.updatedAt.getTime(),
+    });
+  }
+
   write({
     messages,
     status,
+    updatedAt,
   }: {
     messages: readonly Message[];
     status: string;
+    updatedAt?: number;
   }): Promise<void> {
     if (!TurnEndStatuses.has(status)) return Promise.resolve();
     // Serialize now: the caller's message array keeps changing after the turn.
@@ -50,7 +65,7 @@ export class TaskTranscriptWriter {
       cwd: task?.cwd ?? undefined,
       title: task?.title ?? undefined,
       status,
-      updatedAt: Date.now(),
+      updatedAt: updatedAt ?? task?.updatedAt.getTime() ?? Date.now(),
       transcript,
     };
     // Writes replace the whole file, so keep them ordered: a slow earlier
