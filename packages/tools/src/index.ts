@@ -233,6 +233,13 @@ function getAgentToolAllowList(
   return allowed;
 }
 
+// Subtasks cannot delegate further or own background jobs.
+const SubTaskExcludedTools = new Set([
+  "newTask",
+  "startMonitor",
+  "killBackgroundJob",
+]);
+
 function filterTools(
   tools: AgentTools,
   allowList: Set<string> | undefined,
@@ -241,8 +248,7 @@ function filterTools(
   return Object.fromEntries(
     Object.entries(tools).filter(
       ([name]) =>
-        // Nested tasks have no newTask initialization or execution support.
-        (!isSubTask || name !== "newTask") &&
+        (!isSubTask || !SubTaskExcludedTools.has(name)) &&
         (!allowList || allowList.has(name)),
     ),
   ) as AgentTools;

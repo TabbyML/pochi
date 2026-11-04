@@ -212,9 +212,16 @@ describe("selectAgentTools", () => {
     expect(topLevelTools.executeCommand?.description).toContain(
       "Do not infer status from empty or partial file contents",
     );
-    expect(subTaskTools.executeCommand?.description).not.toContain(
-      "background command",
+    expect(subTaskTools.executeCommand?.description).not.toMatch(
+      /background/i,
     );
+    expect(subTaskSchema.shape.timeout?.description).not.toMatch(
+      /background/i,
+    );
+    expect(topLevelTools).toHaveProperty("startMonitor");
+    expect(topLevelTools).toHaveProperty("killBackgroundJob");
+    expect(subTaskTools).not.toHaveProperty("startMonitor");
+    expect(subTaskTools).not.toHaveProperty("killBackgroundJob");
     expect(topLevelTools.attemptCompletion?.description).toContain(
       "if you are only waiting on background commands or subagents",
     );
@@ -235,7 +242,10 @@ describe("selectAgentTools", () => {
 
     expect(toolNames(tools)).toEqual(
       [
-        ...ClientToolNames.filter((name) => name !== "newTask"),
+        ...ClientToolNames.filter(
+          (name) =>
+            !["newTask", "startMonitor", "killBackgroundJob"].includes(name),
+        ),
         "mcpSearch",
       ].sort(),
     );
