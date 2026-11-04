@@ -69,15 +69,13 @@ describe("task history prompt", () => {
 
   it("points at the index and limits when to consult it", () => {
     const prompt = buildTaskHistoryPrompt(taskHistory);
-    expect(prompt).toContain(`Index file: ${taskHistory.indexPath}`);
+    expect(prompt).toContain(`Task index: ${taskHistory.indexPath}`);
     expect(prompt).toContain(
       `Transcripts directory: ${taskHistory.transcriptDir}`,
     );
-    expect(prompt).toContain("Consult task history only when:");
-    expect(prompt).toContain("Never read the whole index.");
-    expect(prompt).toContain(
-      "use searchFiles with the index file as the path",
-    );
+    expect(prompt).toContain("Use them only when");
+    expect(prompt).toContain("Never read the whole index");
+    expect(prompt).toContain("searchFiles the index file");
     expect(prompt).toContain(TaskTranscriptFormat);
   });
 

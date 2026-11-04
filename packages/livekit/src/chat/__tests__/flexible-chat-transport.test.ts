@@ -99,7 +99,7 @@ describe("subtask delegation", () => {
       // Browsing other tasks is left to the top-level agent.
       expect(
         system?.content.includes(
-          "Index file: /projects/repo/TASKS.md",
+          "Task index: /projects/repo/TASKS.md",
         ),
       ).toBe(!isSubTask);
     },

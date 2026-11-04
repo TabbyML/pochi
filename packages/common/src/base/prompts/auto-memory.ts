@@ -1,4 +1,5 @@
 import type { TextUIPart, UIMessage } from "ai";
+import { TaskTranscriptFormat } from "./task-history";
 
 export const AutoMemoryIndexName = "MEMORY.md";
 
@@ -371,13 +372,13 @@ Transcripts directory: ${context.transcriptDir}
 Existing topic manifest:
 ${formatAutoMemoryManifest(context.manifest)}
 
-Source material lives as markdown files in the transcripts directory above. Each file is one task session and starts with a YAML frontmatter block (taskId, cwd, updatedAt, status, title). Each message then starts with a "### <n>. <role>" header followed by one JSON record per line: "text" records hold message text (long text continues across consecutive records), "tool-call" / "tool-result" / "tool-error" records hold tool activity with long values truncated, and an attemptCompletion answer is kept in full as "tool-call" records with field "result". The transcripts directory is read-only for this run — use readFile / listFiles / globFiles / searchFiles to inspect only the entries you need, and never edit them.
+Source material lives in the transcripts directory above, one markdown file per task session. ${TaskTranscriptFormat} Long text continues across consecutive "text" records, and an attemptCompletion answer is kept in full as "tool-call" records with field "result". The transcripts directory is read-only for this run — inspect only the entries you need with readFile / searchFiles, and never edit them.
 
 Strategy:
 - Use the preceding parent conversation as source material already in context. Select other sessions by their titles and relevance to durable memory; reviewing every transcript is unnecessary.
 - Prefer direct user evidence over assistant and tool records. To locate user turns cheaply, search a selected transcript with searchFiles (filePattern set to its filename) for the header pattern "^### [0-9]+[.] user$", then use the returned line numbers with readFile offset/limit to read small ranges around relevant turns. Expand into surrounding messages only when needed to interpret the user's intent or check later corrections.
 - Scope content searches to relevant files and specific topics.
-- Tool inputs and outputs are truncated in transcripts. Do not try to reconstruct them, and do not infer missing content; report any evidence gap that prevents a justified memory change.
+- Report any evidence gap from truncated records that prevents a justified memory change.
 - Stop gathering evidence when it is sufficient to decide a memory change or that no durable change is needed; exhaustive transcript reading is unnecessary.
 - Update memory only when a stable user preference, feedback pattern, project fact, or reusable reference emerges. Merge, prune, and rewrite topic files as needed so future sessions see a concise and accurate set of topics.
 - Never create or edit MEMORY.md: the index is generated from each topic file's frontmatter. Keep every topic file's name/description accurate instead.
