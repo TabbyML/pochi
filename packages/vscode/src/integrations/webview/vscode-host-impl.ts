@@ -1434,10 +1434,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ) => {
         const written = await api.writeTaskTranscript(options);
         if (written) {
-          void syncTaskIndex(
-            this.autoMemoryManager,
-            options.cwd ?? this.cwd ?? undefined,
-          );
+          void syncTaskIndex(written.transcriptDir);
         }
         return written;
       },

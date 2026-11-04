@@ -20,7 +20,9 @@ import {
   toErrorMessage,
   truncateAutoMemoryIndex,
 } from "../base";
+import { syncTaskIndex } from "../task-history/node";
 import { parseMarkdownWithFrontmatter } from "../tool-utils/markdown-frontmatter";
+import { listTranscriptCandidates } from "./transcripts";
 
 const logger = getLogger("AutoMemory");
 const DreamIntervalMs = 24 * 60 * 60 * 1000;
@@ -49,6 +51,18 @@ export class AutoMemoryManager {
       options.projectsRoot ?? path.join(os.homedir(), ".pochi", "projects");
   }
 
+  async resolveProjectPaths(cwd: string) {
+    const repoRoot = await resolveMainWorktreePath(cwd);
+    const repoKey = sanitizeMemoryRepoKey(repoRoot);
+    const projectRoot = path.join(this.projectsRoot, repoKey);
+    return {
+      repoRoot,
+      repoKey,
+      projectRoot,
+      transcriptDir: path.join(projectRoot, "transcripts"),
+    };
+  }
+
   async readContext(
     cwdOrOptions: string | AutoMemoryReadContextOptions | undefined,
     legacyOptions?: { ensure?: boolean },
@@ -60,11 +74,9 @@ export class AutoMemoryManager {
     const cwd = options?.cwd;
     if (!cwd) return undefined;
 
-    const repoRoot = await resolveMainWorktreePath(cwd);
-    const repoKey = sanitizeMemoryRepoKey(repoRoot);
-    const projectRoot = path.join(this.projectsRoot, repoKey);
+    const { repoRoot, repoKey, projectRoot, transcriptDir } =
+      await this.resolveProjectPaths(cwd);
     const memoryDir = path.join(projectRoot, "memory");
-    const transcriptDir = path.join(projectRoot, "transcripts");
     const indexPath = path.join(memoryDir, AutoMemoryIndexName);
 
     if (options?.ensure !== false) {
@@ -158,12 +170,12 @@ export class AutoMemoryManager {
     cwd?: string;
     excludeTaskId?: string;
   }): Promise<AutoMemoryTranscriptEntry[]> {
-    const context = await this.readContext(cwd, { ensure: false });
-    if (!context) return [];
+    if (!cwd) return [];
+    const { transcriptDir } = await this.resolveProjectPaths(cwd);
 
     let candidates: AutoMemoryDreamCandidate[];
     try {
-      candidates = await collectDreamCandidates(context.transcriptDir);
+      candidates = await listTranscriptCandidates(transcriptDir);
     } catch {
       return [];
     }
@@ -174,10 +186,7 @@ export class AutoMemoryManager {
         taskId: candidate.taskId,
         title: candidate.title,
         updatedAt: candidate.updatedAt,
-        filePath: path.join(
-          context.transcriptDir,
-          candidate.transcriptFilename,
-        ),
+        filePath: path.join(transcriptDir, candidate.transcriptFilename),
       }));
   }
 
@@ -198,7 +207,7 @@ export class AutoMemoryManager {
       // Discover actual source files, including sessions from other clients or
       // worktrees. Task history alone does not guarantee a transcript exists.
       const dreamCandidates = (
-        await collectDreamCandidates(context.transcriptDir)
+        await listTranscriptCandidates(context.transcriptDir)
       ).filter((candidate) => candidate.taskId !== currentTaskId);
       const updatedAts = dreamCandidates.map(
         (candidate) => candidate.updatedAt,
@@ -405,15 +414,15 @@ export async function removeTaskTranscripts(
   }
 
   await Promise.all(
-    projectEntries.flatMap((projectKey) =>
-      sanitized.map((id) =>
-        fs
-          .rm(path.join(projectsRoot, projectKey, "transcripts", `${id}.md`), {
-            force: true,
-          })
-          .catch(() => undefined),
-      ),
-    ),
+    projectEntries.map(async (projectKey) => {
+      const transcriptDir = path.join(projectsRoot, projectKey, "transcripts");
+      const removed = await Promise.allSettled(
+        sanitized.map((id) => fs.unlink(path.join(transcriptDir, `${id}.md`))),
+      );
+      if (removed.some((result) => result.status === "fulfilled")) {
+        await syncTaskIndex(transcriptDir);
+      }
+    }),
   );
 }
 
@@ -516,52 +525,6 @@ async function parseTopicFrontmatter(
 function normalizeTopicMetadata(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   return value.replace(/\s+/g, " ").trim() || undefined;
-}
-
-async function collectDreamCandidates(
-  transcriptDir: string,
-): Promise<AutoMemoryDreamCandidate[]> {
-  const entries = await fs.readdir(transcriptDir, { withFileTypes: true });
-  const candidates = new Map<string, AutoMemoryDreamCandidate>();
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
-    const filePath = path.join(transcriptDir, entry.name);
-    const parsed = await parseMarkdownWithFrontmatter(filePath, async () => {
-      // Read only the metadata header: a complete transcript can be large.
-      const file = await fs.open(filePath, "r");
-      try {
-        const lines: string[] = [];
-        for await (const line of file.readLines()) {
-          if (lines.length === 0 && line !== "---") return "";
-          lines.push(line);
-          if (lines.length > 1 && line === "---") return lines.join("\n");
-        }
-        return "";
-      } finally {
-        await file.close();
-      }
-    });
-    if (!parsed.ok) continue;
-    const { taskId, cwd, title, updatedAt } = parsed.frontmatter;
-    if (typeof taskId !== "string" || !taskId) continue;
-    const timestamp =
-      updatedAt instanceof Date
-        ? updatedAt.getTime()
-        : typeof updatedAt === "string"
-          ? Date.parse(updatedAt)
-          : Number.NaN;
-    if (!Number.isFinite(timestamp)) continue;
-    const existing = candidates.get(taskId);
-    if (existing && existing.updatedAt >= timestamp) continue;
-    candidates.set(taskId, {
-      taskId,
-      updatedAt: timestamp,
-      cwd: typeof cwd === "string" ? cwd : undefined,
-      title: typeof title === "string" ? title : undefined,
-      transcriptFilename: entry.name,
-    });
-  }
-  return [...candidates.values()];
 }
 
 async function readDreamLock(
