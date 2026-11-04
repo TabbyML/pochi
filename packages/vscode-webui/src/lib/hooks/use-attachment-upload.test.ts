@@ -92,7 +92,7 @@ describe("useAttachmentUpload", () => {
     });
   });
 
-  it("shows a rate limit message when the upload returns 429", async () => {
+  it("shows the 429 warning until the last attachment is removed", async () => {
     const { UploadError } = await import("@/lib/remote-blob-store");
     fileToUri.mockRejectedValueOnce(
       new UploadError("Upload failed (HTTP 429): Too many requests", 429),
@@ -100,6 +100,7 @@ describe("useAttachmentUpload", () => {
     const { result } = renderHook(() => useAttachmentUpload());
     const added = new File(["image"], "added.png", { type: "image/png" });
 
+    act(() => result.current.restoreFiles([restoredPart]));
     act(() => result.current.handleFileDrop([added]));
     await act(async () => {
       await expect(result.current.upload()).rejects.toThrow("HTTP 429");
@@ -109,6 +110,12 @@ describe("useAttachmentUpload", () => {
       "Too many uploads. Please wait a moment and try again.",
     );
     expect(result.current.isUploading).toBe(false);
+
+    act(() => result.current.removeFile(0));
+    expect(result.current.error).toBeDefined();
+    act(() => result.current.removeFile(0));
+    expect(result.current.files).toEqual([]);
+    expect(result.current.error).toBeUndefined();
   });
 
   it("counts restored attachments toward the attachment limit", () => {
