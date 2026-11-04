@@ -307,15 +307,19 @@ export class CheckpointService implements vscode.Disposable {
         // A skipped snapshot cannot provide a complete diff, including untracked files.
         if (!(await this.shadowGit.stageAll())) return null;
         const startTime = Date.now();
-        // Line counts come from git, so binary files are dropped before any
-        // content is loaded into the extension host.
+        const tree = await this.shadowGit.getStagedTree();
         const stats = (
-          await this.shadowGit.getDiffStats(from, undefined, files)
+          await this.shadowGit.getDiffStats(
+            from,
+            tree,
+            files,
+            options?.maxSizeLimit,
+          )
         ).filter((stat) => !stat.binary);
         const result =
           options?.inlineDiff || options?.maxSizeLimit
             ? processGitChangesToFileEdits(
-                await this.shadowGit.readDiffContents(stats, from),
+                await this.shadowGit.readDiffContents(stats, from, tree),
                 options,
               )
             : diffStatsToFileEdits(stats);

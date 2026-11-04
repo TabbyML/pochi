@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import simpleGit, { type SimpleGit } from "simple-git";
+import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { ShadowGitRepo } from "../shadow-git-repo";
 
@@ -236,6 +237,83 @@ describe("ShadowGitRepo", () => {
   });
 
   describe("getDiffStats", () => {
+    it("skips files oversized on either side and keeps small edits", async () => {
+      const limit = 20 * 1024;
+      const large = "0123456789\n".repeat(2_000);
+      await writeFile("shrunk.txt", large);
+      await writeFile("grown.txt", "small");
+      await writeFile("deleted.txt", large);
+      await writeFile("old.txt", large);
+      await writeFile("tiny.txt", "before\n");
+      await writeFile("assets", "a former file");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+
+      await writeFile("shrunk.txt", "small");
+      await writeFile("grown.txt", large);
+      await fs.rm(path.join(workspaceDir, "deleted.txt"));
+      await fs.rename(
+        path.join(workspaceDir, "old.txt"),
+        path.join(workspaceDir, "renamed.txt"),
+      );
+      await writeFile("added.txt", large);
+      await fs.rm(path.join(workspaceDir, "assets"));
+      await fs.mkdir(path.join(workspaceDir, "assets"));
+      await writeFile("assets/large.txt", large);
+      await writeFile("tiny.txt", "after\n");
+      await writeFile("[新] file.txt", "x".repeat(limit));
+      assert.strictEqual(await repo.stageAll(), true);
+      const tree = await repo.getStagedTree();
+
+      const raw = sinon.spy(repo["git"], "raw");
+      const stats = await repo.getDiffStats(from, tree, undefined, limit);
+      assert.deepStrictEqual(stats.map((stat) => stat.filepath).sort(), [
+        "[新] file.txt",
+        "assets",
+        "tiny.txt",
+      ]);
+      // Filtering the returned stats alone would still diff the oversized blobs.
+      const numstat = raw.getCalls().filter((call) =>
+        Array.isArray(call.args[0]) && call.args[0].includes("--numstat"),
+      );
+      assert.ok(numstat.length > 0);
+      for (const call of numstat) {
+        assert.doesNotMatch(
+          await call.returnValue,
+          /shrunk|grown|deleted|old|renamed|added|large/,
+        );
+      }
+      assert.deepStrictEqual(
+        await repo.getDiffStats(from, tree, ["grown.txt"], limit),
+        [],
+      );
+    });
+
+    it("classifies and reads the same staged snapshot after another save", async () => {
+      await writeFile("file", "original\n");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+      await writeFile("file", "staged text\n");
+      assert.strictEqual(await repo.stageAll(), true);
+      const textTree = await repo.getStagedTree();
+
+      await writeFile("file", new Uint8Array([0, 1, 0]));
+      assert.strictEqual(await repo.stageAll(), true);
+      const binaryTree = await repo.getStagedTree();
+      await writeFile("file", "original\n");
+
+      const stats = await repo.getDiffStats(from, textTree);
+      assert.strictEqual(stats[0].binary, false);
+      assert.deepStrictEqual(
+        await repo.readDiffContents(stats, from, textTree),
+        [{ filepath: "file", before: "original\n", after: "staged text\n" }],
+      );
+      assert.strictEqual(
+        (await repo.getDiffStats(from, binaryTree))[0].binary,
+        true,
+      );
+    });
+
     it("reports git line counts and flags binary files", async () => {
       await writeFile("edit.txt", "a\nb\nc\n");
       await writeFile("gone.txt", "x\ny\n");
@@ -254,7 +332,7 @@ describe("ShadowGitRepo", () => {
       await writeFile("新 file.txt", "hello\n");
       assert.strictEqual(await repo.stageAll(), true);
 
-      const stats = await repo.getDiffStats(from);
+      const stats = await repo.getDiffStats(from, await repo.getStagedTree());
       const byPath = Object.fromEntries(stats.map((s) => [s.filepath, s]));
       assert.deepStrictEqual(Object.keys(byPath).sort(), [
         "edit.txt",

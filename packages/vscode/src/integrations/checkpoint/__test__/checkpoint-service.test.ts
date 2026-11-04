@@ -22,6 +22,7 @@ describe("CheckpointService", () => {
     shadowGit.pruneCheckpoints.resolves(false);
     shadowGit.stageAll.resolves(true);
     shadowGit.commit.resolves("new-checkpoint");
+    shadowGit.getStagedTree.resolves("staged-tree");
     shadowGit.getDiffStats.resolves([]);
     shadowGit.readDiffContents.resolves([]);
     sinon.stub(ShadowGitRepo, "getOrCreate").resolves(shadowGit);
@@ -181,6 +182,7 @@ describe("CheckpointService", () => {
       sinon.assert.calledOnceWithExactly(
         shadowGit.getDiffStats,
         "old-checkpoint",
+        "staged-tree",
         undefined,
         undefined,
       );
@@ -210,9 +212,17 @@ describe("CheckpointService", () => {
       );
 
       sinon.assert.calledOnceWithExactly(
+        shadowGit.getDiffStats,
+        "old-checkpoint",
+        "staged-tree",
+        undefined,
+        20 * 1024,
+      );
+      sinon.assert.calledOnceWithExactly(
         shadowGit.readDiffContents,
         [stats[0]],
         "old-checkpoint",
+        "staged-tree",
       );
       assert.strictEqual(edits?.length, 1);
       assert.strictEqual(edits[0].filepath, "src/a.ts");

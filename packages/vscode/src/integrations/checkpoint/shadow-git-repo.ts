@@ -578,28 +578,101 @@ export class ShadowGitRepo implements vscode.Disposable {
     return this.readDiffContents(entries, from, to);
   }
 
-  /**
-   * Lists changed files with line counts computed by git, without loading
-   * file contents into memory. Binary files are flagged instead of counted.
-   */
+  /** Freeze the staged contents so later workspace edits cannot change a diff. */
+  async getStagedTree(): Promise<string> {
+    return (await this.git.raw(["write-tree"])).trim();
+  }
+
+  /** Compare two snapshots without loading file contents into the extension. */
   async getDiffStats(
     from: string,
-    to?: string,
+    to: string,
+    files?: string[],
+    maxSizeLimit?: number,
+  ): Promise<DiffStat[]> {
+    const entries = await this.listDiffEntries(from, to, files);
+    if (!entries.length) return [];
+
+    if (!maxSizeLimit) return this.readDiffStats(entries, from, to, files);
+
+    const stats: DiffStat[] = [];
+    // Keep both sides of a rename together and bound generated pathspec lists.
+    for (let i = 0; i < entries.length; i += 64) {
+      const batch = entries.slice(i, i + 64);
+      const [oldSizes, newSizes] = await Promise.all([
+        this.getBlobSizes(
+          from,
+          batch.map((e) => e.oldFilepath ?? e.filepath),
+        ),
+        this.getBlobSizes(
+          to,
+          batch.map((e) => e.filepath),
+        ),
+      ]);
+      const eligible = batch.filter((entry) => {
+        const oldSize = oldSizes.get(entry.oldFilepath ?? entry.filepath);
+        const newSize = newSizes.get(entry.filepath);
+        return (
+          (entry.status === "A" ||
+            (oldSize !== undefined && oldSize <= maxSizeLimit)) &&
+          (entry.status === "D" ||
+            (newSize !== undefined && newSize <= maxSizeLimit))
+        );
+      });
+      if (eligible.length) {
+        const paths = eligible.flatMap((entry) =>
+          entry.oldFilepath
+            ? [entry.oldFilepath, entry.filepath]
+            : [entry.filepath],
+        );
+        // A literal Git path also matches a directory with that name in the
+        // other tree. Escape the last character to make this an exact glob.
+        const pathspecs = paths.map(
+          (name) => `:(glob)${name.replace(/[\\*?\[\]]|.$/gsu, "\\$&")}`,
+        );
+        stats.push(
+          ...(await this.readDiffStats(eligible, from, to, pathspecs)),
+        );
+      }
+    }
+    return stats;
+  }
+
+  private async readDiffStats(
+    entries: DiffEntry[],
+    from: string,
+    to: string,
     files?: string[],
   ): Promise<DiffStat[]> {
-    const [entries, numstatOutput] = await Promise.all([
-      this.listDiffEntries(from, to, files),
-      this.git.raw(this.diffCommand("--numstat", from, to, files)),
+    const output = await this.git.raw(
+      this.diffCommand("--numstat", from, to, files),
+    );
+    const counts = parseNumstatOutput(output);
+    const stats: DiffStat[] = [];
+    for (const entry of entries) {
+      const stat = counts.get(entry.filepath);
+      if (stat) stats.push({ ...entry, ...stat });
+    }
+    return stats;
+  }
+
+  private async getBlobSizes(tree: string, paths: string[]) {
+    const output = await this.git.raw([
+      "--literal-pathspecs",
+      "ls-tree",
+      "-l",
+      "-z",
+      tree,
+      "--",
+      ...paths,
     ]);
-    const counts = parseNumstatOutput(numstatOutput);
-    return entries.map((entry) => ({
-      ...entry,
-      ...(counts.get(entry.filepath) ?? {
-        added: 0,
-        removed: 0,
-        binary: false,
-      }),
-    }));
+    const sizes = new Map<string, number>();
+    for (const record of output.split("\0")) {
+      // ls-tree -l separates the raw path from its metadata with the first tab.
+      const match = /^\d+ blob [0-9a-f]+ +([0-9]+)\t(.*)$/s.exec(record);
+      if (match) sizes.set(match[2], Number(match[1]));
+    }
+    return sizes;
   }
 
   private diffCommand(
