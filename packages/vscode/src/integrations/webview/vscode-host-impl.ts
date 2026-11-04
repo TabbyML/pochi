@@ -629,7 +629,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       builtInSubAgentInfo.sessionId,
     );
 
-    return envs;
+    const localChrome = pochiConfig.value.browserAgentSettings?.localChrome;
+    return {
+      ...envs,
+      POCHI_LOCAL_CHROME_PATH: localChrome?.chromePath ?? "",
+      POCHI_LOCAL_CHROME_START_PARAMS: localChrome?.startParams ?? "",
+    };
   };
 
   executeToolCall = async (
