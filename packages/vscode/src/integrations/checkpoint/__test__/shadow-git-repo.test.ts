@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import simpleGit, { type SimpleGit } from "simple-git";
+import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { ShadowGitRepo } from "../shadow-git-repo";
 
@@ -232,6 +233,165 @@ describe("ShadowGitRepo", () => {
       await writeOversizedFile("ignored.txt");
       repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
       assert.deepStrictEqual(await treeFiles("HEAD"), [".gitignore"]);
+    });
+  });
+
+  describe("getDiffStats", () => {
+    it("skips files oversized on either side and keeps small edits", async () => {
+      const limit = 20 * 1024;
+      const large = "0123456789\n".repeat(2_000);
+      await writeFile("shrunk.txt", large);
+      await writeFile("grown.txt", "small");
+      await writeFile("deleted.txt", large);
+      await writeFile("old.txt", large);
+      await writeFile("tiny.txt", "before\n");
+      await writeFile("assets", "a former file");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+
+      await writeFile("shrunk.txt", "small");
+      await writeFile("grown.txt", large);
+      await fs.rm(path.join(workspaceDir, "deleted.txt"));
+      await fs.rename(
+        path.join(workspaceDir, "old.txt"),
+        path.join(workspaceDir, "renamed.txt"),
+      );
+      await writeFile("added.txt", large);
+      await fs.rm(path.join(workspaceDir, "assets"));
+      await fs.mkdir(path.join(workspaceDir, "assets"));
+      await writeFile("assets/large.txt", large);
+      await writeFile("tiny.txt", "after\n");
+      await writeFile("[新] file.txt", "x".repeat(limit));
+      assert.strictEqual(await repo.stageAll(), true);
+      const tree = await repo.getStagedTree();
+
+      const raw = sinon.spy(repo["git"], "raw");
+      const stats = await repo.getDiffStats(from, tree, undefined, limit);
+      assert.deepStrictEqual(stats.map((stat) => stat.filepath).sort(), [
+        "[新] file.txt",
+        "assets",
+        "tiny.txt",
+      ]);
+      // Filtering the returned stats alone would still diff the oversized blobs.
+      const numstat = raw.getCalls().filter((call) =>
+        Array.isArray(call.args[0]) && call.args[0].includes("--numstat"),
+      );
+      assert.ok(numstat.length > 0);
+      for (const call of numstat) {
+        assert.doesNotMatch(
+          await call.returnValue,
+          /shrunk|grown|deleted|old|renamed|added|large/,
+        );
+      }
+      assert.deepStrictEqual(
+        await repo.getDiffStats(from, tree, ["grown.txt"], limit),
+        [],
+      );
+    });
+
+    it("classifies and reads the same staged snapshot after another save", async () => {
+      await writeFile("file", "original\n");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+      await writeFile("file", "staged text\n");
+      assert.strictEqual(await repo.stageAll(), true);
+      const textTree = await repo.getStagedTree();
+
+      await writeFile("file", new Uint8Array([0, 1, 0]));
+      assert.strictEqual(await repo.stageAll(), true);
+      const binaryTree = await repo.getStagedTree();
+      await writeFile("file", "original\n");
+
+      const stats = await repo.getDiffStats(from, textTree);
+      assert.strictEqual(stats[0].binary, false);
+      assert.deepStrictEqual(
+        await repo.readDiffContents(stats, from, textTree),
+        [{ filepath: "file", before: "original\n", after: "staged text\n" }],
+      );
+      assert.strictEqual(
+        (await repo.getDiffStats(from, binaryTree))[0].binary,
+        true,
+      );
+    });
+
+    it("reports git line counts and flags binary files", async () => {
+      await writeFile("edit.txt", "a\nb\nc\n");
+      await writeFile("gone.txt", "x\ny\n");
+      await writeFile("model.glb", new Uint8Array([0, 1, 2, 0]));
+      await writeFile("moved.txt", "one\ntwo\nthree\nfour\nfive\n");
+      repo = await ShadowGitRepo.getOrCreate(gitPath, workspaceDir);
+      const from = (await git.revparse(["HEAD"])).trim();
+
+      await writeFile("edit.txt", "a\nB\nc\nd\n");
+      await fs.rm(path.join(workspaceDir, "gone.txt"));
+      await writeFile("model.glb", new Uint8Array([0, 3, 4, 0]));
+      await fs.rename(
+        path.join(workspaceDir, "moved.txt"),
+        path.join(workspaceDir, "renamed.txt"),
+      );
+      await writeFile("新 file.txt", "hello\n");
+      assert.strictEqual(await repo.stageAll(), true);
+
+      const stats = await repo.getDiffStats(from, await repo.getStagedTree());
+      const byPath = Object.fromEntries(stats.map((s) => [s.filepath, s]));
+      assert.deepStrictEqual(Object.keys(byPath).sort(), [
+        "edit.txt",
+        "gone.txt",
+        "model.glb",
+        "renamed.txt",
+        "新 file.txt",
+      ]);
+      assert.deepStrictEqual(byPath["edit.txt"], {
+        status: "M",
+        filepath: "edit.txt",
+        added: 2,
+        removed: 1,
+        binary: false,
+      });
+      assert.deepStrictEqual(byPath["gone.txt"], {
+        status: "D",
+        filepath: "gone.txt",
+        added: 0,
+        removed: 2,
+        binary: false,
+      });
+      assert.strictEqual(byPath["model.glb"].binary, true);
+      assert.deepStrictEqual(byPath["renamed.txt"], {
+        status: "R",
+        filepath: "renamed.txt",
+        oldFilepath: "moved.txt",
+        added: 0,
+        removed: 0,
+        binary: false,
+      });
+      assert.deepStrictEqual(byPath["新 file.txt"], {
+        status: "A",
+        filepath: "新 file.txt",
+        added: 1,
+        removed: 0,
+        binary: false,
+      });
+
+      const changes = await repo.getDiff(from, undefined, ["renamed.txt"]);
+      assert.deepStrictEqual(changes, [
+        {
+          filepath: "renamed.txt",
+          before: null,
+          after: "one\ntwo\nthree\nfour\nfive\n",
+        },
+      ]);
+      const unicode = await repo.readDiffContents(
+        [byPath["新 file.txt"], byPath["renamed.txt"]],
+        from,
+      );
+      assert.deepStrictEqual(unicode, [
+        { filepath: "新 file.txt", before: null, after: "hello\n" },
+        {
+          filepath: "renamed.txt",
+          before: "one\ntwo\nthree\nfour\nfive\n",
+          after: "one\ntwo\nthree\nfour\nfive\n",
+        },
+      ]);
     });
   });
 

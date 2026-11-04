@@ -19,6 +19,7 @@ import type { FileChange } from "../editor/diff-changes-editor";
 import { getMainWorktreePath } from "../git/util";
 import { ShadowGitRepo } from "./shadow-git-repo";
 import {
+  diffStatsToFileEdits,
   filterGitChanges,
   getWorkspaceStorageDir,
   processGitChangesToFileEdits,
@@ -305,10 +306,25 @@ export class CheckpointService implements vscode.Disposable {
       try {
         // A skipped snapshot cannot provide a complete diff, including untracked files.
         if (!(await this.shadowGit.stageAll())) return null;
-        const changes = await this.shadowGit.getDiff(from, undefined, files);
-        const result = processGitChangesToFileEdits(changes, options);
+        const startTime = Date.now();
+        const tree = await this.shadowGit.getStagedTree();
+        const stats = (
+          await this.shadowGit.getDiffStats(
+            from,
+            tree,
+            files,
+            options?.maxSizeLimit,
+          )
+        ).filter((stat) => !stat.binary);
+        const result =
+          options?.inlineDiff || options?.maxSizeLimit
+            ? processGitChangesToFileEdits(
+                await this.shadowGit.readDiffContents(stats, from, tree),
+                options,
+              )
+            : diffStatsToFileEdits(stats);
         logger.debug(
-          `Git diff for commit hash ${from} for files: ${files ?? "all"} ${JSON.stringify(changes)} ${JSON.stringify(result)}`,
+          `Git diff for commit hash ${from} for files: ${files ?? "all"}: ${result?.length ?? 0} file(s) in ${Date.now() - startTime}ms`,
         );
         return result;
       } catch (error) {

@@ -22,7 +22,9 @@ describe("CheckpointService", () => {
     shadowGit.pruneCheckpoints.resolves(false);
     shadowGit.stageAll.resolves(true);
     shadowGit.commit.resolves("new-checkpoint");
-    shadowGit.getDiff.resolves([]);
+    shadowGit.getStagedTree.resolves("staged-tree");
+    shadowGit.getDiffStats.resolves([]);
+    shadowGit.readDiffContents.resolves([]);
     sinon.stub(ShadowGitRepo, "getOrCreate").resolves(shadowGit);
 
     service = new CheckpointService(
@@ -39,7 +41,7 @@ describe("CheckpointService", () => {
 
   it("does not spend the save timeout waiting for a background diff", async () => {
     const diff = new Deferred<[]>();
-    shadowGit.getDiff.returns(diff.promise);
+    shadowGit.getDiffStats.returns(diff.promise);
     const edits = service.getCheckpointFileEdits("old-checkpoint");
     await clock.tickAsync(0);
 
@@ -123,12 +125,111 @@ describe("CheckpointService", () => {
     );
     sinon.assert.notCalled(shadowGit.commit);
     sinon.assert.notCalled(shadowGit.hasStagedChanges);
-    sinon.assert.notCalled(shadowGit.getDiff);
+    sinon.assert.notCalled(shadowGit.getDiffStats);
     assert.strictEqual(service.latestCheckpoint.value, "old-checkpoint");
 
     shadowGit.stageAll.resolves(true);
     assert.strictEqual(await service.saveCheckpoint("retry"), "new-checkpoint");
     sinon.assert.calledOnce(shadowGit.commit);
+  });
+
+  describe("getCheckpointFileEdits", () => {
+    const stats = [
+      {
+        status: "M",
+        filepath: "src/a.ts",
+        added: 3,
+        removed: 1,
+        binary: false,
+      },
+      { status: "A", filepath: "new.txt", added: 2, removed: 0, binary: false },
+      { status: "D", filepath: "old.txt", added: 0, removed: 4, binary: false },
+      { status: "M", filepath: "model.glb", added: 0, removed: 0, binary: true },
+    ];
+
+    it("counts lines with git without loading file contents", async () => {
+      shadowGit.getDiffStats.resolves(stats);
+
+      assert.deepStrictEqual(
+        await service.getCheckpointFileEdits("old-checkpoint"),
+        [
+          {
+            filepath: "src/a.ts",
+            diff: "",
+            added: 3,
+            removed: 1,
+            created: false,
+            deleted: false,
+          },
+          {
+            filepath: "new.txt",
+            diff: "",
+            added: 2,
+            removed: 0,
+            created: true,
+            deleted: false,
+          },
+          {
+            filepath: "old.txt",
+            diff: "",
+            added: 0,
+            removed: 4,
+            created: false,
+            deleted: true,
+          },
+        ],
+      );
+      sinon.assert.calledOnceWithExactly(
+        shadowGit.getDiffStats,
+        "old-checkpoint",
+        "staged-tree",
+        undefined,
+        undefined,
+      );
+      sinon.assert.notCalled(shadowGit.readDiffContents);
+      sinon.assert.notCalled(shadowGit.getDiff);
+    });
+
+    it("returns null when only binary files changed", async () => {
+      shadowGit.getDiffStats.resolves([stats[3]]);
+
+      assert.strictEqual(
+        await service.getCheckpointFileEdits("old-checkpoint"),
+        null,
+      );
+    });
+
+    it("loads contents of text files only for inline diffs", async () => {
+      shadowGit.getDiffStats.resolves([stats[0], stats[3]]);
+      shadowGit.readDiffContents.resolves([
+        { filepath: "src/a.ts", before: "a\n", after: "b\n" },
+      ]);
+
+      const edits = await service.getCheckpointFileEdits(
+        "old-checkpoint",
+        undefined,
+        { inlineDiff: true, maxSizeLimit: 20 * 1024 },
+      );
+
+      sinon.assert.calledOnceWithExactly(
+        shadowGit.getDiffStats,
+        "old-checkpoint",
+        "staged-tree",
+        undefined,
+        20 * 1024,
+      );
+      sinon.assert.calledOnceWithExactly(
+        shadowGit.readDiffContents,
+        [stats[0]],
+        "old-checkpoint",
+        "staged-tree",
+      );
+      assert.strictEqual(edits?.length, 1);
+      assert.strictEqual(edits[0].filepath, "src/a.ts");
+      assert.strictEqual(edits[0].added, 1);
+      assert.strictEqual(edits[0].removed, 1);
+      assert.ok(edits[0].diff.length > 0);
+    });
   });
 
   it("prunes old checkpoints after initializing", async () => {

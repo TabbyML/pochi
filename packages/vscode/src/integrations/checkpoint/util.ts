@@ -10,6 +10,7 @@ import { diffLines } from "diff";
 import { isNonNullish } from "remeda";
 import type * as vscode from "vscode";
 import type { FileChange } from "../editor/diff-changes-editor";
+import type { DiffStat } from "./shadow-git-repo";
 
 export function diffFile(
   before: string,
@@ -91,6 +92,28 @@ export function processGitChangesToFileEdits(
 
   return userEdits;
 }
+
+/**
+ * Converts git line counts to FileDiff entries without an inline diff.
+ *
+ * @returns Array of FileDiff objects, or null if no valid changes
+ */
+export function diffStatsToFileEdits(stats: DiffStat[]): FileDiff[] | null {
+  const edits = stats
+    .filter((stat) => ContentStatuses.has(stat.status))
+    .map<FileDiff>((stat) => ({
+      filepath: stat.filepath,
+      diff: "",
+      added: stat.added,
+      removed: stat.removed,
+      created: stat.status === "A",
+      deleted: stat.status === "D",
+    }));
+  return edits.length > 0 ? edits : null;
+}
+
+// Statuses whose contents readDiffContents loads; others yield no edit.
+const ContentStatuses = new Set(["A", "D", "M", "R", "C"]);
 
 /**
  * Filters git changes to remove binary files and files exceeding size limits
