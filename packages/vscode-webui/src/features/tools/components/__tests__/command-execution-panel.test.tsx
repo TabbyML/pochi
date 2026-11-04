@@ -16,6 +16,14 @@ let backgroundCommands:
 let jobInfo:
   | { command: string | undefined; displayId: string; outputFile?: string }
   | undefined;
+const stopJob = vi.fn(async () => {});
+let commandJob:
+  | {
+      status: "running" | "completed" | "failed" | "stopped";
+      exitCode?: number;
+      stop: () => Promise<void>;
+    }
+  | undefined;
 
 vi.stubGlobal(
   "ResizeObserver",
@@ -34,6 +42,7 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("@/features/chat", () => ({
   useBackgroundJobInfo: () => jobInfo,
+  useBackgroundCommandJob: () => commandJob,
 }));
 
 vi.mock("@/lib/hooks/use-background-commands", () => ({
@@ -86,6 +95,8 @@ describe("BackgroundJobPanel job control", () => {
     openBackgroundJobTerminal.mockClear();
     showBackgroundCommand.mockClear();
     openFile.mockClear();
+    stopJob.mockClear();
+    commandJob = undefined;
     terminals = [];
     backgroundCommands = {};
     jobInfo = { command: "bun run dev", displayId: "%1" };
@@ -251,6 +262,108 @@ describe("BackgroundJobPanel job control", () => {
     expect(
       screen.queryByLabelText("commandExecutionPanel.terminalClosedOpenOutput"),
     ).toBeNull();
+  });
+
+  it("marks a running job on its badge and offers to stop it", async () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
+    commandJob = { status: "running", stop: stopJob };
+
+    const { container } = renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    const badge = screen.getByLabelText("commandExecutionPanel.openJob");
+    expect(
+      badge.querySelector("[data-testid='job-badge-running']"),
+    ).not.toBeNull();
+    fireEvent.pointerMove(badge, { pointerType: "mouse" });
+    await waitFor(() =>
+      expect(screen.getByRole("tooltip").textContent).toContain(
+        "backgroundTasks.running",
+      ),
+    );
+
+    fireEvent.click(screen.getByLabelText("backgroundTasks.stop"));
+    expect(stopJob).toHaveBeenCalledTimes(1);
+    expect(
+      container.querySelector("[data-testid='job-badge-failed']"),
+    ).toBeNull();
+  });
+
+  it("keeps the running badge while the manager has not caught up", () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    expect(
+      screen
+        .getByLabelText("commandExecutionPanel.openJob")
+        .querySelector("[data-testid='job-badge-running']"),
+    ).not.toBeNull();
+    expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
+  });
+
+  it("dots the badge of a failed job and spells out its exit code", async () => {
+    commandJob = { status: "failed", exitCode: 1, stop: stopJob };
+
+    renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    const badge = screen.getByLabelText(
+      "commandExecutionPanel.terminalClosedOpenOutput",
+    );
+    expect(
+      badge.querySelector("[data-testid='job-badge-failed']"),
+    ).not.toBeNull();
+    expect(badge.querySelector("[data-testid='job-badge-running']")).toBeNull();
+    expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
+    fireEvent.pointerMove(badge, { pointerType: "mouse" });
+    await waitFor(() =>
+      expect(screen.getByRole("tooltip").textContent).toContain(
+        "backgroundJobNotifications.failed",
+      ),
+    );
+  });
+
+  it("leaves a clean exit undecorated", () => {
+    commandJob = { status: "completed", exitCode: 0, stop: stopJob };
+
+    const { container } = renderBackgroundJobPanel("/tmp/bgjob-cmd-1.log");
+
+    expect(container.querySelector("[data-testid^='job-badge-']")).toBeNull();
+  });
+
+  it("prefers the status passed by the caller", () => {
+    commandJob = { status: "completed", exitCode: 0, stop: stopJob };
+
+    render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        outputFile="/tmp/bgjob-cmd-1.log"
+        status="stopped"
+      />,
+    );
+
+    expect(
+      screen
+        .getByLabelText("commandExecutionPanel.terminalClosedOpenOutput")
+        .querySelector("[data-testid='job-badge-stopped']"),
+    ).not.toBeNull();
+  });
+
+  it("keeps notification badges free of the job state", () => {
+    backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
+    commandJob = { status: "running", stop: stopJob };
+
+    const { container } = render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        appearance="notification"
+        summary={'Background command "bun run dev" completed'}
+        status="completed"
+        outputFile="/tmp/bgjob-cmd-1.log"
+      />,
+    );
+
+    expect(container.querySelector("[data-testid^='job-badge-']")).toBeNull();
+    expect(screen.queryByLabelText("backgroundTasks.stop")).toBeNull();
   });
 
   it("collapses monitor events and keeps scrollable details on hover", async () => {

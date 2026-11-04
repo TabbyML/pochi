@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useBackgroundJobInfo } from "@/features/chat";
+import { useBackgroundCommandJob, useBackgroundJobInfo } from "@/features/chat";
 import { getBackgroundJobStatusLabel } from "@/lib/background-job-status-label";
 import { useBackgroundCommands } from "@/lib/hooks/use-background-commands";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
@@ -30,11 +30,10 @@ import {
   ChevronLeft,
   ChevronsDownUpIcon,
   ChevronsUpDownIcon,
-  CircleCheck,
-  CircleStop,
   CopyIcon,
+  Loader2,
+  SquareIcon,
   TerminalIcon,
-  XCircle,
 } from "lucide-react";
 import { type FC, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -112,18 +111,76 @@ const ToggleExpandButton: FC<{ expanded: boolean; onToggle: () => void }> = ({
   );
 };
 
+type JobBadgeStatus = "running" | "completed" | "failed" | "stopped";
+
+const RunningSweep =
+  "conic-gradient(from 0deg, transparent 0turn, transparent 0.55turn, var(--color-primary) 1turn)";
+
+/**
+ * The badge's face for a job state: a highlight running along its edge while
+ * the job runs, a corner dot once it failed (red) or was stopped (grey). A
+ * clean exit leaves the plain badge.
+ */
+const JobBadgeFace: FC<{
+  status?: JobBadgeStatus;
+  children: React.ReactNode;
+}> = ({ status, children }) => {
+  if (status === "running") {
+    return (
+      <>
+        {/* A rotating conic sweep clipped to the badge and covered by the
+            label, so only a 1px border of it shows. */}
+        <span
+          aria-hidden="true"
+          data-testid="job-badge-running"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-sm bg-primary/25"
+        >
+          <span
+            className="absolute inset-[-50%] animate-spin [animation-duration:1.6s]"
+            style={{ background: RunningSweep }}
+          />
+        </span>
+        {/* Opaque base: --secondary is translucent in VS Code themes. */}
+        <span className="absolute inset-px overflow-hidden rounded-[3px] bg-[var(--vscode-editor-background)]">
+          <span className="flex size-full items-center justify-center bg-secondary group-hover/badge:bg-secondary/80">
+            {children}
+          </span>
+        </span>
+      </>
+    );
+  }
+  return (
+    <>
+      {children}
+      {(status === "failed" || status === "stopped") && (
+        <span
+          aria-hidden="true"
+          data-testid={`job-badge-${status}`}
+          className={cn(
+            "-right-[2px] -top-[2px] pointer-events-none absolute size-[6px] rounded-full ring-[1.5px] ring-[var(--vscode-editor-background)]",
+            status === "failed" ? "bg-destructive" : "bg-zinc-400",
+          )}
+        />
+      )}
+    </>
+  );
+};
+
 /**
  * The badge in front of a job/terminal panel: opens the live terminal, or --
- * once that terminal is gone -- its recorded output file.
+ * once that terminal is gone -- its recorded output file. On a card it also
+ * carries the job's state, spelled out in its tooltip.
  */
 const JobControlButton: FC<{
   label: string;
   isActive?: boolean;
   /** Nothing left to open: keep the badge, drop the interaction. */
   inert?: boolean;
+  status?: JobBadgeStatus;
+  statusLabel?: string;
   onClick: () => void;
   children: React.ReactNode;
-}> = ({ label, isActive, inert, onClick, children }) => (
+}> = ({ label, isActive, inert, status, statusLabel, onClick, children }) => (
   <Tooltip>
     <TooltipTrigger asChild>
       {inert ? (
@@ -132,29 +189,75 @@ const JobControlButton: FC<{
         // can be opened anymore.
         <span
           aria-label={label}
-          className="inline-flex size-[16px] shrink-0 cursor-default items-center justify-center rounded-sm bg-secondary text-muted-foreground opacity-60"
+          className="relative inline-flex size-[16px] shrink-0 cursor-default items-center justify-center rounded-sm bg-secondary text-muted-foreground opacity-60"
         >
-          {children}
+          <JobBadgeFace status={status}>{children}</JobBadgeFace>
         </span>
       ) : (
         <Button
           size="sm"
           aria-label={label}
-          className={cn("size-[16px] rounded-sm ring-primary", {
-            "ring-1": isActive,
-          })}
+          className={cn(
+            "group/badge relative size-[16px] rounded-sm ring-primary",
+            {
+              "ring-1": isActive,
+            },
+          )}
           variant="secondary"
           onClick={onClick}
         >
-          {children}
+          <JobBadgeFace status={status}>{children}</JobBadgeFace>
         </Button>
       )}
     </TooltipTrigger>
     <TooltipContent>
-      <span>{label}</span>
+      {statusLabel && <span className="block">{statusLabel}</span>}
+      <span className={cn(statusLabel && "block opacity-80")}>{label}</span>
     </TooltipContent>
   </Tooltip>
 );
+
+const StopJobButton: FC<{ onStop: () => Promise<void> }> = ({ onStop }) => {
+  const { t } = useTranslation();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string>();
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="xs"
+          variant="ghost"
+          aria-label={t("backgroundTasks.stop")}
+          aria-busy={pending}
+          onClick={async () => {
+            if (pending) return;
+            setPending(true);
+            try {
+              await onStop();
+              setError(undefined);
+            } catch (error) {
+              setError(error instanceof Error ? error.message : String(error));
+            } finally {
+              setPending(false);
+            }
+          }}
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <SquareIcon className="size-3.5 fill-current" strokeWidth={0} />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className={cn(error && "text-destructive")}>
+          {error ?? t("backgroundTasks.stop")}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 export const CommandPanelContainer: FC<{
   icon: React.ReactNode;
@@ -310,6 +413,29 @@ export const BackgroundJobPanel: FC<{
     : (resolvedCommand ?? backgroundJobId);
   const isActive = liveTerminal?.isActive ?? false;
 
+  // On a card the badge is the job's status indicator. The host's list is the
+  // truth for "running"; how a job ended comes from the caller or the manager.
+  const commandJob = useBackgroundCommandJob(backgroundJobId);
+  const badgeStatus: JobBadgeStatus | undefined =
+    isNotification || isUserTerminal
+      ? undefined
+      : isRunning
+        ? "running"
+        : (status ??
+          (commandJob?.status === "running" ? undefined : commandJob?.status));
+  const badgeStatusLabel =
+    badgeStatus === "running"
+      ? t("backgroundTasks.running")
+      : badgeStatus
+        ? getBackgroundJobStatusLabel(
+            badgeStatus,
+            exitCode ?? commandJob?.exitCode,
+            t,
+          )
+        : undefined;
+  const stopJob =
+    badgeStatus === "running" && commandJob ? commandJob.stop : undefined;
+
   const closedLabel = !canOpenOutputFile
     ? t("commandExecutionPanel.terminalClosed")
     : isRunning
@@ -346,6 +472,8 @@ export const BackgroundJobPanel: FC<{
           }
           isActive={!isNotification && isActive}
           inert={!canOpenTerminal && !canOpenOutputFile}
+          status={badgeStatus}
+          statusLabel={badgeStatusLabel}
           onClick={openTerminalOrOutputFile}
         >
           <div className="font-bold font-mono text-[10px]">
@@ -484,17 +612,11 @@ export const BackgroundJobPanel: FC<{
           </div>
         )
       }
-      title={
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span>{title}</span>
-          {status && (
-            <BackgroundJobStatus status={status} exitCode={exitCode} />
-          )}
-        </div>
-      }
+      title={title}
       expanded={output !== undefined && expanded}
       actions={
         <>
+          {stopJob && <StopJobButton onStop={stopJob} />}
           {output && (
             <ToggleExpandButton expanded={expanded} onToggle={toggleExpanded} />
           )}
@@ -525,35 +647,6 @@ function recoverNotificationCommand(
 
   return summary.slice(prefix.length, markerIndex);
 }
-
-const BackgroundJobStatus: FC<{
-  status: "completed" | "failed" | "stopped";
-  exitCode?: number;
-}> = ({ status, exitCode }) => {
-  const { t } = useTranslation();
-  const Icon =
-    status === "completed"
-      ? CircleCheck
-      : status === "stopped"
-        ? CircleStop
-        : XCircle;
-  const label = getBackgroundJobStatusLabel(status, exitCode, t);
-
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1 text-muted-foreground text-xs",
-        {
-          "text-success": status === "completed",
-          "text-destructive": status === "failed",
-        },
-      )}
-    >
-      <Icon className="size-3.5" />
-      {label}
-    </span>
-  );
-};
 
 export interface ExecutionPanelProps {
   command: string;

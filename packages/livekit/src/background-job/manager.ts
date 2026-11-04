@@ -1000,6 +1000,19 @@ export class BackgroundJobManager {
     };
   }
 
+  /** A command job's owner and lifecycle, for cards that only know its id. */
+  getCommandJob(
+    backgroundJobId: string,
+  ): { ownerTaskId: string; status: JobStatus; exitCode?: number } | undefined {
+    const job = this.jobs.get(backgroundJobId);
+    if (job?.kind !== "command") return undefined;
+    return {
+      ownerTaskId: job.ownerTaskId,
+      status: job.status,
+      exitCode: job.notification?.exitCode ?? job.exitCode,
+    };
+  }
+
   getJobsForTask(taskId: string): BackgroundJobEntry[] {
     const pending = new Set(
       this.getPendingNotifications(taskId).map((n) => n.backgroundJobId),
