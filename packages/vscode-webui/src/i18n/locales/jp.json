@@ -655,6 +655,7 @@
   "browserView": {
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
+    "runningInBackground": "バックグラウンドで実行中...",
     "paused": "一時停止"
   },
   "attemptTodoCompletionView": {

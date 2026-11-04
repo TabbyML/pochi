@@ -1,3 +1,4 @@
+import { prepareBrowserSession } from "@/lib/prepare-browser-session";
 import { blobStore } from "@/lib/remote-blob-store";
 import { vscodeHost } from "@/lib/vscode";
 import {
@@ -260,6 +261,18 @@ export class ManagedToolCallLifeCycle
         options?.taskId ?? "",
         { notify: false },
       );
+    } else if (
+      this.toolName === "executeCommand" &&
+      options?.builtinSubAgentInfo?.type === "browser"
+    ) {
+      executePromise = prepareBrowserSession(
+        options.builtinSubAgentInfo.sessionId,
+        this.store.storeId,
+        () => abortSignal.aborted,
+      ).then(() => {
+        abortSignal.throwIfAborted();
+        return execute();
+      });
     } else {
       executePromise = execute();
     }

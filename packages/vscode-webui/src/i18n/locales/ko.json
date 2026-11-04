@@ -650,6 +650,7 @@
   "browserView": {
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
+    "runningInBackground": "백그라운드에서 실행 중...",
     "paused": "일시 중지됨"
   },
   "attemptTodoCompletionView": {

@@ -5,20 +5,16 @@ import { useTranslation } from "react-i18next";
 import { StatusIcon } from "../status-icon";
 import type { ToolProps } from "../types";
 
-/** Subscribes independently of the completed newTask tool call. */
-export function BackgroundSubagentStatusIcon({
-  taskId,
-  tool,
-}: {
-  taskId: string;
-  tool: ToolProps<"newTask">["tool"];
-}) {
+/**
+ * Status of a background subagent, independent of the completed newTask tool
+ * call. Undefined until the task is known.
+ */
+export function useBackgroundSubagentStatus(taskId: string) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const jobStatus = useBackgroundTaskStatus(taskId);
-  const { t } = useTranslation();
-  if (!task) return <span className="h-5 w-4 shrink-0" />;
-  const status = jobStatus
+  if (!task) return undefined;
+  return jobStatus
     ? jobStatus === "stopped"
       ? "failed"
       : jobStatus
@@ -27,6 +23,19 @@ export function BackgroundSubagentStatusIcon({
       : task.status === "failed"
         ? "failed"
         : "completed";
+}
+
+/** Subscribes independently of the completed newTask tool call. */
+export function BackgroundSubagentStatusIcon({
+  taskId,
+  tool,
+}: {
+  taskId: string;
+  tool: ToolProps<"newTask">["tool"];
+}) {
+  const status = useBackgroundSubagentStatus(taskId);
+  const { t } = useTranslation();
+  if (!status) return <span className="h-5 w-4 shrink-0" />;
   const label = t(`backgroundTasks.${status}`);
   return (
     <StatusIcon

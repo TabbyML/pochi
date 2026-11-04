@@ -81,7 +81,7 @@ function TaskPanelStore({
         manager = BackgroundJobManager.forStore(store);
         manager.initialize({
           blobStore,
-          adaptor: new VscodeRunningTaskAdaptor(),
+          adaptor: new VscodeRunningTaskAdaptor(store),
           stateStore: createVscodeBackgroundTaskStateStore(),
           clearFileStateCache: (id) => vscodeHost.clearFileStateCache(id),
           forkFileStateCache: (sourceId, targetId) =>

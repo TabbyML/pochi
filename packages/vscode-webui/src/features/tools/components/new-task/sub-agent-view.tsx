@@ -1,13 +1,18 @@
 import { TaskThread } from "@/components/task-thread";
 import { Badge } from "@/components/ui/badge";
-import { FixedStateChatContextProvider } from "@/features/chat";
+import {
+  BackgroundTaskButton,
+  FixedStateChatContextProvider,
+} from "@/features/chat";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
 import { type ToolUIPart, isStaticToolUIPart } from "ai";
-import { useEffect, useRef, useState } from "react";
+import { SendToBack } from "lucide-react";
+import { type ComponentProps, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
 import { ToolCallLite } from "../tool-call-lite";
@@ -27,6 +32,9 @@ interface SubAgentViewProps {
   showToolCall?: boolean;
   showTaskThread?: boolean;
   showTodos?: boolean;
+  statusOverride?: ComponentProps<typeof StatusIcon>["statusOverride"];
+  /** The subtask runs in the background, detached from the parent's turn. */
+  isBackground?: boolean;
 }
 
 export function SubAgentView({
@@ -42,40 +50,38 @@ export function SubAgentView({
   assistantName = tool.input?.agentType?.trim() || "Pochi",
   showToolCall,
   showTaskThread = true,
+  statusOverride,
+  isBackground,
 }: SubAgentViewProps) {
-  const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
+  const { t } = useTranslation();
+  const messages = taskSource?.messages;
+  const lastToolCall = useMemo(() => {
+    if (!showToolCall || !isExecuting || !messages || messages.length < 2)
+      return;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.role !== "assistant") continue;
+      const toolCall = message.parts.findLast(
+        (part): part is ToolUIPart<UITools> => isStaticToolUIPart(part),
+      );
+      if (toolCall) return toolCall;
+    }
+  }, [messages, showToolCall, isExecuting]);
   const [showFooterTaskThread, setShowFooterTaskThread] = useState(false);
-  const showToolCallLite =
-    showToolCall &&
-    isExecuting &&
-    taskSource &&
-    taskSource.messages.length > 1 &&
-    !!lastToolCallRef.current;
   const canShowFooterTaskThread =
     showTaskThread && !!taskSource && taskSource.messages.length > 1;
 
-  const showFooter =
-    showToolCallLite || footerActions || canShowFooterTaskThread;
+  const showFooter = !!lastToolCall || footerActions || canShowFooterTaskThread;
   const hasContent = children != null || !!showFooter;
   const navigate = useNavigate();
   const store = useDefaultStore();
   const toolTitle = tool.input?.agentType?.trim() || "Subtask";
   const description = tool.input?.description;
-
-  useEffect(() => {
-    const lastMessage = taskSource?.messages.at(-1);
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      return;
-    }
-    const lastToolCall = lastMessage.parts.findLast(
-      (part): part is ToolUIPart<UITools> => {
-        return isStaticToolUIPart(part);
-      },
-    );
-    if (lastToolCall) {
-      lastToolCallRef.current = lastToolCall;
-    }
-  }, [taskSource?.messages]);
+  // A background subtask is inspected in a sheet: navigating away would
+  // unmount the page that owns its executor.
+  const canNavigate =
+    !isBackground && !!uid && !!taskSource?.parentId && isVSCodeEnvironment();
+  const canInspectInBackground = isBackground && !!uid && isVSCodeEnvironment();
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
@@ -83,12 +89,12 @@ export function SubAgentView({
         className={cn(
           "flex items-start gap-2 bg-muted/30 px-3 py-2 font-medium text-muted-foreground text-xs",
           hasContent && "border-b",
-          uid && taskSource?.parentId && isVSCodeEnvironment()
+          canNavigate
             ? "group cursor-pointer transition-colors hover:bg-muted hover:text-foreground"
             : "",
         )}
         onClick={
-          uid && taskSource?.parentId && isVSCodeEnvironment()
+          canNavigate && uid
             ? () => {
                 navigate({
                   to: "/task",
@@ -108,6 +114,7 @@ export function SubAgentView({
           isExecuting={isExecuting}
           className="mt-1 self-start leading-none"
           iconClassName="size-3.5"
+          statusOverride={statusOverride}
         />
         <div className="min-w-0 flex-1 break-words text-muted-foreground leading-5">
           {headerContent ?? (
@@ -116,7 +123,13 @@ export function SubAgentView({
                 variant="secondary"
                 className={cn("mr-2 inline-flex py-0 align-middle")}
               >
-                {toolTitle}
+                {canInspectInBackground && uid ? (
+                  <BackgroundTaskButton taskId={uid}>
+                    {toolTitle}
+                  </BackgroundTaskButton>
+                ) : (
+                  toolTitle
+                )}
               </Badge>
               {description && (
                 <span className="break-words align-middle group-hover:underline">
@@ -127,6 +140,15 @@ export function SubAgentView({
           )}
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {isBackground && (
+            <span
+              className="flex h-5 shrink-0 items-center gap-1 text-muted-foreground"
+              aria-label={t("backgroundTasks.background")}
+            >
+              <SendToBack className="size-3.5" />
+              {t("backgroundTasks.background")}
+            </span>
+          )}
           {headerActions && (
             <div onClick={(e) => e.stopPropagation()}>{headerActions}</div>
           )}
@@ -138,7 +160,7 @@ export function SubAgentView({
       {showFooter && (
         <>
           <div className="flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 px-2 py-1.5 text-muted-foreground">
-            {(canShowFooterTaskThread || showToolCallLite) && (
+            {(canShowFooterTaskThread || !!lastToolCall) && (
               <div
                 className={cn(
                   "group flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-sm px-1.5 py-1",
@@ -160,7 +182,7 @@ export function SubAgentView({
                     />
                   </div>
                 )}
-                {showToolCallLite && lastToolCallRef.current && (
+                {lastToolCall && (
                   <div
                     className={cn(
                       "animated-gradient-text min-w-0 flex-1 truncate text-xs",
@@ -169,7 +191,7 @@ export function SubAgentView({
                     )}
                   >
                     <ToolCallLite
-                      tools={[lastToolCallRef.current]}
+                      tools={[lastToolCall]}
                       requiresApproval={false}
                       showCommandDetails
                       showStatusIcon={false}

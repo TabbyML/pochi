@@ -7,6 +7,7 @@ import {
 } from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
 import {
+  type BuiltinSubAgentInfo,
   type CustomAgentFile,
   type DisplayModel,
   type ExecuteCommandResult,
@@ -16,8 +17,12 @@ import {
 } from "@getpochi/common/vscode-webui-bridge";
 import {
   type BackgroundCommandAdaptor,
+  BackgroundJobManager,
   type LLMRequestData,
+  type LiveKitStore,
+  type Message,
   type RunningTaskAdaptor,
+  catalog,
   processContentOutput,
 } from "@getpochi/livekit";
 import { ThreadAbortSignal } from "@quilted/threads";
@@ -27,10 +32,13 @@ import {
 } from "@quilted/threads/signals";
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
+import { browserSessionManager } from "./browser-session-manager";
+import { prepareBrowserSession } from "./prepare-browser-session";
 import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
 const ModelListLoadTimeoutMs = 10_000;
+const ReleaseBrowserSessionTimeoutMs = 5_000;
 
 export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   readonly homeDir = globalThis.POCHI_HOME_DIR;
@@ -49,7 +57,16 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly taskLLMs = new Map<string, LLMRequestData>();
   private disposed = false;
 
-  constructor() {
+  /** `store` is needed to save browser recordings of background tasks. */
+  constructor(private readonly store?: LiveKitStore) {
+    if (store) {
+      const manager = BackgroundJobManager.forStore(store);
+      this.unsubscribers.push(
+        manager.subscribe(() => {
+          this.releaseSettledBrowserSessions(store, manager);
+        }),
+      );
+    }
     this.ready = this.init().catch((error) => {
       logger.warn("Failed to initialize background task adaptor", error);
     });
@@ -200,10 +217,26 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     args: Parameters<RunningTaskAdaptor["executeToolCall"]>[0],
   ) {
     const llm = this.taskLLMs.get(args.taskId) ?? this.getLLM();
+    const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
+      args.agentType === "browser"
+        ? { type: "browser", sessionId: args.taskId }
+        : undefined;
+    if (builtinSubAgentInfo && args.toolName === "executeCommand") {
+      await prepareBrowserSession(
+        args.taskId,
+        args.storeId,
+        () => this.disposed || args.abortSignal.aborted,
+      );
+      args.abortSignal.throwIfAborted();
+      if (this.disposed) {
+        throw new Error("Background task adaptor is disposed.");
+      }
+    }
     let result = await vscodeHost.executeToolCall(args.toolName, args.input, {
       toolCallId: args.toolCallId,
       abortSignal: ThreadAbortSignal.serialize(args.abortSignal),
       contentType: llm?.contentType,
+      builtinSubAgentInfo,
       toolPolicies: args.toolPolicies,
       storeId: args.storeId,
       taskId: args.taskId,
@@ -231,10 +264,80 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   }
 
   async onTaskFinished(taskId: string) {
+    await this.releaseBrowserSession(taskId);
     const finalized = await vscodeHost.finalizeSubagentWorktree(taskId);
     return (
       finalized && formatSubagentWorktreeNote(finalized, finalized.removed)
     );
+  }
+
+  /**
+   * Saves the recording under the parent's newTask tool call, as the
+   * foreground flow does, and closes the browser session.
+   */
+  private async releaseBrowserSession(taskId: string) {
+    const { store } = this;
+    if (!store) return;
+    const parentId = store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    )?.parentId;
+    if (!parentId) return;
+    const invocation = store
+      .query(catalog.queries.makeMessagesQuery(parentId))
+      .flatMap((row) => (row.data as Message).parts)
+      .find(
+        (part) =>
+          part.type === "tool-newTask" &&
+          part.state !== "input-streaming" &&
+          part.input?._meta?.uid === taskId,
+      );
+    if (
+      invocation?.type !== "tool-newTask" ||
+      invocation.state === "input-streaming" ||
+      invocation.input?.agentType !== "browser"
+    ) {
+      return;
+    }
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        browserSessionManager.unregisterSession(
+          taskId,
+          invocation.toolCallId,
+          store,
+        ),
+        new Promise<void>((resolve) => {
+          timeoutId = setTimeout(resolve, ReleaseBrowserSessionTimeoutMs);
+        }),
+      ]);
+    } catch (error) {
+      logger.warn({ taskId, error }, "Failed to release browser session");
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
+    }
+  }
+
+  /**
+   * A foreground browser task moved to the background already owns a session.
+   * If it settles while still queued, no RunningTask runs onTaskFinished, so
+   * release its leftover session from the panel-scoped adaptor.
+   */
+  private releaseSettledBrowserSessions(
+    store: LiveKitStore,
+    manager: BackgroundJobManager,
+  ) {
+    if (this.disposed) return;
+    for (const task of store.query(catalog.queries.backgroundTasks$)) {
+      if (
+        browserSessionManager.isRegistered(task.id) &&
+        (task.status === "completed" || task.status === "failed") &&
+        !manager.isTaskPending(task.id)
+      ) {
+        void this.releaseBrowserSession(task.id);
+      }
+    }
   }
 
   private async init() {
