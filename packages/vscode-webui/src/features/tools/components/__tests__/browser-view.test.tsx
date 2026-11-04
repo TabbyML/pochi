@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import type { TaskThreadSource } from "@/components/task-thread";
-import { render, screen, waitFor } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { catalog } from "@getpochi/livekit";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BrowserView } from "../new-task/browser-view";
+import { BackgroundBrowserView, BrowserView } from "../new-task/browser-view";
 
 const subAgentViewMock = vi.hoisted(() =>
   vi.fn(
@@ -19,9 +20,15 @@ const subAgentViewMock = vi.hoisted(() =>
 
 const useStoreFileMock = vi.hoisted(() => vi.fn());
 const subscribeFrameMock = vi.hoisted(() => vi.fn());
+const queryMessages = vi.hoisted(() => vi.fn());
+const backgroundStatusMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../new-task/sub-agent-view", () => ({
   SubAgentView: subAgentViewMock,
+}));
+
+vi.mock("../new-task/background-status-icon", () => ({
+  useBackgroundSubagentStatus: backgroundStatusMock,
 }));
 
 vi.mock("@/components/files-provider", () => ({
@@ -53,6 +60,7 @@ vi.mock("@/lib/hooks/use-navigate", () => ({
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({
     storeId: "store-id",
+    useQuery: queryMessages,
   }),
 }));
 
@@ -102,6 +110,103 @@ describe("BrowserView", () => {
     useStoreFileMock.mockReset();
     subscribeFrameMock.mockReset();
     subscribeFrameMock.mockReturnValue(() => {});
+    backgroundStatusMock.mockReset();
+    backgroundStatusMock.mockReturnValue(undefined);
+  });
+
+  const backgroundTool = {
+    type: "tool-newTask",
+    toolCallId: "browser-call",
+    state: "output-available",
+    input: {
+      agentType: "browser",
+      description: "Use the browser",
+    },
+    output: { result: "", backgroundJobId: "bgjob-task-1" },
+  } as never;
+
+  it("updates a detached browser card when its executor persists another message", () => {
+    let rows = taskSource.messages.slice(0, 1).map((data) => ({ data }));
+    let notify!: () => void;
+    queryMessages.mockImplementation(() =>
+      useSyncExternalStore(
+        (listener) => {
+          notify = listener;
+          return () => {};
+        },
+        () => rows,
+      ),
+    );
+    render(
+      <BackgroundBrowserView
+        uid="child"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+    expect(queryMessages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hash: catalog.queries.makeMessagesQuery("child").hash,
+      }),
+    );
+    expect(screen.queryByTestId("task-thread")).toBeNull();
+    act(() => {
+      rows = taskSource.messages.map((data) => ({ data }));
+      notify();
+    });
+    expect(screen.getByTestId("task-thread")).toBeTruthy();
+    expect(lastSubAgentProps()).toMatchObject({
+      taskSource: { messages: taskSource.messages },
+    });
+  });
+
+  it("treats a running background browser task as executing", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+    backgroundStatusMock.mockReturnValue("running");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("browserView.runningInBackground")).toBeTruthy();
+    expect(lastSubAgentProps()).toMatchObject({
+      isExecuting: true,
+      isBackground: true,
+      statusOverride: {
+        status: "running",
+        label: "backgroundTasks.running",
+      },
+    });
+  });
+
+  it("shows the recording once a background browser task completes", () => {
+    useStoreFileMock.mockReturnValue({ content: "blob://recording" });
+    backgroundStatusMock.mockReturnValue("completed");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+        taskSource={taskSource}
+      />,
+    );
+
+    expect(document.querySelector("video")).toBeTruthy();
+    expect(lastSubAgentProps()).toMatchObject({
+      isExecuting: false,
+      statusOverride: {
+        status: "completed",
+        label: "backgroundTasks.completed",
+      },
+    });
   });
 
   it("keeps the trajectory in the card body until a frame or video exists", () => {

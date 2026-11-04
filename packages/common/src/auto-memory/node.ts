@@ -171,6 +171,8 @@ export class AutoMemoryManager {
     excludeTaskId?: string;
   }): Promise<AutoMemoryTranscriptEntry[]> {
     if (!cwd) return [];
+    // Resolve the transcript directory directly: `readContext` also parses
+    // every memory topic file, which is slow and not needed here.
     const { transcriptDir } = await this.resolveProjectPaths(cwd);
 
     let candidates: AutoMemoryDreamCandidate[];

@@ -82,6 +82,9 @@ if (window.POCHI_WEBVIEW_KIND === "pane") {
         to: "/task",
         // Pass uid only, other params will be parsed after route
         search: { uid: panelInfo.payload.task.uid },
+        // Replace the initial "/" entry so history back (e.g. the mouse back
+        // button) cannot leave the task and land on the task list.
+        replace: true,
       });
       break;
   }

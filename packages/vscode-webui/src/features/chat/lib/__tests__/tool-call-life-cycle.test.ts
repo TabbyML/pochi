@@ -5,6 +5,8 @@ import {
   type Message,
   type Task,
 } from "@getpochi/livekit";
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
+import { browserSessionManager } from "@/lib/browser-session-manager";
 import { makeJobStore } from "@getpochi/livekit/testing";
 import type { Todo } from "@getpochi/tools";
 import { blobStore } from "@/lib/remote-blob-store";
@@ -56,6 +58,35 @@ async function makeStreamingNewTaskLifecycle(
 }
 
 describe("ManagedToolCallLifeCycle", () => {
+  it("starts recording before running a command in a manually opened browser subtask", async () => {
+    const store = { ...makeStore(), storeId: encodeStoreId(null, "parent") };
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "executeCommand", toolCallId: "open" },
+      new AbortController().signal,
+    );
+    vscodeHostMock.readBrowserAgentSettings = vi.fn(async () => ({
+      browserSettings: { initial: { runtime: { mode: "localChrome" } } },
+    }));
+    const register = vi.fn(async () => ({}));
+    vscodeHostMock.registerBrowserSession = register;
+    vscodeHostMock.unregisterBrowserSession = vi.fn(async () => {});
+    const execute = vi.fn(async () => ({ output: "ok" }));
+    vscodeHostMock.executeToolCall = execute;
+    try {
+      lifecycle.execute({ command: "agent-browser open example.org" }, {
+        taskId: "browser",
+        builtinSubAgentInfo: { type: "browser", sessionId: "browser" },
+      });
+      await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+      expect(register).toHaveBeenCalledExactlyOnceWith("browser", "parent");
+      expect(execute).toHaveBeenCalledOnce();
+      expect(register).toHaveBeenCalledBefore(execute);
+    } finally {
+      await browserSessionManager.unregisterSession("browser", "launch", store as never);
+    }
+  });
+
   it("runs an isolated foreground newTask in a worktree and reports kept changes", async () => {
     const worktree = { path: "/repo.worktree/subagent-1", branch: "subagent/1" };
     vscodeHostMock.createSubagentWorktree = vi.fn(async () => worktree);

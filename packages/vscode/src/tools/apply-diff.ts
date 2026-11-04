@@ -5,7 +5,7 @@ import { parseDiffAndApply } from "@getpochi/common/diff-utils";
 import {
   isVirtualPath,
   validateTextFile,
-  withFileStateCacheGuard,
+  withWriteFileCache,
 } from "@getpochi/common/tool-utils";
 import type { ClientTools, ToolFunctionType } from "@getpochi/tools";
 import * as vscode from "vscode";
@@ -18,12 +18,11 @@ export const applyDiff: ToolFunctionType<ClientTools["applyDiff"]> = async (
 ) => {
   const { abortSignal, cwd } = options;
 
-  return withFileStateCacheGuard({
+  return withWriteFileCache({
     cache: options.fileStateCache,
     path,
     cwd,
     getMtime: getVscodeFileMtime,
-    operation: "editing",
     doWork: async (resolvedPath) => {
       const isVirtual = isVirtualPath(resolvedPath);
       const fileUri = isVirtual

@@ -33,7 +33,12 @@ function createToolDef(isSubTask: boolean) {
 - In VS Code, start commands that require terminal input with background set to true. CLI background jobs are non-interactive.
 - The completion notification is the authoritative job status and reports completed, failed, or stopped. Do not infer status from empty or partial file contents, and do not wait or poll with commands such as sleep.
 - Continue independent work after starting a background command. If no other work remains, use attemptCompletion to end the current turn; the completion notification will resume the task.
-- After receiving the completion notification, read the output file when you need the command output. If it is empty, the command produced no captured output; the notification status is still final.`;
+- After receiving the completion notification, read the output file when you need the command output. If it is empty, the command produced no captured output; the notification status is still final.
+`;
+  const timeoutUsageNotes = isSubTask
+    ? `- Commands do not accept terminal input. You can specify an optional timeout in seconds (up to 300s). If not specified, the timeout is ${ExecuteCommandDefaultTimeoutSec}s. A command still running when the timeout expires is stopped and a timeout error is returned.`
+    : `- Foreground commands do not accept terminal input. You can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s.
+- When the foreground timeout expires, the same process continues as a background job without being stopped or restarted, and the result includes its \`backgroundJobId\` and \`outputFile\`. Promoted jobs remain non-interactive, including in VS Code. If background promotion is unavailable, including in VS Code on Windows, the command is stopped and a timeout error is returned.`;
 
   return {
     description:
@@ -59,9 +64,7 @@ Before executing the command, please follow these steps:
 
 Usage notes:
 - The command argument is required.
-${backgroundUsageNotes}
-- Foreground commands do not accept terminal input. You can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s.
-- When the foreground timeout expires, the same process continues as a background job without being stopped or restarted, and the result includes its \`backgroundJobId\` and \`outputFile\`. Promoted jobs remain non-interactive, including in VS Code. If background promotion is unavailable, including in VS Code on Windows, the command is stopped and a timeout error is returned.
+${backgroundUsageNotes}${timeoutUsageNotes}
 - If the output exceeds 30000 characters, output will be truncated before being returned to you.
 - When issuing multiple commands:
   - If the commands are independent and can run in parallel, make multiple executeCommand tool calls in a single message. For example, if you need to run "git status" and "git diff", send a single message with two executeCommand tool calls in parallel.
@@ -191,7 +194,9 @@ Important:
         .max(60 * 5)
         .optional()
         .describe(
-          `Optional foreground wait in seconds, max 300 seconds. The default is ${ExecuteCommandDefaultTimeoutSec} seconds. Supported hosts move a command that is still running to a non-interactive background job.`,
+          isSubTask
+            ? `Optional timeout in seconds, max 300 seconds. The default is ${ExecuteCommandDefaultTimeoutSec} seconds. A command still running at the timeout is stopped.`
+            : `Optional foreground wait in seconds, max 300 seconds. The default is ${ExecuteCommandDefaultTimeoutSec} seconds. Supported hosts move a command that is still running to a non-interactive background job.`,
         ),
     }),
     outputSchema: z.object({

@@ -88,6 +88,9 @@ export function useAttachmentUpload(options?: UseAttachmentUploadOptions) {
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+    if (files.length === 1 && index === 0) {
+      clearError();
+    }
   };
 
   const clearFiles = () => {

@@ -1,14 +1,16 @@
 // @vitest-environment node
+import { encodeStoreId } from "@getpochi/common/store-id-utils";
 import { readMediaFile } from "@getpochi/common/tool-utils";
 import type {
   DisplayModel,
   ValidCustomAgentFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { serializeThreadSignalWithSnapshot } from "@getpochi/common/vscode-webui-bridge/thread-signal";
-import { findBlob } from "@getpochi/livekit";
+import { BackgroundJobManager, catalog, findBlob } from "@getpochi/livekit";
 import { MediaOutput } from "@getpochi/tools";
 import { signal } from "@preact/signals-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { browserSessionManager } from "./browser-session-manager";
 import { blobStore } from "./remote-blob-store";
 import { vscodeHost } from "./vscode";
 import { VscodeRunningTaskAdaptor } from "./vscode-running-task-adaptor";
@@ -27,6 +29,14 @@ vi.mock("./vscode", () => ({
     readEffectiveContextWindow: vi.fn(),
     readEnvironment: vi.fn(),
     finalizeSubagentWorktree: vi.fn(),
+    readBrowserAgentSettings: vi.fn(),
+  },
+}));
+vi.mock("./browser-session-manager", () => ({
+  browserSessionManager: {
+    isRegistered: vi.fn(),
+    registerSession: vi.fn(),
+    unregisterSession: vi.fn(),
   },
 }));
 vi.mock("./remote-blob-store", () => ({
@@ -237,5 +247,302 @@ describe("VscodeRunningTaskAdaptor task cwd", () => {
       "not applied to the current workspace",
     );
     expect(await adaptor.onTaskFinished("child")).toBeUndefined();
+  });
+});
+
+describe("VscodeRunningTaskAdaptor browser subagent", () => {
+  const storeId = encodeStoreId(null, "parent");
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    const pending = () => new Promise<never>(() => {});
+    vi.mocked(vscodeHost.readModelList).mockImplementation(pending);
+    vi.mocked(vscodeHost.readMcpStatus).mockImplementation(pending);
+    vi.mocked(vscodeHost.readCustomAgents).mockImplementation(pending);
+    vi.mocked(vscodeHost.readSkills).mockImplementation(pending);
+    vi.mocked(vscodeHost.readEffectiveContextWindow).mockImplementation(
+      pending,
+    );
+    vi.mocked(vscodeHost.executeToolCall).mockResolvedValue({ ok: true });
+  });
+
+  function executeCommand(
+    adaptor: VscodeRunningTaskAdaptor,
+    agentType?: string,
+    abortSignal = new AbortController().signal,
+  ) {
+    return adaptor.executeToolCall({
+      taskId: "child",
+      storeId,
+      toolName: "executeCommand",
+      toolCallId: "exec",
+      input: { command: "agent-browser open" },
+      abortSignal,
+      toolPolicies: undefined,
+      agentType,
+    });
+  }
+
+  it("runs browser tools in the task's browser session and starts recording", async () => {
+    vi.mocked(browserSessionManager.isRegistered).mockReturnValue(false);
+    vi.mocked(vscodeHost.readBrowserAgentSettings).mockResolvedValue({
+      browserSettings: serializeThreadSignalWithSnapshot(
+        signal({
+          runtime: { mode: "managed" },
+          managedBrowser: { viewport: { width: 1280, height: 720 } },
+        } as never),
+      ),
+    } as never);
+    const adaptor = new VscodeRunningTaskAdaptor();
+
+    await executeCommand(adaptor, "browser");
+
+    expect(vi.mocked(vscodeHost.executeToolCall).mock.calls[0][2]).toMatchObject(
+      { builtinSubAgentInfo: { type: "browser", sessionId: "child" } },
+    );
+    await vi.waitFor(() =>
+      expect(browserSessionManager.registerSession).toHaveBeenCalledWith(
+        "child",
+        "parent",
+        { viewport: { width: 1280, height: 720 } },
+      ),
+    );
+    adaptor.dispose();
+  });
+
+  it("waits for browser settings and registration before executing the command", async () => {
+    let finishSettings!: () => void;
+    const readingSettings = new Promise<void>((resolve) => {
+      finishSettings = resolve;
+    });
+    vi.mocked(vscodeHost.readBrowserAgentSettings).mockImplementation(
+      async () => {
+        await readingSettings;
+        return {
+          browserSettings: serializeThreadSignalWithSnapshot(
+            signal({
+              runtime: { mode: "managed" },
+              managedBrowser: {},
+            } as never),
+          ),
+        } as never;
+      },
+    );
+    let finishRegistration!: () => void;
+    const registering = new Promise<void>((resolve) => {
+      finishRegistration = resolve;
+    });
+    vi.mocked(browserSessionManager.registerSession).mockReturnValue(
+      registering,
+    );
+    const adaptor = new VscodeRunningTaskAdaptor();
+    const execution = executeCommand(adaptor, "browser");
+
+    try {
+      expect(vscodeHost.executeToolCall).not.toHaveBeenCalled();
+      finishSettings();
+      await vi.waitFor(() =>
+        expect(browserSessionManager.registerSession).toHaveBeenCalledOnce(),
+      );
+      expect(vscodeHost.executeToolCall).not.toHaveBeenCalled();
+      finishRegistration();
+      await execution;
+      expect(vscodeHost.executeToolCall).toHaveBeenCalledOnce();
+    } finally {
+      finishSettings();
+      finishRegistration();
+      await execution;
+      adaptor.dispose();
+    }
+  });
+
+  it.each(["aborted", "disposed"] as const)(
+    "does not register or execute when %s while reading browser settings",
+    async (reason) => {
+      let finishSettings!: () => void;
+      const readingSettings = new Promise<void>((resolve) => {
+        finishSettings = resolve;
+      });
+      vi.mocked(vscodeHost.readBrowserAgentSettings).mockImplementation(
+        async () => {
+          await readingSettings;
+          return {
+            browserSettings: serializeThreadSignalWithSnapshot(
+              signal({
+                runtime: { mode: "managed" },
+                managedBrowser: {},
+              } as never),
+            ),
+          } as never;
+        },
+      );
+      const controller = new AbortController();
+      const adaptor = new VscodeRunningTaskAdaptor();
+      const execution = executeCommand(
+        adaptor,
+        "browser",
+        controller.signal,
+      ).catch((error) => error);
+
+      try {
+        expect(vscodeHost.readBrowserAgentSettings).toHaveBeenCalledOnce();
+        if (reason === "aborted") controller.abort();
+        else adaptor.dispose();
+        finishSettings();
+
+        const error = await execution;
+        expect(vscodeHost.executeToolCall).not.toHaveBeenCalled();
+        expect(browserSessionManager.registerSession).not.toHaveBeenCalled();
+        expect(error).toBeInstanceOf(Error);
+      } finally {
+        finishSettings();
+        await execution;
+        adaptor.dispose();
+      }
+    },
+  );
+
+  it("leaves other agents' tools alone", async () => {
+    const adaptor = new VscodeRunningTaskAdaptor();
+
+    await executeCommand(adaptor, "explore");
+
+    expect(
+      vi.mocked(vscodeHost.executeToolCall).mock.calls[0][2]
+        .builtinSubAgentInfo,
+    ).toBeUndefined();
+    expect(browserSessionManager.registerSession).not.toHaveBeenCalled();
+    adaptor.dispose();
+  });
+
+  it("saves the recording under the parent's newTask call when the task finishes", async () => {
+    const store = {
+      query: vi
+        .fn()
+        .mockReturnValueOnce({ parentId: "parent" })
+        .mockReturnValueOnce([
+          {
+            data: {
+              parts: [
+                {
+                  type: "tool-newTask",
+                  toolCallId: "new-task-call",
+                  state: "output-available",
+                  input: { agentType: "browser", _meta: { uid: "child" } },
+                  output: { result: "", backgroundJobId: "bgjob-task-child" },
+                },
+              ],
+            },
+          },
+        ]),
+    };
+    const adaptor = new VscodeRunningTaskAdaptor(store as never);
+
+    await adaptor.onTaskFinished("child");
+
+    expect(browserSessionManager.unregisterSession).toHaveBeenCalledWith(
+      "child",
+      "new-task-call",
+      store,
+    );
+    adaptor.dispose();
+  });
+
+  it("does not block onTaskFinished when releasing the browser session hangs", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.mocked(browserSessionManager.unregisterSession).mockReturnValue(
+        new Promise<void>(() => {}),
+      );
+      const store = {
+        query: vi
+          .fn()
+          .mockReturnValueOnce({ parentId: "parent" })
+          .mockReturnValueOnce([
+            {
+              data: {
+                parts: [
+                  {
+                    type: "tool-newTask",
+                    toolCallId: "new-task-call",
+                    state: "output-available",
+                    input: { agentType: "browser", _meta: { uid: "child" } },
+                    output: { result: "", backgroundJobId: "bgjob-task-child" },
+                  },
+                ],
+              },
+            },
+          ]),
+      };
+      const adaptor = new VscodeRunningTaskAdaptor(store as never);
+
+      const finishing = adaptor.onTaskFinished("child");
+      await vi.advanceTimersByTimeAsync(5_000);
+      await finishing;
+
+      expect(vscodeHost.finalizeSubagentWorktree).toHaveBeenCalledWith("child");
+      adaptor.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("releases a leftover session when a backgrounded browser task stops while queued", () => {
+    let onTaskChange: (() => void) | undefined;
+    let status = "pending-model";
+    const store = {
+      query: vi.fn((query: { label?: string }) => {
+        if (query === catalog.queries.backgroundTasks$) {
+          return [{ id: "child", parentId: "parent", background: true, status }];
+        }
+        if (query.label === "task") {
+          return { id: "child", parentId: "parent", background: true, status };
+        }
+        if (query.label === "messages") {
+          return [
+            {
+              data: {
+                parts: [
+                  {
+                    type: "tool-newTask",
+                    toolCallId: "new-task-call",
+                    state: "output-available",
+                    input: {
+                      agentType: "browser",
+                      background: false,
+                      _meta: { uid: "child" },
+                    },
+                    output: { result: "", backgroundJobId: "bgjob-task-child" },
+                  },
+                ],
+              },
+            },
+          ];
+        }
+        return [];
+      }),
+      subscribe: vi.fn((_query: unknown, listener: () => void) => {
+        onTaskChange = listener;
+        return () => {};
+      }),
+    };
+    vi.mocked(browserSessionManager.isRegistered).mockReturnValue(true);
+    const adaptor = new VscodeRunningTaskAdaptor(store as never);
+    BackgroundJobManager.forStore(store as never).registerTask("child", {
+      parentTaskId: "parent",
+      agentType: "browser",
+    });
+
+    expect(browserSessionManager.unregisterSession).not.toHaveBeenCalled();
+
+    status = "failed";
+    onTaskChange?.();
+
+    expect(browserSessionManager.unregisterSession).toHaveBeenCalledWith(
+      "child",
+      "new-task-call",
+      store,
+    );
+    adaptor.dispose();
   });
 });

@@ -69,6 +69,16 @@ describe("tool-call cancellation", () => {
     assert.strictEqual(h.tool.secondCall.args[1].cwd, "/workspace");
   });
 
+  it("allows background jobs only for the root task", async () => {
+    const h = createHarness();
+
+    await h.execute("parent");
+    await h.execute("subagent");
+
+    assert.strictEqual(h.tool.firstCall.args[1].allowBackground, true);
+    assert.strictEqual(h.tool.secondCall.args[1].allowBackground, false);
+  });
+
   for (const source of ["caller", "task"] as const) {
     it(`skips resource preparation when ${source} has already aborted`, async () => {
       const h = createHarness();
