@@ -381,12 +381,16 @@ export class ManagedToolCallLifeCycle
     uid: string,
     options: { taskId?: string; abortSignal: AbortSignal },
   ): Promise<SpawnedTaskReturnType> {
-    let cwd = options.taskId
+    const parentCwd = options.taskId
       ? this.store.query(catalog.queries.makeTaskQuery(options.taskId))?.cwd
       : undefined;
+    let cwd = parentCwd;
     let worktree: { path: string; branch?: string } | undefined;
     if (args.isolation === "worktree") {
       const created = await vscodeHost.createWorktree({
+        // Branch off what the parent task is working on, which may be a
+        // worktree rather than the main workspace.
+        baseCwd: parentCwd ?? undefined,
         generateBranchName: { prompt: args.description || args.prompt },
       });
       if (!created) {
@@ -395,21 +399,25 @@ export class ManagedToolCallLifeCycle
       worktree = { path: created.path, branch: created.branch };
       cwd = created.path;
     }
-    if (!cwd) {
-      throw new Error("Cannot start a task without a working directory.");
-    }
-    options.abortSignal.throwIfAborted();
 
-    await vscodeHost.openTaskInPanel(
-      {
-        type: "new-task",
-        uid,
-        cwd,
-        prompt: args.prompt,
-        invokedCustomAgents: args.agentType ? [args.agentType] : undefined,
-      },
-      { preview: false, background: true },
-    );
+    try {
+      if (!cwd) {
+        throw new Error("Cannot start a task without a working directory.");
+      }
+      options.abortSignal.throwIfAborted();
+      await vscodeHost.openTaskInPanel(
+        { type: "new-task", uid, cwd, prompt: args.prompt },
+        { preview: false, background: true },
+      );
+    } catch (error) {
+      // The task never started, so the worktree made for it has no owner.
+      if (worktree) {
+        await vscodeHost
+          .deleteWorktree(worktree.path, { deleteBranch: true })
+          .catch(() => undefined);
+      }
+      throw error;
+    }
     return {
       spawned: true,
       result: createTopLevelTaskStartedResult(uid, worktree),

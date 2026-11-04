@@ -78,6 +78,31 @@ export function createNewTaskMiddleware(
               }
 
               const args = parsedResult.value;
+
+              // A top-level task is created by its own tab, in its own store,
+              // so only its id is assigned here. It always runs the default
+              // agent: the tab has no way to run a custom agent at the top
+              // level, and delegating to one would put its work in a subagent
+              // (and possibly a subagent worktree) rather than the new task.
+              if (isTopLevelTaskSpawn(args)) {
+                if (args.agentType) {
+                  throw new InvalidToolInputError({
+                    toolName: chunk.toolName,
+                    toolInput: chunk.input,
+                    cause: new Error(
+                      'agentType is not supported with spawn "task"; a spawned task always runs the default agent. Leave agentType empty and describe the work in the prompt.',
+                    ),
+                  });
+                }
+                args._meta = { uid: crypto.randomUUID() };
+                controller.enqueue({
+                  ...chunk,
+                  input: JSON.stringify(args),
+                });
+                toolCallId = "";
+                return;
+              }
+
               const agent = customAgents?.find(
                 (a) => a.name === args.agentType,
               );
@@ -93,35 +118,12 @@ export function createNewTaskMiddleware(
                 });
               }
 
-              const uid = crypto.randomUUID();
-
-              // A top-level task is created by its own tab, in its own store,
-              // so only its id is assigned here. The agent's isolation applies
-              // once the new task invokes the agent itself.
-              if (isTopLevelTaskSpawn(args)) {
-                if (agent?._internal) {
-                  throw new InvalidToolInputError({
-                    toolName: chunk.toolName,
-                    toolInput: chunk.input,
-                    cause: new Error(
-                      `Agent ${agent.name} cannot run as a top-level task.`,
-                    ),
-                  });
-                }
-                args._meta = { uid };
-                controller.enqueue({
-                  ...chunk,
-                  input: JSON.stringify(args),
-                });
-                toolCallId = "";
-                return;
-              }
-
               const isolation = args.isolation ?? agent?.isolation;
               if (isolation) {
                 args.isolation = isolation;
               }
 
+              const uid = crypto.randomUUID();
               let taskCwd = cwd;
               if (args.isolation === "worktree") {
                 taskCwd = await getSubagentWorktreePath?.(uid);

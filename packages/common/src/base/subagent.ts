@@ -93,7 +93,7 @@ export function createTopLevelTaskStartedResult(
   worktree?: { path: string; branch?: string },
 ): string {
   const location = worktree
-    ? `\nIt works in the worktree at ${worktree.path}${worktree.branch ? ` (branch ${worktree.branch})` : ""}, created from the current HEAD; its changes are not applied to the current workspace.`
+    ? `\nIt works in the worktree at ${worktree.path}${worktree.branch ? ` (branch ${worktree.branch})` : ""}, created from the HEAD commit of the current working directory; its changes are not applied to the current workspace.`
     : "";
   return `Started top-level task ${taskId} in its own tab. It runs independently and the user can follow and continue it there; its result is not returned to you.${location}
 Its transcript is updated at the end of each of its turns at pochi://$/transcripts/${taskId}.md. Read it only when you need its progress or outcome.`;

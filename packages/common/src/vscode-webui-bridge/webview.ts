@@ -514,7 +514,13 @@ export interface VSCodeHostApi {
 
   createWorktree(options?: CreateWorktreeOptions): Promise<GitWorktree | null>;
 
-  deleteWorktree(worktreePath: string): Promise<boolean>;
+  deleteWorktree(
+    worktreePath: string,
+    options?: {
+      /** Also delete the worktree's branch. */
+      deleteBranch?: boolean;
+    },
+  ): Promise<boolean>;
 
   queryGithubIssues(query?: string): Promise<GithubIssue[]>;
 

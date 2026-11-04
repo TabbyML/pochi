@@ -88,10 +88,10 @@ export const inputSchema = z.object({
       "Optional, defaults to true. Background returns a backgroundJobId immediately and delivers the result later as a system notification; false blocks until the result is available.",
     ),
   isolation: SubagentIsolation.optional().describe(
-    'Optional. Set to "worktree" to run the agent in a temporary git worktree created from the latest default branch, so its file changes do not touch the current workspace. The worktree is removed if the agent makes no changes; otherwise its path and branch are reported back. With spawn "task", it instead creates a regular worktree from the current HEAD that stays after the task ends.',
+    'Optional. Set to "worktree" to run the agent in a temporary git worktree created from the latest default branch, so its file changes do not touch the current workspace. The worktree is removed if the agent makes no changes; otherwise its path and branch are reported back. With spawn "task", it instead creates a regular worktree from the HEAD commit of the current working directory (uncommitted changes are not carried over) that stays after the task ends.',
   ),
   spawn: NewTaskSpawn.optional().describe(
-    'Optional, defaults to "subagent". Set to "task" only when the user explicitly asks for a new or separate task; it starts an independent top-level task in its own editor tab instead of a subagent. The task shows up in the user\'s task list, the user can follow and continue it, and it can launch its own agents. Only its task id and transcript path come back to you; background is ignored.',
+    'Optional, defaults to "subagent". Set to "task" only when the user explicitly asks for a new or separate task; it starts an independent top-level task in its own editor tab instead of a subagent. The task shows up in the user\'s task list, the user can follow and continue it, and it can launch its own agents. It always runs the default agent, so leave agentType empty. Only its task id and transcript path come back to you; background is ignored.',
   ),
   _meta: z
     .object({
@@ -140,6 +140,7 @@ Usage notes:
    - The call returns right away with only the task id and transcript path. No result or completion notification follows, so do not wait for one.
    - The user follows and continues the task in its own tab, so you do not need to relay its result.
    - It does not see your conversation. Write a self-contained prompt with all the context it needs; do not ask it to report back to you.
+   - It always runs the default agent. Leave agentType empty; if the work suits a specialized agent, say so in the prompt.
    - To check its progress or outcome later, read its transcript with readFile.
       `.trim(),
     inputSchema,

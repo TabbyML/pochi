@@ -256,6 +256,12 @@ export class PochiTaskEditorProvider
       await openTaskInColumn(uri, options);
     } catch (error) {
       const errorMessage = toErrorMessage(error);
+      if (options?.background) {
+        // Background opens are started by an agent, which reports the
+        // failure itself instead of the user seeing a popup.
+        logger.error(`Failed to open Pochi task: ${errorMessage}`, error);
+        throw error;
+      }
       vscode.window.showErrorMessage(
         `Failed to open Pochi task: ${errorMessage}`,
       );

@@ -265,6 +265,18 @@ export class WorktreeManager implements vscode.Disposable {
 
     let newWorktree: GitWorktree | undefined;
     if (options?.generateBranchName) {
+      const commitish = options.baseBranch
+        ? options.baseBranch
+        : options.baseCwd
+          ? await this.resolveHeadCommit(options.baseCwd)
+          : "HEAD";
+      if (!commitish) {
+        vscode.window.showErrorMessage(
+          `Failed to create worktree: cannot resolve the HEAD commit of ${options.baseCwd}.`,
+        );
+        return null;
+      }
+
       // Generate branch name and create worktree
       const { worktreePath, branchName } =
         await this.prepareBranchNameAndWorktreePath({
@@ -277,7 +289,7 @@ export class WorktreeManager implements vscode.Disposable {
         worktreePath,
         branchName,
         workspacePath: mainWorktreePath,
-        commitish: options?.baseBranch ?? "HEAD",
+        commitish,
       });
     } else {
       // The interactive command does not return the selected worktree.
@@ -311,7 +323,27 @@ export class WorktreeManager implements vscode.Disposable {
     return null;
   }
 
-  async deleteWorktree(worktreePath: string): Promise<boolean> {
+  /** The HEAD commit of a working tree, or undefined if it has none. */
+  private async resolveHeadCommit(cwd: string): Promise<string | undefined> {
+    try {
+      const commit = await this.git.raw([
+        "-C",
+        cwd,
+        "rev-parse",
+        "--verify",
+        "HEAD^{commit}",
+      ]);
+      return commit.trim() || undefined;
+    } catch (error) {
+      logger.debug(`Failed to resolve HEAD of ${cwd}`, error);
+      return undefined;
+    }
+  }
+
+  async deleteWorktree(
+    worktreePath: string,
+    options?: { deleteBranch?: boolean },
+  ): Promise<boolean> {
     if ((await this.isGitRepository()) === false) {
       return false;
     }
@@ -349,6 +381,14 @@ export class WorktreeManager implements vscode.Disposable {
         vscode.window.showErrorMessage(`Failed to delete worktree: ${message}`);
         return false;
       }
+    }
+
+    if (options?.deleteBranch && worktree.branch) {
+      await git.raw(["branch", "-D", worktree.branch]).catch((error) => {
+        logger.warn(
+          `Failed to delete branch ${worktree.branch}: ${toErrorMessage(error)}`,
+        );
+      });
     }
 
     // Update the signal eagerly so the UI doesn't flicker while waiting for

@@ -75,7 +75,7 @@ describe("createNewTaskMiddleware top-level task", () => {
   it("assigns an id without creating a subtask", async () => {
     const getSubagentWorktreePath = vi.fn(async () => "/unused");
     const { args, taskInited } = await callNewTask(
-      { ...base, agentType: "fixer" },
+      { ...base, isolation: "worktree" },
       getSubagentWorktreePath,
     );
     expect(args._meta.uid).toEqual(expect.any(String));
@@ -83,21 +83,19 @@ describe("createNewTaskMiddleware top-level task", () => {
     expect(getSubagentWorktreePath).not.toHaveBeenCalled();
   });
 
-  it("does not inherit the agent's isolation", async () => {
-    const { args } = await callNewTask({ ...base, agentType: "fixer" });
-    expect(args.isolation).toBeUndefined();
-  });
-
   it("keeps an explicit worktree request", async () => {
     const { args } = await callNewTask({ ...base, isolation: "worktree" });
     expect(args.isolation).toBe("worktree");
   });
 
-  it("rejects internal agents", async () => {
-    await expect(callNewTask({ ...base, agentType: "audit" })).rejects.toThrow(
-      "cannot run as a top-level task",
-    );
-  });
+  it.each(["fixer", "audit", "missing"])(
+    "rejects agentType %s",
+    async (agentType) => {
+      await expect(callNewTask({ ...base, agentType })).rejects.toThrow(
+        'agentType is not supported with spawn "task"',
+      );
+    },
+  );
 });
 
 describe("createNewTaskMiddleware isolation", () => {

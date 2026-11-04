@@ -5,6 +5,9 @@ import { StatusIcon } from "../status-icon";
 import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 
+// A spawned task always runs the default agent.
+const toolTitle = "Task";
+
 /**
  * A newTask call that spawned an independent top-level task. The task runs in
  * its own tab and store, so the card only links to it.
@@ -16,7 +19,7 @@ export function SpawnedTaskView({
   const uid = tool.input?._meta?.uid;
   const description = tool.input?.description ?? "";
   const prompt = tool.input?.prompt ?? "";
-  const toolTitle = tool.input?.agentType?.trim() || "Task";
+
   const started =
     tool.state === "output-available" &&
     "result" in tool.output &&

@@ -51,6 +51,11 @@ export type GithubIssue = z.infer<typeof GithubIssue>;
 
 export interface CreateWorktreeOptions {
   baseBranch?: string;
+  /**
+   * Create the worktree from the HEAD commit of this working tree instead of
+   * the main workspace's HEAD. Ignored when `baseBranch` is set.
+   */
+  baseCwd?: string;
   generateBranchName?: {
     prompt: string;
     files?: {

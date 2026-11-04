@@ -12,13 +12,14 @@ import {
 } from "@getpochi/common/tool-utils";
 
 const generateBranchName = sinon.stub();
+const simpleGitRaw = sinon.stub().resolves("");
 const { WorktreeManager } = proxyquire.noCallThru()("../worktree", {
   "@/lib/generate-branch-name": { generateBranchName },
   "../layout": { getViewColumnForTerminal: sinon.stub().returns(undefined) },
   "simple-git": sinon.stub().returns({
     revparse: sinon.stub().resolves("gitdir"),
     checkIsRepo: sinon.stub().resolves(false),
-    raw: sinon.stub().resolves(""),
+    raw: simpleGitRaw,
   }),
 });
 
@@ -119,6 +120,88 @@ describe("worktree owner", () => {
       assert.strictEqual(duplicate, null);
       assert.strictEqual(await readWorktreeOwner(first.path), "user");
       assert.strictEqual(await readWorktreeOwner(second.path), "user");
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("creates a worktree from the HEAD of another working tree", async () => {
+    const parentWorktree = addWorktree("wt-parent");
+    git(
+      parentWorktree,
+      "-c",
+      "user.name=test",
+      "-c",
+      "user.email=test@example.com",
+      "commit",
+      "-q",
+      "--allow-empty",
+      "-m",
+      "parent work",
+    );
+    generateBranchName.callsFake(async ({ prompt }) => prompt);
+    const manager = new WorktreeManager(
+      { workspacePath: repo },
+      { getRepository: () => undefined },
+      { get: () => undefined },
+      { detectWorktreesLimit: { value: 10 } },
+      { ready: Promise.resolve(), tasks: { value: {} } },
+      { getArchivedSignal: () => ({ value: {} }) },
+    );
+    sinon.stub(manager, "isGitRepository").resolves(true);
+    manager.git = {
+      branch: async () => ({ all: [] }),
+      raw: async (args: string[]) => git(repo, ...args),
+    };
+    try {
+      const child = await manager.createWorktree({
+        baseCwd: parentWorktree,
+        generateBranchName: { prompt: "child" },
+      });
+      assert.strictEqual(child?.branch, "child");
+      assert.strictEqual(
+        git(child.path, "rev-parse", "HEAD"),
+        git(parentWorktree, "rev-parse", "HEAD"),
+      );
+      assert.notStrictEqual(
+        git(child.path, "rev-parse", "HEAD"),
+        git(repo, "rev-parse", "HEAD"),
+      );
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("deletes the branch of a deleted worktree only when asked", async () => {
+    const manager = new WorktreeManager(
+      { workspacePath: repo },
+      {},
+      { delete: () => undefined },
+      { detectWorktreesLimit: { value: 10 } },
+      { ready: Promise.resolve(), tasks: { value: {} } },
+      { getArchivedSignal: () => ({ value: {} }) },
+    );
+    sinon.stub(manager, "isGitRepository").resolves(true);
+    const worktrees = [
+      { path: "/repo.worktree/kept", branch: "kept", commit: "", isMain: false },
+      {
+        path: "/repo.worktree/removed",
+        branch: "removed",
+        commit: "",
+        isMain: false,
+      },
+    ];
+    try {
+      manager.worktrees.value = worktrees;
+      simpleGitRaw.resetHistory();
+      assert.strictEqual(await manager.deleteWorktree(worktrees[0].path), true);
+      assert.ok(!simpleGitRaw.calledWith(["branch", "-D", "kept"]));
+
+      assert.strictEqual(
+        await manager.deleteWorktree(worktrees[1].path, { deleteBranch: true }),
+        true,
+      );
+      assert.ok(simpleGitRaw.calledWith(["branch", "-D", "removed"]));
     } finally {
       manager.dispose();
     }
