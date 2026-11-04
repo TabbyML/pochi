@@ -6,7 +6,9 @@ import {
   getToolPartError,
   isToolCallCancellationError,
 } from "@/lib/tool-call-error";
-import { useEffect, useState } from "react";
+import { useDefaultStore } from "@/lib/use-default-store";
+import { type Message, catalog } from "@getpochi/livekit";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { useBackgroundSubagentStatus } from "./background-status-icon";
@@ -14,6 +16,18 @@ import { MoveToBackgroundButton } from "./move-to-background-button";
 import { SubAgentView } from "./sub-agent-view";
 
 const BrowserRecordingVideoOffsetSeconds = 4.5;
+
+export function BackgroundBrowserView(
+  props: NewTaskToolViewProps & { uid: string },
+) {
+  const store = useDefaultStore();
+  const rows = store.useQuery(catalog.queries.makeMessagesQuery(props.uid));
+  const taskSource = useMemo(
+    () => ({ messages: rows.map((row) => row.data as Message), todos: [] }),
+    [rows],
+  );
+  return <BrowserView {...props} taskSource={taskSource} />;
+}
 
 export function BrowserView(props: NewTaskToolViewProps) {
   const {

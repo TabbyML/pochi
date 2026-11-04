@@ -6,9 +6,7 @@ import {
   getLogger,
 } from "@getpochi/common";
 import type { McpStatus } from "@getpochi/common/mcp-utils";
-import { decodeStoreId } from "@getpochi/common/store-id-utils";
 import {
-  type BrowserAgentSettings,
   type BuiltinSubAgentInfo,
   type CustomAgentFile,
   type DisplayModel,
@@ -35,6 +33,7 @@ import {
 import { displayModelToLLM } from "../features/chat/lib/display-model-to-llm";
 import { useSettingsStore } from "../features/settings/store";
 import { browserSessionManager } from "./browser-session-manager";
+import { prepareBrowserSession } from "./prepare-browser-session";
 import { blobStore } from "./remote-blob-store";
 
 const logger = getLogger("VscodeRunningTaskAdaptor");
@@ -56,9 +55,6 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   private readonly unsubscribers: Array<() => void> = [];
   private readonly ready: Promise<void>;
   private readonly taskLLMs = new Map<string, LLMRequestData>();
-  private browserSettings:
-    | Promise<{ readonly value: BrowserAgentSettings }>
-    | undefined;
   private disposed = false;
 
   /** `store` is needed to save browser recordings of background tasks. */
@@ -226,10 +222,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
         ? { type: "browser", sessionId: args.taskId }
         : undefined;
     if (builtinSubAgentInfo && args.toolName === "executeCommand") {
-      await this.registerBrowserSession(
+      await prepareBrowserSession(
         args.taskId,
         args.storeId,
-        args.abortSignal,
+        () => this.disposed || args.abortSignal.aborted,
       );
       args.abortSignal.throwIfAborted();
       if (this.disposed) {
@@ -273,41 +269,6 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return (
       finalized && formatSubagentWorktreeNote(finalized, finalized.removed)
     );
-  }
-
-  /** Starts the live preview and recording of a background browser task. */
-  private async registerBrowserSession(
-    taskId: string,
-    storeId: string,
-    abortSignal: AbortSignal,
-  ) {
-    if (
-      this.disposed ||
-      abortSignal.aborted ||
-      browserSessionManager.isRegistered(taskId)
-    ) {
-      return;
-    }
-    try {
-      this.browserSettings ??= vscodeHost
-        .readBrowserAgentSettings()
-        .then(({ browserSettings }) => threadSignal(browserSettings));
-      const settings = (await this.browserSettings).value;
-      if (this.disposed || abortSignal.aborted) return;
-      await browserSessionManager.registerSession(
-        taskId,
-        decodeStoreId(storeId).taskId,
-        {
-          viewport:
-            settings.runtime.mode === "managed"
-              ? settings.managedBrowser.viewport
-              : undefined,
-        },
-      );
-    } catch (error) {
-      this.browserSettings = undefined;
-      logger.warn({ taskId, error }, "Failed to register browser session");
-    }
   }
 
   /**

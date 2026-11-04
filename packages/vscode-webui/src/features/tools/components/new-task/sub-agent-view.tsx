@@ -11,7 +11,7 @@ import { isVSCodeEnvironment } from "@/lib/vscode";
 import type { UITools } from "@getpochi/livekit";
 import { type ToolUIPart, isStaticToolUIPart } from "ai";
 import { SendToBack } from "lucide-react";
-import { type ComponentProps, useEffect, useRef, useState } from "react";
+import { type ComponentProps, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { NewTaskToolViewProps } from ".";
 import { StatusIcon } from "../status-icon";
@@ -54,19 +54,24 @@ export function SubAgentView({
   isBackground,
 }: SubAgentViewProps) {
   const { t } = useTranslation();
-  const lastToolCallRef = useRef<ToolUIPart<UITools>>(null);
+  const messages = taskSource?.messages;
+  const lastToolCall = useMemo(() => {
+    if (!showToolCall || !isExecuting || !messages || messages.length < 2)
+      return;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message.role !== "assistant") continue;
+      const toolCall = message.parts.findLast(
+        (part): part is ToolUIPart<UITools> => isStaticToolUIPart(part),
+      );
+      if (toolCall) return toolCall;
+    }
+  }, [messages, showToolCall, isExecuting]);
   const [showFooterTaskThread, setShowFooterTaskThread] = useState(false);
-  const showToolCallLite =
-    showToolCall &&
-    isExecuting &&
-    taskSource &&
-    taskSource.messages.length > 1 &&
-    !!lastToolCallRef.current;
   const canShowFooterTaskThread =
     showTaskThread && !!taskSource && taskSource.messages.length > 1;
 
-  const showFooter =
-    showToolCallLite || footerActions || canShowFooterTaskThread;
+  const showFooter = !!lastToolCall || footerActions || canShowFooterTaskThread;
   const hasContent = children != null || !!showFooter;
   const navigate = useNavigate();
   const store = useDefaultStore();
@@ -77,21 +82,6 @@ export function SubAgentView({
   const canNavigate =
     !isBackground && !!uid && !!taskSource?.parentId && isVSCodeEnvironment();
   const canInspectInBackground = isBackground && !!uid && isVSCodeEnvironment();
-
-  useEffect(() => {
-    const lastMessage = taskSource?.messages.at(-1);
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      return;
-    }
-    const lastToolCall = lastMessage.parts.findLast(
-      (part): part is ToolUIPart<UITools> => {
-        return isStaticToolUIPart(part);
-      },
-    );
-    if (lastToolCall) {
-      lastToolCallRef.current = lastToolCall;
-    }
-  }, [taskSource?.messages]);
 
   return (
     <div className="mt-2 flex flex-col overflow-hidden rounded-md border shadow-sm">
@@ -170,7 +160,7 @@ export function SubAgentView({
       {showFooter && (
         <>
           <div className="flex items-center gap-2 overflow-x-hidden border-t bg-muted/30 px-2 py-1.5 text-muted-foreground">
-            {(canShowFooterTaskThread || showToolCallLite) && (
+            {(canShowFooterTaskThread || !!lastToolCall) && (
               <div
                 className={cn(
                   "group flex min-w-0 flex-1 items-center gap-2 overflow-hidden rounded-sm px-1.5 py-1",
@@ -192,7 +182,7 @@ export function SubAgentView({
                     />
                   </div>
                 )}
-                {showToolCallLite && lastToolCallRef.current && (
+                {lastToolCall && (
                   <div
                     className={cn(
                       "animated-gradient-text min-w-0 flex-1 truncate text-xs",
@@ -201,7 +191,7 @@ export function SubAgentView({
                     )}
                   >
                     <ToolCallLite
-                      tools={[lastToolCallRef.current]}
+                      tools={[lastToolCall]}
                       requiresApproval={false}
                       showCommandDetails
                       showStatusIcon={false}

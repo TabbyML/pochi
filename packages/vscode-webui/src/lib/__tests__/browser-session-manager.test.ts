@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const host = vi.hoisted(() => ({
   registerBrowserSession: vi.fn(),
-  unregisterBrowserSession: vi.fn(),
+  unregisterBrowserSession: vi.fn(async (_taskId: string) => {}),
 }));
 vi.mock("../vscode", () => ({ vscodeHost: host }));
 vi.mock("@/lib/remote-blob-store", () => ({ blobStore: {} }));
@@ -222,6 +222,28 @@ describe("host session cleanup", () => {
     expect(host.unregisterBrowserSession).toHaveBeenCalledWith("host-only");
     finish();
     await Promise.all([first, second]);
+  });
+
+  it("closes the host while recording finalization is still pending", async () => {
+    host.registerBrowserSession.mockResolvedValue({});
+    const manager = new BrowserSessionManager();
+    await manager.registerSession("slow-upload", "parent", {});
+    const sessions = (
+      manager as unknown as { browserSessions: Map<string, BrowserRecordingSession> }
+    ).browserSessions;
+    let finishUpload!: () => void;
+    vi.spyOn(sessions.get("slow-upload")!, "stopStreaming").mockReturnValue(
+      new Promise<void>((resolve) => { finishUpload = resolve; }),
+    );
+    const first = manager.unregisterSession("slow-upload", "call", {} as never);
+    const second = manager.unregisterSession("slow-upload", "call", {} as never);
+    try {
+      expect(host.unregisterBrowserSession).toHaveBeenCalledExactlyOnceWith("slow-upload");
+      expect(manager.isRegistered("slow-upload")).toBe(false);
+    } finally {
+      finishUpload();
+      await Promise.all([first, second]);
+    }
   });
 
   it("releases the host even when recording finalization throws", async () => {

@@ -291,7 +291,7 @@ export class BrowserSessionManager {
     parentId: string,
     recordingOptions: BrowserRecordingOptions,
   ) {
-    if (this.browserSessions.has(taskId)) return;
+    if (this.browserSessions.has(taskId) || this.stopping.has(taskId)) return;
     const recordingSession = new BrowserRecordingSession(
       taskId,
       recordingOptions,
@@ -339,24 +339,19 @@ export class BrowserSessionManager {
     const pending = this.stopping.get(taskId);
     if (pending) return pending;
     const recordingSession = this.browserSessions.get(taskId);
-    const stopping = (async () => {
-      try {
-        await recordingSession?.stopStreaming(toolCallId, store);
-      } catch (error) {
+    this.browserSessions.delete(taskId);
+    latestFrames.delete(taskId);
+    // Closing the host browser does not depend on encoding or uploading its last frames.
+    const stopping = Promise.all([
+      recordingSession?.stopStreaming(toolCallId, store).catch((error) => {
         logger.error("Failed to stop browser recording", error);
-      }
-      try {
-        // Tools can create a host session before the preview creates a recorder.
-        // Always release it, even if recording was unavailable or failed to flush.
-        await vscodeHost.unregisterBrowserSession(taskId);
-      } catch (error) {
+      }),
+      vscodeHost.unregisterBrowserSession(taskId).catch((error) => {
         logger.error("Failed to release browser session", error);
-      } finally {
-        this.browserSessions.delete(taskId);
-        this.stopping.delete(taskId);
-        latestFrames.delete(taskId);
-      }
-    })();
+      }),
+    ]).then(() => {
+      this.stopping.delete(taskId);
+    });
     this.stopping.set(taskId, stopping);
     return stopping;
   }

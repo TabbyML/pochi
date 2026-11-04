@@ -21,7 +21,7 @@ import { ExpandableToolContainer } from "../tool-container";
 import type { ToolProps } from "../types";
 import { AttemptTodoCompletionView } from "./attempt-todo-completion-view";
 import { BackgroundSubagentStatusIcon } from "./background-status-icon";
-import { BrowserView } from "./browser-view";
+import { BackgroundBrowserView, BrowserView } from "./browser-view";
 import { MoveToBackgroundButton } from "./move-to-background-button";
 import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
@@ -49,6 +49,13 @@ export const newTaskTool: React.FC<NewTaskToolProps> = (props) => {
   }
 
   if (!inlinedTaskSource && uid && isVSCodeEnvironment()) {
+    if (
+      tool.input?.agentType === "browser" &&
+      tool.state === "output-available" &&
+      tool.output.backgroundJobId
+    ) {
+      return <BackgroundBrowserView {...props} uid={uid} />;
+    }
     return <LiveSubTaskToolView {...props} uid={uid} />;
   }
 

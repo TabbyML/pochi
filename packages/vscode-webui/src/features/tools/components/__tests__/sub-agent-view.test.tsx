@@ -28,7 +28,9 @@ vi.mock("@/features/chat", () => ({
 }));
 
 vi.mock("../tool-call-lite", () => ({
-  ToolCallLite: () => <span />,
+  ToolCallLite: ({ tools }: { tools: { toolCallId: string }[] }) => (
+    <span>{tools[0].toolCallId}</span>
+  ),
 }));
 
 vi.mock("@/lib/hooks/use-navigate", () => ({
@@ -99,6 +101,41 @@ describe("SubAgentView", () => {
 
     const header = container.firstElementChild?.firstElementChild;
     expect(header?.className).toContain("border-b");
+  });
+
+  it("shows the newest browser command as soon as the task messages change", () => {
+    const card = (toolCallId: string) => (
+      <SubAgentView
+        tool={browserTool}
+        isExecuting={true}
+        showToolCall={true}
+        taskSource={{
+          todos: [],
+          messages: [
+            { id: "prompt", role: "user", parts: [] },
+            {
+              id: "step",
+              role: "assistant",
+              parts: [
+                {
+                  type: "tool-executeCommand",
+                  state: "input-available",
+                  toolCallId,
+                  input: { command: "agent-browser snapshot" },
+                },
+              ],
+            },
+          ],
+        }}
+      >
+        {null}
+      </SubAgentView>
+    );
+    const { rerender } = render(card("first-command"));
+    expect(screen.getByText("first-command")).toBeTruthy();
+    rerender(card("second-command"));
+    expect(screen.getByText("second-command")).toBeTruthy();
+    expect(screen.queryByText("first-command")).toBeNull();
   });
 
   it("opens a foreground subtask by navigating to it", () => {
