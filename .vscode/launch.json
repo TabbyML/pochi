@@ -7,8 +7,9 @@
   "configurations": [
     {
       "name": "Run dev:server",
-      "type": "node",
+      "type": "node-terminal",
       "request": "launch",
+      "command": "echo 'dev:server is running in the task terminals: website http://localhost:4111, api http://localhost:4113'",
       "preLaunchTask": "dev:server"
     },
     {
