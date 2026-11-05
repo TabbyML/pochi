@@ -109,6 +109,16 @@ export interface TaskState {
 
 export type TaskStates = Record<string, TaskState>;
 
+/**
+ * A user message queued while the agent is busy. Persisted per task so it
+ * survives webview reloads; `parts` and `display` are opaque to the host.
+ */
+export type QueuedUserInputRecord = {
+  id: string;
+  parts: unknown[];
+  display?: unknown;
+};
+
 export type TaskArchivedParams =
   | { type: "single"; taskId: string; archived: boolean }
   | { type: "batch" };

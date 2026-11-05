@@ -263,7 +263,7 @@ export class BackgroundJobManager {
           blobStore,
           abortSignal,
           getters,
-          backgroundJobNotifications: { startTurn: appendMessage },
+          pendingInput: { startTurn: appendMessage },
           backgroundJobManager: this,
           chatClass: InMemoryChat,
           isSubTask: isSubagent,

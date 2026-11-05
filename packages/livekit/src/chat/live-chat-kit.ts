@@ -65,7 +65,6 @@ import {
 import {
   type BackgroundJobNotificationPart,
   attachBackgroundJobNotificationParts,
-  createBackgroundJobNotificationMessage,
   dedupeBackgroundJobNotificationParts,
   getBackgroundJobNotificationParts,
   toBackgroundJobNotificationParts,
@@ -80,6 +79,14 @@ import {
 import { prepareForkTaskData } from "./fork-task-tools";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
+import {
+  EmptyPendingInput,
+  type PendingInput,
+  type QueuedUserInput,
+  type QueuedUserInputStorage,
+  attachUserInputParts,
+  getQueuedUserInputParts,
+} from "./pending-input";
 import { TaskTranscriptWriter } from "./task-transcript";
 import { scheduleGenerateTitleJob } from "./title-generation";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
@@ -260,18 +267,26 @@ async function runSideEffectSafely({
   }
 }
 
-export type LiveChatKitBackgroundJobNotificationOptions = {
+export type LiveChatKitPendingInputOptions = {
   /**
-   * Starts a turn carrying nothing but the given notifications. Defaults to
-   * sending the message on the kit's own chat; hosts that drive their own step
-   * loop (the CLI) must append it synchronously and let the loop send it.
+   * Starts a turn carrying the given pending input. Defaults to sending the
+   * message on the kit's own chat; hosts that drive their own step loop (the
+   * background task executor) must append it synchronously and let the loop
+   * send it.
    */
   startTurn?: (message: Message) => void;
   /**
-   * Called whenever the set of notifications waiting to be delivered changes,
-   * so a host can render them.
+   * Called whenever the input waiting to be delivered changes, so a host can
+   * render it.
    */
-  onPendingChange?: (parts: BackgroundJobNotificationPart[]) => void;
+  onChange?: (pending: PendingInput) => void;
+  /**
+   * Called synchronously when queued user inputs are taken for a request, right
+   * before they become part of the conversation.
+   */
+  onTakeUserInputs?: (inputs: readonly QueuedUserInput[]) => void;
+  /** Persists queued user inputs across host reloads. */
+  storage?: QueuedUserInputStorage;
 };
 
 export type LiveChatKitOptions<T> = {
@@ -327,11 +342,12 @@ export type LiveChatKitOptions<T> = {
   getRecentFilesForCompact?: GetRecentFilesForCompact;
 
   /**
-   * Delivery of finished background job notifications. The host pushes them in
-   * with `enqueueBackgroundJobNotifications`; the kit owns the pending set and
-   * when it reaches the model.
+   * Delivery of input that arrives while the agent is busy: user messages
+   * queued with `queueUserInput` and finished background job notifications
+   * pushed with `enqueueBackgroundJobNotifications`. The kit owns the pending
+   * set and when it reaches the model.
    */
-  backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions;
+  pendingInput?: LiveChatKitPendingInputOptions;
 
   taskMemory?: LiveChatKitTaskMemoryOptions;
 
@@ -382,11 +398,15 @@ export class LiveChatKit<
   private readonly taskMemoryAdaptor: TaskMemoryAdaptor | undefined;
   private readonly autoMemoryAdaptor: AutoMemoryAdaptor | undefined;
   private readonly transcriptWriter: TaskTranscriptWriter | undefined;
-  private readonly backgroundJobNotifications:
-    | LiveChatKitBackgroundJobNotificationOptions
+  private readonly pendingInputOptions:
+    | LiveChatKitPendingInputOptions
     | undefined;
+  private queuedUserInputs: QueuedUserInput[] = [];
   private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
     [];
+  private pendingInputSnapshot: PendingInput = EmptyPendingInput;
+  /** Serializes storage reads and writes, starting with the initial load. */
+  private queuedUserInputsStorageTask: Promise<void> = Promise.resolve();
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private currentToolsExecution:
@@ -440,7 +460,7 @@ export class LiveChatKit<
     onCompactFinish,
     getRecentFilesForCompact,
     backgroundJobManager,
-    backgroundJobNotifications,
+    pendingInput,
     taskMemory,
     projectMemory,
     systemPromptOverride,
@@ -451,7 +471,8 @@ export class LiveChatKit<
     this.persistLocallyOnly = persistLocallyOnly;
     this.blobStore = blobStore;
     this.getters = getters;
-    this.backgroundJobNotifications = backgroundJobNotifications;
+    this.pendingInputOptions = pendingInput;
+    this.loadQueuedUserInputs();
     this.onStreamStart = onStreamStart;
     this.onStreamFinish = onStreamFinish;
     this.backgroundJobManager =
@@ -620,7 +641,7 @@ export class LiveChatKit<
       }
       // Attach after compaction, but before checkpoint hooks so they update
       // the final message that this request will send and persist.
-      await this.attachPendingBackgroundJobNotifications(abortSignal);
+      await this.attachPendingInput(abortSignal);
 
       // Append a complete reminder through the same pre-request flow as other
       // messages. Normal user-message environment injection stays in transport.
@@ -795,15 +816,122 @@ export class LiveChatKit<
     return this.latestRequestSnapshot?.systemPrompt;
   }
 
-  /** The notifications waiting to be delivered to the model. */
-  get pendingBackgroundJobNotifications(): readonly BackgroundJobNotificationPart[] {
-    return this.pendingBackgroundJobNotificationParts;
+  /** The input waiting to be delivered to the model. */
+  get pendingInput(): PendingInput {
+    return this.pendingInputSnapshot;
+  }
+
+  /**
+   * Queues a user message that arrived while the agent is busy. It is
+   * delivered with the next request that goes out anyway, such as the
+   * continuation after tool calls, or by `flushPendingInput` once the agent
+   * has nothing left to do.
+   *
+   * @returns the id of the queued input.
+   */
+  queueUserInput = (input: Omit<QueuedUserInput, "id">): string => {
+    const id = crypto.randomUUID();
+    this.setQueuedUserInputs([...this.queuedUserInputs, { ...input, id }]);
+    return id;
+  };
+
+  /**
+   * Removes a queued user input before it is delivered, e.g. to edit it.
+   *
+   * @returns the removed input, or undefined when it is no longer queued.
+   */
+  removeUserInput = (id: string): QueuedUserInput | undefined => {
+    const input = this.queuedUserInputs.find((item) => item.id === id);
+    if (!input) return undefined;
+    this.setQueuedUserInputs(
+      this.queuedUserInputs.filter((item) => item !== input),
+    );
+    return input;
+  };
+
+  private setQueuedUserInputs(inputs: QueuedUserInput[], persist = true) {
+    this.queuedUserInputs = inputs;
+    if (persist) this.saveQueuedUserInputs();
+    this.notifyPendingInputChange();
+  }
+
+  private loadQueuedUserInputs() {
+    const storage = this.pendingInputOptions?.storage;
+    if (!storage) return;
+    this.queuedUserInputsStorageTask = storage
+      .load()
+      .then((stored) => {
+        // Inputs queued while loading were queued after the stored ones.
+        const known = new Set(this.queuedUserInputs.map((input) => input.id));
+        const restored = stored.filter((input) => !known.has(input.id));
+        if (restored.length === 0) return;
+        this.setQueuedUserInputs(
+          [...restored, ...this.queuedUserInputs],
+          false,
+        );
+      })
+      .catch((err) => {
+        logger.warn("Failed to load queued user inputs", err);
+      });
+  }
+
+  private queuedUserInputsSaveScheduled = false;
+
+  private saveQueuedUserInputs() {
+    const storage = this.pendingInputOptions?.storage;
+    if (!storage || this.queuedUserInputsSaveScheduled) return;
+    this.queuedUserInputsSaveScheduled = true;
+    // Chained after the initial load, so a save never drops stored inputs,
+    // and coalesced so the latest queue is written once.
+    this.queuedUserInputsStorageTask = this.queuedUserInputsStorageTask
+      .then(() => {
+        this.queuedUserInputsSaveScheduled = false;
+        return storage.save([...this.queuedUserInputs]);
+      })
+      .catch((err) => {
+        logger.warn("Failed to save queued user inputs", err);
+      });
+  }
+
+  /**
+   * Takes every queued user input for the request that is about to go out.
+   */
+  private takeQueuedUserInputs(): QueuedUserInput[] {
+    const inputs = this.queuedUserInputs;
+    if (inputs.length === 0) return [];
+    this.setQueuedUserInputs([]);
+    try {
+      this.pendingInputOptions?.onTakeUserInputs?.(inputs);
+    } catch (err) {
+      logger.warn("onTakeUserInputs callback threw", err);
+    }
+    return inputs;
+  }
+
+  /** Puts taken inputs back in front after their turn failed to start. */
+  private restoreQueuedUserInputs(inputs: readonly QueuedUserInput[]) {
+    const known = new Set(this.queuedUserInputs.map((input) => input.id));
+    const restored = inputs.filter((input) => !known.has(input.id));
+    if (restored.length === 0) return;
+    this.setQueuedUserInputs([...restored, ...this.queuedUserInputs]);
+  }
+
+  private notifyPendingInputChange() {
+    this.pendingInputSnapshot = {
+      userInputs: this.queuedUserInputs,
+      notifications: this.pendingBackgroundJobNotificationParts,
+    };
+    try {
+      this.pendingInputOptions?.onChange?.(this.pendingInputSnapshot);
+    } catch (err) {
+      logger.warn("pendingInput.onChange callback threw", err);
+    }
   }
 
   /**
    * Hands background job results and monitor batches to the kit. They are
    * delivered with the next request that goes out anyway, or by
-   * `flushBackgroundJobNotifications` when the agent has nothing left to do.
+   * `flushPendingInput` when the agent has nothing left to do.
    *
    * Notifications already pending or already part of the conversation are
    * ignored, so a host may keep pushing the same ones until it observes them
@@ -851,11 +979,7 @@ export class LiveChatKit<
     parts: BackgroundJobNotificationPart[],
   ) {
     this.pendingBackgroundJobNotificationParts = parts;
-    try {
-      this.backgroundJobNotifications?.onPendingChange?.(parts);
-    } catch (err) {
-      logger.warn("onPendingChange callback threw", err);
-    }
+    this.notifyPendingInputChange();
   }
 
   private takePendingBackgroundJobNotifications(
@@ -895,71 +1019,105 @@ export class LiveChatKit<
   }
 
   /**
-   * Rides the pending notifications along with the request that is about to
-   * go out, so a finished background job reaches the model without costing a
-   * turn of its own.
+   * Rides all pending input along with the request that is about to go out,
+   * so queued user messages and finished background jobs reach the model
+   * without costing a turn of their own. User inputs come first.
    */
-  private async attachPendingBackgroundJobNotifications(
-    abortSignal: AbortSignal,
-  ) {
+  private async attachPendingInput(abortSignal: AbortSignal) {
     const notifications =
       await this.backgroundJobManager.snapshotPendingNotifications(this.taskId);
     abortSignal.throwIfAborted();
     this.enqueueBackgroundJobNotifications(notifications);
-    if (this.pendingBackgroundJobNotificationParts.length === 0) return;
 
-    const lastMessage = this.chat.messages.at(-1);
-    const existingParts = lastMessage?.role === "user" ? lastMessage.parts : [];
-    const messages = attachBackgroundJobNotificationParts(
-      this.chat.messages,
-      this.takePendingBackgroundJobNotifications(existingParts),
-    );
-    if (messages) {
+    let messages = this.chat.messages;
+    const userParts = getQueuedUserInputParts(this.takeQueuedUserInputs());
+    messages = attachUserInputParts(messages, userParts) ?? messages;
+
+    if (this.pendingBackgroundJobNotificationParts.length > 0) {
+      const lastMessage = messages.at(-1);
+      const existingParts =
+        lastMessage?.role === "user" ? lastMessage.parts : [];
+      messages =
+        attachBackgroundJobNotificationParts(
+          messages,
+          this.takePendingBackgroundJobNotifications(existingParts),
+        ) ?? messages;
+    }
+
+    if (messages !== this.chat.messages) {
       this.chat.messages = messages;
     }
   }
 
   /**
-   * Delivers pending notifications when no request is going to carry them,
-   * for instance once the agent has stopped.
+   * Delivers all pending input when no request is going to carry it, for
+   * instance once the agent has stopped.
    *
-   * @returns true when a turn was started for them.
+   * @returns true when a turn was started for it.
    */
-  flushBackgroundJobNotifications = ({
+  flushPendingInput = ({
     automatic = true,
   }: { automatic?: boolean } = {}): boolean => {
     this.enqueueBackgroundJobNotifications(
       this.backgroundJobManager.getPendingNotifications(this.taskId),
     );
-    if (this.pendingBackgroundJobNotificationParts.length === 0) return false;
+    const hasUserInputs = this.queuedUserInputs.length > 0;
+    if (
+      !hasUserInputs &&
+      this.pendingBackgroundJobNotificationParts.length === 0
+    )
+      return false;
 
     // An unanswered follow-up question owns this turn: a notification sent now
-    // would answer in the user's place and hide the question.
-    if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return false;
+    // would answer in the user's place and hide the question. Queued user
+    // input is the user's answer, so it still goes out.
+    if (!hasUserInputs && isAwaitingFollowupAnswer(this.chat.messages.at(-1)))
+      return false;
 
     // Read the live SDK state: the host may still hold an idle render from
     // before another sender synchronously started a request.
     if (this.chat.status === "submitted" || this.chat.status === "streaming")
       return false;
-    const parts = this.takePendingBackgroundJobNotifications([], automatic);
+
+    const userInputs = this.takeQueuedUserInputs();
+    // A user turn goes out anyway, so notifications ride along with it like
+    // with any other request instead of waiting for their wake-up.
+    const notificationParts = this.takePendingBackgroundJobNotifications(
+      [],
+      automatic && userInputs.length === 0,
+    );
+    const parts = [
+      ...getQueuedUserInputParts(userInputs),
+      ...notificationParts,
+    ];
     if (parts.length === 0) return false;
+
     const undoWakeup =
-      automatic && parts.some((part) => part.data.kind === "monitor")
+      automatic &&
+      userInputs.length === 0 &&
+      notificationParts.some((part) => part.data.kind === "monitor")
         ? this.backgroundJobManager.startNotificationTurn(this.taskId)
         : () => {};
-    const message = createBackgroundJobNotificationMessage(parts);
-    const startTurn = this.backgroundJobNotifications?.startTurn;
-    const failed = (error: unknown) => {
-      // Only persistence in the conversation acknowledges the source queue.
+    const message: Message = { id: crypto.randomUUID(), role: "user", parts };
+    const startTurn = this.pendingInputOptions?.startTurn;
+    const failed = (error: unknown, { started }: { started: boolean }) => {
       undoWakeup();
-      this.enqueueBackgroundJobNotificationParts(parts);
-      logger.warn("Failed to send background job notifications", error);
+      // Once sent, the message is part of the conversation even if its
+      // request failed; putting user input back would deliver it twice.
+      if (!started) this.restoreQueuedUserInputs(userInputs);
+      // Only persistence in the conversation acknowledges the source queue,
+      // and re-enqueueing skips notifications the conversation already holds.
+      this.enqueueBackgroundJobNotificationParts(notificationParts);
+      logger.warn("Failed to send pending input", error);
     };
     try {
       if (startTurn) startTurn(message);
-      else void this.chat.sendMessage({ parts: message.parts }).catch(failed);
+      else
+        void this.chat
+          .sendMessage({ parts: message.parts })
+          .catch((error) => failed(error, { started: true }));
     } catch (error) {
-      failed(error);
+      failed(error, { started: false });
       return false;
     }
     return true;

@@ -4,6 +4,36 @@ import { describe, it } from "mocha";
 import type * as vscode from "vscode";
 import { TaskDataStore } from "../task-data-store";
 
+describe("TaskDataStore queued user inputs", () => {
+  it("persists queued user inputs per task across reloads", async () => {
+    let persisted: Record<string, unknown> = {};
+    let writes = 0;
+    const context = { globalState: {
+      get: () => persisted,
+      update: async (_key: string, value: Record<string, unknown>) => {
+        writes += 1;
+        persisted = value;
+      },
+    } } as unknown as vscode.ExtensionContext;
+    const store = new TaskDataStore(context);
+    // Clearing a task that never queued anything does not write.
+    await store.setQueuedUserInputs("task", []);
+    assert.strictEqual(writes, 0);
+
+    const inputs = [
+      { id: "first", parts: [{ type: "text", text: "first" }], display: { raw: { text: "first" } } },
+      { id: "second", parts: [{ type: "text", text: "second" }] },
+    ];
+    await store.setQueuedUserInputs("task", inputs);
+    const reloaded = new TaskDataStore(context);
+    assert.deepStrictEqual(reloaded.getQueuedUserInputs("task"), inputs);
+    assert.deepStrictEqual(reloaded.getQueuedUserInputs("sibling"), []);
+
+    await reloaded.setQueuedUserInputs("task", []);
+    assert.deepStrictEqual(new TaskDataStore(context).getQueuedUserInputs("task"), []);
+  });
+});
+
 describe("TaskDataStore background job notifications", () => {
   it("atomically snapshots accumulated output, persists retry snapshots, and isolates output arriving afterward", async () => {
     let persisted: Record<string, unknown> = {};

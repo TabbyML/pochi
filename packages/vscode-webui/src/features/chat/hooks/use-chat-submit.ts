@@ -1,13 +1,10 @@
 import type { PendingApproval } from "@/features/approval";
 import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
-import {
-  buildTodoModeObjective,
-  prepareMessageParts,
-} from "@/lib/message-utils";
+import { prepareMessageParts } from "@/lib/message-utils";
 import { vscodeHost } from "@/lib/vscode";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { type PastedTextFile, getLogger } from "@getpochi/common";
-import type { Message } from "@getpochi/livekit";
+import type { Message, PendingInput, QueuedUserInput } from "@getpochi/livekit";
 
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { useLatest } from "@/lib/hooks/use-latest";
@@ -30,10 +27,11 @@ import {
 } from "../lib/chat-state";
 import { resolveSlashMentions } from "./resolve-slash-mentions";
 import type { ChatInput } from "./use-chat-input-state";
+import type { QueuedUserInputDisplay } from "./use-pending-input-sink";
 
 const logger = getLogger("UseChatSubmit");
 
-type UseChatReturn = Pick<UseChatHelpers<Message>, "sendMessage" | "stop">;
+type UseChatReturn = Pick<UseChatHelpers<Message>, "stop">;
 type UseAttachmentUploadReturn = ReturnType<typeof useAttachmentUpload>;
 type ResolvedChatInput = Extract<
   ReturnType<typeof resolveSlashMentions>,
@@ -72,8 +70,8 @@ interface UseChatSubmitProps {
   allowSendMessage: boolean;
   allowSteer: boolean;
   pendingApproval: PendingApproval | undefined;
-  queuedMessages: DraftMessage[];
-  setQueuedMessages: React.Dispatch<React.SetStateAction<DraftMessage[]>>;
+  /** The chat kit, which owns the input waiting for delivery. */
+  pendingInputController: PendingInputController;
   reviews: Review[];
   userEdits: FileDiff[];
   skills: ValidSkillFile[];
@@ -82,18 +80,16 @@ interface UseChatSubmitProps {
   clearTerminalContextSelections: () => void;
   taskId: string;
   isTodoMode?: boolean;
-  canCreateTodo?: boolean;
   /** Clears the consumed Todo selection once message preparation succeeds. */
   onTodoModeSubmitted?: () => void;
-  /**
-   * Invoked with the final todo objective right before the message is sent.
-   */
-  onBeforeSendText?: (text: string) => void;
-  /** Asks the chat kit to deliver its pending notifications right away. */
-  flushBackgroundJobNotifications?: (options?: {
-    automatic?: boolean;
-  }) => boolean;
 }
+
+export type PendingInputController = {
+  readonly pendingInput: PendingInput;
+  queueUserInput: (input: Omit<QueuedUserInput, "id">) => string;
+  removeUserInput: (id: string) => QueuedUserInput | undefined;
+  flushPendingInput: (options?: { automatic?: boolean }) => boolean;
+};
 
 export function useChatSubmit({
   chat,
@@ -107,8 +103,7 @@ export function useChatSubmit({
   allowSendMessage,
   allowSteer,
   pendingApproval,
-  queuedMessages,
-  setQueuedMessages,
+  pendingInputController,
   reviews,
   userEdits,
   skills,
@@ -117,10 +112,7 @@ export function useChatSubmit({
   clearTerminalContextSelections,
   taskId,
   isTodoMode = false,
-  canCreateTodo = true,
   onTodoModeSubmitted,
-  onBeforeSendText,
-  flushBackgroundJobNotifications,
 }: UseChatSubmitProps) {
   const autoApproveGuard = useAutoApproveGuard();
   const { isExecuting } = useToolCallLifeCycle();
@@ -134,7 +126,7 @@ export function useChatSubmit({
 
   const activeSelection = useActiveSelection();
 
-  const { sendMessage, stop: stopChat } = chat;
+  const { stop: stopChat } = chat;
   const {
     files,
     upload,
@@ -336,43 +328,41 @@ export function useChatSubmit({
     ],
   );
 
-  const sendChatMessage = useCallback(
-    async (message: DraftMessage) => {
-      const shouldCreateTodo = message.raw.isTodoMode && canCreateTodo;
-      if (shouldCreateTodo) {
-        // Build from the raw prompt and UI markers to avoid duplicating
-        // generated system reminders in the todo objective.
-        const pastedTextFiles = message.parts.flatMap((part) =>
-          part.type === "data-pasted-text" ? [part.data] : [],
-        );
-        const todoObjective = buildTodoModeObjective(
-          message.raw.text ?? "",
-          pastedTextFiles,
-        );
-        if (todoObjective) {
-          onBeforeSendText?.(todoObjective);
+  /**
+   * Delivers all pending input, queued user messages and background job
+   * notifications alike, as one message right away.
+   *
+   * @returns true when a turn was started for it.
+   */
+  const sendPendingInput = useCallback(
+    ({ automatic = false }: { automatic?: boolean } = {}) => {
+      const hasUserInputs =
+        pendingInputController.pendingInput.userInputs.length > 0;
+      if (!pendingInputController.flushPendingInput({ automatic })) {
+        return false;
+      }
+      // User input and explicit steering resume the agent, also after a stop.
+      // Notifications delivered on their own leave the guard alone.
+      if (hasUserInputs || !automatic) {
+        if (pendingApproval?.name === "retry") {
+          pendingApproval.stopCountdown();
         }
+        autoApproveGuard.current = "auto";
       }
-
-      if (pendingApproval?.name === "retry") {
-        pendingApproval.stopCountdown();
-      }
-
-      autoApproveGuard.current = "auto";
-
-      // Notifications pending at this point are attached to this request by
-      // the chat kit, so they never cost a turn of their own.
-      await sendMessage({
-        parts: message.parts,
-      });
+      return true;
     },
-    [
-      canCreateTodo,
-      onBeforeSendText,
-      pendingApproval,
-      autoApproveGuard,
-      sendMessage,
-    ],
+    [pendingInputController, pendingApproval, autoApproveGuard],
+  );
+
+  const queueMessage = useCallback(
+    (message: DraftMessage) => {
+      const display: QueuedUserInputDisplay = {
+        raw: message.raw,
+        draft: message.draft,
+      };
+      pendingInputController.queueUserInput({ parts: message.parts, display });
+    },
+    [pendingInputController],
   );
 
   // Tool approval and chat status can change while attachments are uploaded or
@@ -382,11 +372,44 @@ export function useChatSubmit({
     isRunning,
     handleStop,
     waitForReady,
-    sendChatMessage,
+    sendPendingInput,
   });
 
+  /** Interrupts the agent if needed, then sends all pending input. */
+  const steerPendingInput = useCallback(async () => {
+    const { allowSendMessage, isRunning, handleStop, waitForReady } =
+      submissionState.current;
+    let readyToSend = allowSendMessage;
+    if (isRunning) {
+      readyToSend = (await handleStop()) && (await waitForReady());
+    }
+
+    if (readyToSend) {
+      submissionState.current.sendPendingInput({ automatic: false });
+    }
+  }, [submissionState]);
+
+  const prepareMessage = useCallback(
+    async (submittedInput?: ChatInput) => {
+      setIsPreparingMessage(true);
+      try {
+        const resolvedInput = await validateInput(submittedInput);
+        if (resolvedInput === undefined) {
+          return undefined;
+        }
+
+        return await createMessage(resolvedInput);
+      } finally {
+        setIsPreparingMessage(false);
+      }
+    },
+    [validateInput, createMessage],
+  );
+
   /**
-   * Handles form submission, send the current input to chat if not running, otherwise send it to the message queue.
+   * Handles form submission. The message is queued in the chat kit and sent
+   * right away when the agent is ready; otherwise it rides along with the
+   * agent's next request, or goes out once the agent stops.
    * Including text input, file attachments, reviews and active selections.
    */
   const handleSubmit = useCallback(
@@ -402,38 +425,29 @@ export function useChatSubmit({
         return;
       }
 
-      let message: DraftMessage | undefined;
-      setIsPreparingMessage(true);
-      try {
-        const resolvedInput = await validateInput(submittedInput);
-        if (resolvedInput === undefined) {
-          return;
-        }
-
-        message = await createMessage(resolvedInput);
-      } finally {
-        setIsPreparingMessage(false);
-      }
+      const message = await prepareMessage(submittedInput);
       if (!message) {
         return;
       }
 
+      queueMessage(message);
       if (submissionState.current.allowSendMessage) {
-        submissionState.current.sendChatMessage(message);
-      } else {
-        setQueuedMessages((prev) => [...prev, message]);
+        submissionState.current.sendPendingInput();
       }
     },
     [
       isSubmitEnabled,
       isPreparingMessage,
-      validateInput,
+      prepareMessage,
+      queueMessage,
       submissionState,
-      createMessage,
-      setQueuedMessages,
     ],
   );
 
+  /**
+   * Queues the current input and interrupts the agent so all pending input is
+   * sent right away.
+   */
   const handleSteerSubmit = useCallback(
     async (
       e?: React.FormEvent<HTMLFormElement>,
@@ -447,118 +461,40 @@ export function useChatSubmit({
         return;
       }
 
-      let message: DraftMessage | undefined;
-      setIsPreparingMessage(true);
-      try {
-        const resolvedInput = await validateInput(submittedInput);
-        if (resolvedInput === undefined) {
-          return;
-        }
-
-        message = await createMessage(resolvedInput);
-      } finally {
-        setIsPreparingMessage(false);
-      }
+      const message = await prepareMessage(submittedInput);
       if (!message) {
         return;
       }
 
-      let readyToSend = submissionState.current.allowSendMessage;
-      if (submissionState.current.isRunning) {
-        readyToSend =
-          (await submissionState.current.handleStop()) &&
-          (await submissionState.current.waitForReady());
-      }
-
-      if (readyToSend) {
-        submissionState.current.sendChatMessage(message);
-      } else {
-        setQueuedMessages((messages) => [...messages, message]);
-      }
+      queueMessage(message);
+      await steerPendingInput();
     },
     [
       isSubmitEnabled,
       isPreparingMessage,
-      validateInput,
-      submissionState,
-      createMessage,
-      setQueuedMessages,
+      prepareMessage,
+      queueMessage,
+      steerPendingInput,
     ],
   );
 
-  const handleSteerQueuedMessage = useCallback(
-    async (index: number) => {
-      logger.debug("handleSteerQueuedMessage");
-
-      if (!allowSteer) {
-        return;
-      }
-
-      const messages = [...queuedMessages];
-      const message = messages[index];
-      if (message) {
-        const updatedMessages = messages.filter((_, i) => i !== index);
-        setQueuedMessages(updatedMessages);
-
-        let readyToSend = allowSendMessage;
-        if (isRunning) {
-          readyToSend = (await handleStop()) && (await waitForReady());
-        }
-
-        if (readyToSend) {
-          sendChatMessage(message);
-        }
-      }
-    },
-    [
-      allowSteer,
-      allowSendMessage,
-      isRunning,
-      handleStop,
-      waitForReady,
-      queuedMessages,
-      setQueuedMessages,
-      sendChatMessage,
-    ],
-  );
-
-  /**
-   * Interrupts the agent so the chat kit can deliver its pending notifications
-   * now. The kit owns them, so this only has to make room for the request.
-   */
-  const handleSteerBackgroundJobNotifications = useCallback(async () => {
-    logger.debug("handleSteerBackgroundJobNotifications");
+  /** Interrupts the agent so all pending input is sent right away. */
+  const handleSteer = useCallback(async () => {
+    logger.debug("handleSteer");
 
     if (!allowSteer) {
       return;
     }
 
-    let readyToSend = allowSendMessage;
-    if (isRunning) {
-      readyToSend = (await handleStop()) && (await waitForReady());
-    }
-
-    if (readyToSend) {
-      // Explicit steering resumes the agent after handleStop paused it.
-      autoApproveGuard.current = "auto";
-      flushBackgroundJobNotifications?.({ automatic: false });
-    }
-  }, [
-    allowSteer,
-    allowSendMessage,
-    isRunning,
-    handleStop,
-    waitForReady,
-    autoApproveGuard,
-    flushBackgroundJobNotifications,
-  ]);
+    await steerPendingInput();
+  }, [allowSteer, steerPendingInput]);
 
   return {
     isPreparingMessage,
     handleSubmit,
     handleSteerSubmit,
-    handleSteerQueuedMessage,
-    handleSteerBackgroundJobNotifications,
+    handleSteer,
+    sendPendingInput,
     handleStop,
   };
 }

@@ -29,6 +29,7 @@ import type {
   McpStatus,
   PochiCredentials,
   PochiTaskParams,
+  QueuedUserInputRecord,
   ResourceURI,
   Review,
   RuleFile,
@@ -147,6 +148,13 @@ const VSCodeHostStub = {
       acknowledge: async (_notificationId: string) => {},
       snapshotPending: async () => [],
     }),
+  readQueuedUserInputs: async (
+    _taskId: string,
+  ): Promise<QueuedUserInputRecord[]> => [],
+  saveQueuedUserInputs: async (
+    _taskId: string,
+    _inputs: QueuedUserInputRecord[],
+  ): Promise<void> => {},
   closePochiTabs: (_uid?: string): Promise<void> => {
     return Promise.resolve();
   },

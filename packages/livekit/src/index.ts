@@ -3,11 +3,16 @@ import type { RequestData } from "./types";
 export { defaultCatalog as catalog } from "./livestore";
 export {
   LiveChatKit,
-  type LiveChatKitBackgroundJobNotificationOptions,
   type LiveChatKitOptions,
+  type LiveChatKitPendingInputOptions,
   type LiveChatKitProjectMemoryOptions,
   type LiveChatKitTaskMemoryOptions,
 } from "./chat/live-chat-kit";
+export type {
+  PendingInput,
+  QueuedUserInput,
+  QueuedUserInputStorage,
+} from "./chat/pending-input";
 export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export {
   type BackgroundJobNotificationPart,
