@@ -2,48 +2,41 @@ import type { BackgroundJobNotification } from "@getpochi/common";
 import type {
   BackgroundJobNotificationPart,
   Message,
+  PendingInput,
+  QueuedUserInput,
   Task,
 } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DraftMessage } from "../hooks/use-chat-submit";
+import type {
+  DraftMessage,
+  PendingInputController,
+} from "../hooks/use-chat-submit";
 import { ChatToolbar } from "./chat-toolbar";
 import { QueuedMessages } from "./queued-messages";
 const chatSubmitMocks = vi.hoisted(() => {
   const preparing = { current: false };
-  const handleSteerQueuedMessage = vi.fn();
-  const handleSteerBackgroundJobNotifications = vi.fn();
-  const setQueuedMessages = {
-    current: undefined as
-      | React.Dispatch<React.SetStateAction<unknown[]>>
-      | undefined,
-  };
+  const handleSteer = vi.fn();
+  const sendPendingInput = vi.fn();
   return {
     preparing,
-    handleSteerQueuedMessage,
-    handleSteerBackgroundJobNotifications,
-    setQueuedMessages,
+    handleSteer,
+    sendPendingInput,
     useChatSubmit: vi.fn(
-      (props: {
-        setQueuedMessages: unknown;
+      (_props: {
         isTodoMode?: boolean;
         onTodoModeSubmitted?: () => void;
-        onBeforeSendText?: (text: string) => void;
-      }) => {
-        setQueuedMessages.current = props.setQueuedMessages as React.Dispatch<
-          React.SetStateAction<unknown[]>
-        >;
-        return {
-          isPreparingMessage: preparing.current,
-          handleSubmit: vi.fn(),
-          handleSteerSubmit: vi.fn(),
-          handleSteerQueuedMessage,
-          handleSteerBackgroundJobNotifications,
-          handleStop: vi.fn(),
-        };
-      },
+      }) => ({
+        isPreparingMessage: preparing.current,
+        handleSubmit: vi.fn(),
+        handleSteerSubmit: vi.fn(),
+        handleSteer,
+        sendPendingInput,
+        handleStop: vi.fn(),
+      }),
     ),
   };
 });
@@ -56,7 +49,8 @@ const chatInputFormMocks = vi.hoisted(() => ({
             nonRemovable?: boolean;
           };
         }[];
-        onSteerQueuedMessage?: (index: number) => void;
+        onSteerQueuedMessages?: () => void;
+        onRemoveQueuedMessage?: (index: number) => void;
         onEditQueuedMessage?: (index: number) => void;
         onSelectTodoMode?: () => void;
         allowEditQueuedMessage?: boolean;
@@ -295,64 +289,125 @@ const auditTodo: Todo = {
 interface RenderToolbarOptions {
   messages?: Message[];
   todos?: Todo[];
-  flushBackgroundJobNotifications?: () => boolean;
-  pendingBackgroundJobNotifications?: BackgroundJobNotificationPart[];
+  pendingNotifications?: BackgroundJobNotificationPart[];
 }
+
+/** A fake chat kit owning the pending input, re-rendering the toolbar. */
+function createPendingInput(notifications: BackgroundJobNotificationPart[]) {
+  let nextId = 0;
+  let pending: PendingInput = { userInputs: [], notifications };
+  let onChange: (pending: PendingInput) => void = () => {};
+  const set = (next: PendingInput) => {
+    pending = next;
+    onChange(next);
+  };
+  const controller = {
+    get pendingInput() {
+      return pending;
+    },
+    queueUserInput: vi.fn((input: Omit<QueuedUserInput, "id">) => {
+      const id = `queued-${nextId++}`;
+      set({
+        ...pending,
+        userInputs: [...pending.userInputs, { ...input, id }],
+      });
+      return id;
+    }),
+    removeUserInput: vi.fn((id: string) => {
+      const input = pending.userInputs.find((item) => item.id === id);
+      if (!input) return undefined;
+      set({
+        ...pending,
+        userInputs: pending.userInputs.filter((item) => item !== input),
+      });
+      return input;
+    }),
+    flushPendingInput: vi.fn(() => false),
+  } satisfies PendingInputController;
+  return {
+    controller,
+    useMirror() {
+      const [mirror, setMirror] = useState(pending);
+      onChange = setMirror;
+      return mirror;
+    },
+    /** Queues a message like the composer does while the agent is busy. */
+    queue(message: DraftMessage) {
+      act(() => {
+        controller.queueUserInput({
+          parts: message.parts,
+          display: { raw: message.raw, draft: message.draft },
+        });
+      });
+    },
+    /** Re-renders the toolbar without changing the pending input. */
+    rerender() {
+      act(() => set({ ...pending }));
+    },
+  };
+}
+
 function renderToolbar(
   isSubTask: boolean,
   lastCheckpointHash?: string,
   {
     messages = [],
     todos = [auditTodo],
-    flushBackgroundJobNotifications,
-    pendingBackgroundJobNotifications,
+    pendingNotifications = [],
   }: RenderToolbarOptions = {},
 ) {
-  render(
-    <ChatToolbar
-      chat={
-        {
-          messages,
-          sendMessage: vi.fn(),
-          addToolOutput: vi.fn(),
-          status: "ready",
-        } as never
-      }
-      approvalAndRetry={{ pendingApproval: undefined, retry: vi.fn() } as never}
-      compact={vi.fn()}
-      attachmentUpload={
-        {
-          files: [],
-          isUploading: false,
-          fileInputRef: { current: null },
-          removeFile: vi.fn(),
-          restoreFiles: attachmentUploadMocks.restoreFiles,
-          handleFileSelect: vi.fn(),
-          handlePaste: vi.fn(),
-          handleFileDrop: vi.fn(),
-        } as never
-      }
-      isSubTask={isSubTask}
-      task={
-        {
-          id: "task-1",
-          todos: undefined,
-          totalTokens: 0,
-          lastCheckpointHash,
-        } as unknown as Task
-      }
-      displayError={undefined}
-      todos={todos}
-      updateTodos={vi.fn()}
-      updateTodoCompletion={vi.fn()}
-      todoPaused={false}
-      onTodoPausedChange={vi.fn()}
-      taskId="task-1"
-      flushBackgroundJobNotifications={flushBackgroundJobNotifications}
-      pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
-      persistToolOutput={vi.fn()}
-    />,
-  );
+  const pendingInput = createPendingInput(pendingNotifications);
+  function Toolbar() {
+    return (
+      <ChatToolbar
+        chat={
+          {
+            messages,
+            sendMessage: vi.fn(),
+            addToolOutput: vi.fn(),
+            status: "ready",
+          } as never
+        }
+        approvalAndRetry={
+          { pendingApproval: undefined, retry: vi.fn() } as never
+        }
+        compact={vi.fn()}
+        attachmentUpload={
+          {
+            files: [],
+            isUploading: false,
+            fileInputRef: { current: null },
+            removeFile: vi.fn(),
+            restoreFiles: attachmentUploadMocks.restoreFiles,
+            handleFileSelect: vi.fn(),
+            handlePaste: vi.fn(),
+            handleFileDrop: vi.fn(),
+          } as never
+        }
+        isSubTask={isSubTask}
+        task={
+          {
+            id: "task-1",
+            todos: undefined,
+            totalTokens: 0,
+            lastCheckpointHash,
+          } as unknown as Task
+        }
+        displayError={undefined}
+        todos={todos}
+        updateTodos={vi.fn()}
+        updateTodoCompletion={vi.fn()}
+        todoPaused={false}
+        onTodoPausedChange={vi.fn()}
+        taskId="task-1"
+        pendingInput={pendingInput.useMirror()}
+        pendingInputController={pendingInput.controller}
+        persistToolOutput={vi.fn()}
+      />
+    );
+  }
+  render(<Toolbar />);
+  return pendingInput;
 }
 function notificationPart(
   backgroundJobId: string,
@@ -403,9 +458,8 @@ describe("ChatToolbar", () => {
   beforeEach(() => {
     chatSubmitMocks.preparing.current = false;
     chatSubmitMocks.useChatSubmit.mockClear();
-    chatSubmitMocks.handleSteerQueuedMessage.mockClear();
-    chatSubmitMocks.handleSteerBackgroundJobNotifications.mockClear();
-    chatSubmitMocks.setQueuedMessages.current = undefined;
+    chatSubmitMocks.handleSteer.mockClear();
+    chatSubmitMocks.sendPendingInput.mockClear();
     chatInputFormMocks.props = undefined;
     chatInputFormMocks.focusInput.mockReset();
     userEditsMocks.userEdits = [];
@@ -435,7 +489,7 @@ describe("ChatToolbar", () => {
             ],
           } as Message,
         ],
-        pendingBackgroundJobNotifications: [
+        pendingNotifications: [
           {
             type: "data-background-job-notification",
             data: {
@@ -468,23 +522,20 @@ describe("ChatToolbar", () => {
         },
       ],
     };
-    await act(async () => {
-      renderToolbar(false);
-    });
-    await act(async () => {
-      chatSubmitMocks.setQueuedMessages.current?.(() => [
-        {
-          parts: [{ type: "text", text: "queued text" }],
-          raw: { text: "queued text" },
-          draft,
-        },
-      ]);
+    const pendingInput = renderToolbar(false);
+    pendingInput.queue({
+      parts: [{ type: "text", text: "queued text" }],
+      raw: { text: "queued text" },
+      draft: draft as DraftMessage["draft"],
     });
 
     await act(async () => {
       chatInputFormMocks.props?.onEditQueuedMessage?.(0);
     });
 
+    expect(pendingInput.controller.removeUserInput).toHaveBeenCalledWith(
+      "queued-0",
+    );
     expect(chatInputStateMocks.setInput).toHaveBeenCalledWith(draft.input);
     expect(attachmentUploadMocks.restoreFiles).toHaveBeenCalledWith(
       draft.attachments,
@@ -494,7 +545,7 @@ describe("ChatToolbar", () => {
   it.each([true, false, undefined])(
     "restores queued Todo mode (%s) for the next submission",
     async (isTodoMode) => {
-      renderToolbar(false, undefined, { todos: [] });
+      const pendingInput = renderToolbar(false, undefined, { todos: [] });
       act(() => chatInputFormMocks.props?.onSelectTodoMode?.());
 
       if (isTodoMode) {
@@ -505,17 +556,13 @@ describe("ChatToolbar", () => {
         expect(screen.queryByText("chat.todoModeLabel")).toBeNull();
       }
 
-      act(() => {
-        chatSubmitMocks.setQueuedMessages.current?.(() => [
-          {
-            parts: [{ type: "text", text: "queued text" }],
-            raw: { text: "queued text", isTodoMode },
-            draft: {
-              input: { json: null, text: "queued text" },
-              attachments: [],
-            },
-          },
-        ]);
+      pendingInput.queue({
+        parts: [{ type: "text", text: "queued text" }],
+        raw: { text: "queued text", isTodoMode },
+        draft: {
+          input: { json: null, text: "queued text" },
+          attachments: [],
+        },
       });
       act(() => chatInputFormMocks.props?.onEditQueuedMessage?.(0));
 
@@ -526,42 +573,27 @@ describe("ChatToolbar", () => {
       expect(chatInputFormMocks.props?.queuedMessages).toEqual([]);
     },
   );
-  it("does not clear a new Todo selection when an older message is sent", () => {
-    renderToolbar(false, undefined, { todos: [] });
-    const beforeSend =
-      chatSubmitMocks.useChatSubmit.mock.lastCall?.[0].onBeforeSendText;
-    act(() => chatInputFormMocks.props?.onSelectTodoMode?.());
-    expect(screen.queryByText("chat.todoModeLabel")).toBeTruthy();
-
-    act(() => beforeSend?.("older message"));
-
-    expect(screen.queryByText("chat.todoModeLabel")).toBeTruthy();
-  });
   it("does not restore Todo mode while active todos exist", () => {
-    renderToolbar(false);
-    act(() => {
-      chatSubmitMocks.setQueuedMessages.current?.(() => [
-        {
-          parts: [{ type: "text", text: "queued text" }],
-          raw: { text: "queued text", isTodoMode: true },
-          draft: {
-            input: { json: null, text: "queued text" },
-            attachments: [],
-          },
-        },
-      ]);
+    const pendingInput = renderToolbar(false);
+    pendingInput.queue({
+      parts: [{ type: "text", text: "queued text" }],
+      raw: { text: "queued text", isTodoMode: true },
+      draft: {
+        input: { json: null, text: "queued text" },
+        attachments: [],
+      },
     });
     act(() => chatInputFormMocks.props?.onEditQueuedMessage?.(0));
 
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenLastCalledWith(
-      expect.objectContaining({ isTodoMode: false, canCreateTodo: false }),
+      expect.objectContaining({ isTodoMode: false }),
     );
     expect(screen.queryByText("chat.todoModeLabel")).toBeNull();
   });
   it("blocks editing while a message is being prepared and unlocks afterwards", () => {
     chatSubmitMocks.preparing.current = true;
-    renderToolbar(false);
-    const message = {
+    const pendingInput = renderToolbar(false);
+    const message: DraftMessage = {
       parts: [{ type: "text", text: "queued text" }],
       raw: { text: "queued text" },
       draft: {
@@ -569,7 +601,7 @@ describe("ChatToolbar", () => {
         attachments: [],
       },
     };
-    act(() => chatSubmitMocks.setQueuedMessages.current?.(() => [message]));
+    pendingInput.queue(message);
 
     expect(chatInputFormMocks.props?.allowEditQueuedMessage).toBe(false);
     act(() => chatInputFormMocks.props?.onEditQueuedMessage?.(0));
@@ -578,29 +610,23 @@ describe("ChatToolbar", () => {
     expect(chatInputFormMocks.props?.queuedMessages).toEqual([message]);
 
     chatSubmitMocks.preparing.current = false;
-    act(() => chatSubmitMocks.setQueuedMessages.current?.(() => [message]));
+    pendingInput.rerender();
     expect(chatInputFormMocks.props?.allowEditQueuedMessage).toBe(true);
     act(() => chatInputFormMocks.props?.onEditQueuedMessage?.(0));
     expect(chatInputStateMocks.setInput).toHaveBeenCalledWith(
-      message.draft.input,
+      message.draft?.input,
     );
     expect(chatInputFormMocks.props?.queuedMessages).toEqual([]);
   });
   it("focuses the composer after a queued message is edited", async () => {
-    await act(async () => {
-      renderToolbar(false);
-    });
-    await act(async () => {
-      chatSubmitMocks.setQueuedMessages.current?.(() => [
-        {
-          parts: [{ type: "text", text: "queued text" }],
-          raw: { text: "queued text" },
-          draft: {
-            input: { json: null, text: "queued text" },
-            attachments: [],
-          },
-        },
-      ]);
+    const pendingInput = renderToolbar(false);
+    pendingInput.queue({
+      parts: [{ type: "text", text: "queued text" }],
+      raw: { text: "queued text" },
+      draft: {
+        input: { json: null, text: "queued text" },
+        attachments: [],
+      },
     });
 
     await act(async () => {
@@ -618,14 +644,6 @@ describe("ChatToolbar", () => {
   it("does not render audit todos in subtask pages", () => {
     renderToolbar(true);
     expect(screen.queryByTestId("todo-list")).toBeNull();
-  });
-  it("disables todo creation while active todos exist", () => {
-    renderToolbar(false);
-    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        canCreateTodo: false,
-      }),
-    );
   });
   it("submits no user edits after they disappear from the input", () => {
     renderToolbar(false, "checkpoint-1");
@@ -661,13 +679,11 @@ describe("ChatToolbar", () => {
       }),
     );
   });
-  describe("background job notification delivery", () => {
-    it("delivers subagent results through the notification flush", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => true);
+  describe("pending input delivery", () => {
+    it("asks the chat kit to deliver pending input once idle", async () => {
       await act(async () => {
         renderToolbar(false, undefined, {
-          flushBackgroundJobNotifications,
-          pendingBackgroundJobNotifications: [
+          pendingNotifications: [
             {
               type: "data-background-job-notification",
               data: {
@@ -683,85 +699,70 @@ describe("ChatToolbar", () => {
           ],
         });
       });
-      expect(flushBackgroundJobNotifications).toHaveBeenCalled();
-      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
+      // The chat kit decides what may go out, e.g. it holds notifications
+      // back while a follow-up question waits for its answer.
+      expect(chatSubmitMocks.sendPendingInput).toHaveBeenCalledWith({
+        automatic: true,
+      });
     });
-    it("asks the chat kit to deliver a pending notification once idle", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => true);
-      await act(async () => {
-        renderToolbar(false, undefined, {
-          flushBackgroundJobNotifications,
-          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
-        });
+    it("asks again when a message is queued while idle", async () => {
+      const pendingInput = renderToolbar(false, undefined, {
+        messages: pendingFollowupQuestionMessages("input-available"),
       });
-      expect(flushBackgroundJobNotifications).toHaveBeenCalled();
-      // Notifications are never sent as a steered user message: the kit
-      // decides when they may take a turn of their own.
-      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
-    });
-    it("leaves a follow-up question to the chat kit", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => false);
-      await act(async () => {
-        renderToolbar(false, undefined, {
-          messages: pendingFollowupQuestionMessages("input-available"),
-          flushBackgroundJobNotifications,
-          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
-        });
+      chatSubmitMocks.sendPendingInput.mockClear();
+      pendingInput.queue({
+        parts: [{ type: "text", text: "hello" }],
+        raw: { text: "hello" },
       });
-      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
-    });
-    it("auto dequeues a queued user message ahead of the notification", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => true);
-      await act(async () => {
-        renderToolbar(false, undefined, {
-          flushBackgroundJobNotifications,
-          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
-        });
+      expect(chatSubmitMocks.sendPendingInput).toHaveBeenCalledWith({
+        automatic: true,
       });
-      flushBackgroundJobNotifications.mockClear();
-      await act(async () => {
-        chatSubmitMocks.setQueuedMessages.current?.((current) => [
-          { parts: [{ type: "text", text: "hello" }], raw: { text: "hello" } },
-          ...current,
-        ]);
-      });
-      expect(chatSubmitMocks.handleSteerQueuedMessage).toHaveBeenCalledWith(0);
-      expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
     });
     it("shows the pending notifications after the queued user messages", async () => {
-      await act(async () => {
-        renderToolbar(false, undefined, {
-          flushBackgroundJobNotifications: () => false,
-          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
-        });
+      const pendingInput = renderToolbar(false, undefined, {
+        pendingNotifications: [notificationPart("bgjob-cmd-1")],
       });
-      await act(async () => {
-        chatSubmitMocks.setQueuedMessages.current?.((current) => [
-          { parts: [{ type: "text", text: "hello" }], raw: { text: "hello" } },
-          ...current,
-        ]);
+      pendingInput.queue({
+        parts: [{ type: "text", text: "hello" }],
+        raw: { text: "hello" },
       });
       const queuedMessages = chatInputFormMocks.props?.queuedMessages ?? [];
       expect(queuedMessages).toHaveLength(2);
+      expect(queuedMessages[0].parts).toEqual([
+        { type: "text", text: "hello" },
+      ]);
       expect(queuedMessages[1].parts).toEqual([
         notificationPart("bgjob-cmd-1"),
       ]);
       expect(queuedMessages[1].raw.nonRemovable).toBe(true);
     });
-    it("steers the notification entry through the chat kit", async () => {
+    it("removes a queued message through the chat kit", () => {
+      const pendingInput = renderToolbar(false, undefined, {
+        pendingNotifications: [notificationPart("bgjob-cmd-1")],
+      });
+      pendingInput.queue({
+        parts: [{ type: "text", text: "hello" }],
+        raw: { text: "hello" },
+      });
+      act(() => chatInputFormMocks.props?.onRemoveQueuedMessage?.(0));
+      expect(pendingInput.controller.removeUserInput).toHaveBeenCalledWith(
+        "queued-0",
+      );
+      // Notifications cannot be removed.
+      act(() => chatInputFormMocks.props?.onRemoveQueuedMessage?.(0));
+      expect(pendingInput.controller.removeUserInput).toHaveBeenCalledOnce();
+      expect(chatInputFormMocks.props?.queuedMessages).toHaveLength(1);
+    });
+    it("steers all pending input at once", async () => {
       await act(async () => {
         renderToolbar(false, undefined, {
-          flushBackgroundJobNotifications: () => false,
-          pendingBackgroundJobNotifications: [notificationPart("bgjob-cmd-1")],
+          pendingNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });
       await act(async () => {
-        chatInputFormMocks.props?.onSteerQueuedMessage?.(0);
+        chatInputFormMocks.props?.onSteerQueuedMessages?.();
       });
-      expect(
-        chatSubmitMocks.handleSteerBackgroundJobNotifications,
-      ).toHaveBeenCalled();
-      expect(chatSubmitMocks.handleSteerQueuedMessage).not.toHaveBeenCalled();
+      expect(chatSubmitMocks.handleSteer).toHaveBeenCalledOnce();
     });
   });
 });

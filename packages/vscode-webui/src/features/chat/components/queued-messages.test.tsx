@@ -193,6 +193,26 @@ describe("QueuedMessages", () => {
     );
   });
 
+  it("offers one steer action that sends the whole queue", () => {
+    const onSteer = vi.fn();
+    const { getAllByLabelText, getByText } = render(
+      <QueuedMessages
+        messages={[
+          queuedMessage({ text: "first" }),
+          queuedMessage({ text: "second" }),
+        ]}
+        onRemove={vi.fn()}
+        onSteer={onSteer}
+      />,
+    );
+
+    expect(getByText("chat.queuedMessages:2")).toBeTruthy();
+    const steerButtons = getAllByLabelText("chat.steer");
+    expect(steerButtons).toHaveLength(1);
+    steerButtons[0].click();
+    expect(onSteer).toHaveBeenCalledExactlyOnceWith();
+  });
+
   it("edits a queued message that still carries its composer snapshot", () => {
     const onEdit = vi.fn();
     const { getByLabelText } = render(

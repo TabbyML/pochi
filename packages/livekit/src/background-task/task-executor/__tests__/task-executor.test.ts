@@ -111,7 +111,7 @@ class MockLiveChatKit {
   subscribeBackgroundJobs() {
     return () => {};
   }
-  flushBackgroundJobNotifications() {
+  flushPendingInput() {
     return false;
   }
   markStartToolsExecution() {}

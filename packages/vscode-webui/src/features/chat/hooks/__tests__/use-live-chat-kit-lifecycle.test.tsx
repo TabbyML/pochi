@@ -116,7 +116,7 @@ it("collects a command result on return without delivering it through the unmoun
   const first = renderHook(() =>
     useLiveChatKit({
       ...options,
-      backgroundJobNotifications: { onPendingChange: oldPendingChange },
+      pendingInput: { onChange: oldPendingChange },
     }),
   );
   await act(async () => {});
@@ -137,9 +137,7 @@ it("collects a command result on return without delivering it through the unmoun
   expect(manager.getPendingNotifications("parent")).toEqual([notice]);
   const reopened = renderHook(() => useLiveChatKit(options));
   await act(async () => {});
-  expect(
-    reopened.result.current.pendingBackgroundJobNotifications,
-  ).toHaveLength(1);
+  expect(reopened.result.current.pendingInput.notifications).toHaveLength(1);
   reopened.unmount();
   await manager.dispose();
 });

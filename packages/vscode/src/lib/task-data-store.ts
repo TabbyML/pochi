@@ -15,6 +15,7 @@ import type {
 } from "@getpochi/common";
 import type {
   McpConfigOverride,
+  QueuedUserInputRecord,
   TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
@@ -32,6 +33,7 @@ type TaskStateData = {
   autoMemoryState?: AutoMemoryTaskState;
   backgroundTaskState?: BackgroundTaskState;
   backgroundJobNotifications?: BackgroundJobNotificationQueueEntry[];
+  queuedUserInputs?: QueuedUserInputRecord[];
   // unix timestamp in milliseconds
   updatedAt: number;
 };
@@ -183,6 +185,25 @@ export class TaskDataStore {
         this.state.value[taskId]?.backgroundJobNotifications ?? [],
       ),
     );
+  }
+
+  getQueuedUserInputs(taskId: string): QueuedUserInputRecord[] {
+    return this.getTaskState(taskId)?.queuedUserInputs ?? [];
+  }
+
+  async setQueuedUserInputs(
+    taskId: string,
+    inputs: QueuedUserInputRecord[],
+  ): Promise<void> {
+    await this.updateTasks((state) => {
+      // Skip writing an empty queue for a task that never had one.
+      if (inputs.length === 0 && !state[taskId]?.queuedUserInputs?.length) {
+        return;
+      }
+      return {
+        [taskId]: { queuedUserInputs: inputs.length > 0 ? inputs : undefined },
+      };
+    });
   }
 
   async setMcpConfigOverride(

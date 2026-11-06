@@ -8,16 +8,20 @@ import type {
   ValidCustomAgentFile,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
-import type { Message, Task } from "@getpochi/livekit";
+import type { Message, QueuedUserInput, Task } from "@getpochi/livekit";
 import { act, renderHook } from "@testing-library/react";
 import type { JSONContent } from "@tiptap/react";
 import type { FileUIPart } from "ai";
-import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ChatInput } from "./use-chat-input-state";
 import { useChatStatus } from "./use-chat-status";
-import { type DraftMessage, useChatSubmit } from "./use-chat-submit";
+import {
+  type DraftMessage,
+  type PendingInputController,
+  useChatSubmit,
+} from "./use-chat-submit";
+import { getTodoModeObjective, toDraftMessage } from "./use-pending-input-sink";
 
 const chatStateMocks = vi.hoisted(() => ({
   autoApproveGuard: { current: "auto" },
@@ -146,86 +150,86 @@ describe("useChatSubmit", () => {
     activeSelectionMock.value = undefined;
   });
 
-  describe.each([
-    "handleSubmit",
-    "handleSteerSubmit",
-    "handleSteerQueuedMessage",
-  ] as const)("%s while waiting for tool approval", (method) => {
-    it.each([
-      { name: "manual approval", autoApproveActive: false, batch: false },
-      { name: "disabled tool category", autoApproveActive: true, batch: false },
-      { name: "batch approval", autoApproveActive: false, batch: true },
-    ])(
-      "cancels pending tools and sends immediately with $name",
-      async ({ autoApproveActive, batch }) => {
-        autoApproveMocks.active = autoApproveActive;
-        autoApproveMocks.settings.read = true;
-        const tool = {
-          type: "tool-executeCommand",
-          toolCallId: "command-1",
-          state: "input-available",
-          input: { command: "echo pending" },
-        } as const;
-        const tools = batch
-          ? [tool, { ...tool, toolCallId: "command-2" }]
-          : [tool];
-        const pendingApproval: PendingApproval = batch
-          ? { name: "batchCall", tools }
-          : { name: "executeCommand", tool };
-        const parts: Message["parts"] = [
-          { type: "text", text: "do this instead" },
-        ];
-        if (method !== "handleSteerQueuedMessage") {
-          messageUtilsMocks.prepareMessageParts.mockReturnValueOnce(
-            parts as never,
-          );
-        }
-        const queued = { parts, raw: { text: "do this instead" } };
-        const remaining = draftMessage({ text: "another queued message" });
-        const context = setup({
-          isLoading: false,
-          pendingApproval,
-          taskStatus: "pending-tool",
-          queuedMessages:
-            method === "handleSteerQueuedMessage" ? [queued, remaining] : [],
-        });
-
-        expect(context.result.current.isRunning).toBe(false);
-        expect(context.result.current.allowSendMessage).toBe(true);
-
-        await act(async () => {
-          if (method === "handleSteerQueuedMessage") {
-            void context.result.current.handleSteerQueuedMessage(0);
-          } else {
-            void context.result.current[method]();
+  describe.each(["handleSubmit", "handleSteerSubmit", "handleSteer"] as const)(
+    "%s while waiting for tool approval",
+    (method) => {
+      it.each([
+        { name: "manual approval", autoApproveActive: false, batch: false },
+        {
+          name: "disabled tool category",
+          autoApproveActive: true,
+          batch: false,
+        },
+        { name: "batch approval", autoApproveActive: false, batch: true },
+      ])(
+        "cancels pending tools and sends immediately with $name",
+        async ({ autoApproveActive, batch }) => {
+          autoApproveMocks.active = autoApproveActive;
+          autoApproveMocks.settings.read = true;
+          const tool = {
+            type: "tool-executeCommand",
+            toolCallId: "command-1",
+            state: "input-available",
+            input: { command: "echo pending" },
+          } as const;
+          const tools = batch
+            ? [tool, { ...tool, toolCallId: "command-2" }]
+            : [tool];
+          const pendingApproval: PendingApproval = batch
+            ? { name: "batchCall", tools }
+            : { name: "executeCommand", tool };
+          const parts: Message["parts"] = [
+            { type: "text", text: "do this instead" },
+          ];
+          if (method !== "handleSteer") {
+            messageUtilsMocks.prepareMessageParts.mockReturnValueOnce(
+              parts as never,
+            );
           }
-        });
+          const queued = { parts, raw: { text: "do this instead" } };
+          const remaining = draftMessage({ text: "another queued message" });
+          const context = setup({
+            isLoading: false,
+            pendingApproval,
+            taskStatus: "pending-tool",
+            queuedMessages: method === "handleSteer" ? [queued, remaining] : [],
+          });
 
-        expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({ parts });
-        expect(context.queuedMessages).toEqual(
-          method === "handleSteerQueuedMessage" ? [remaining] : [],
-        );
-        expect(context.stopChat).not.toHaveBeenCalled();
-        expect(chatStateMocks.batchAbort).not.toHaveBeenCalled();
+          expect(context.result.current.isRunning).toBe(false);
+          expect(context.result.current.allowSendMessage).toBe(true);
 
-        // Both the model request and UI resolve the old calls when the new
-        // user message follows them, without a separate tool-result turn.
-        const messages: Message[] = [
-          { id: "assistant-1", role: "assistant", parts: tools },
-          { id: "user-2", role: "user", parts },
-        ];
-        for (const format of [formatters.llm, formatters.ui]) {
-          expect(format(messages)[0].parts).toEqual(
-            tools.map((pendingTool) => ({
-              ...pendingTool,
-              state: "output-available",
-              output: { error: "User cancelled the tool call." },
-            })),
-          );
-        }
-      },
-    );
-  });
+          await act(async () => {
+            void context.result.current[method]();
+          });
+
+          // Steering sends every queued message at once.
+          expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({
+            parts:
+              method === "handleSteer" ? [...parts, ...remaining.parts] : parts,
+          });
+          expect(context.queuedMessages).toEqual([]);
+          expect(context.stopChat).not.toHaveBeenCalled();
+          expect(chatStateMocks.batchAbort).not.toHaveBeenCalled();
+
+          // Both the model request and UI resolve the old calls when the new
+          // user message follows them, without a separate tool-result turn.
+          const messages: Message[] = [
+            { id: "assistant-1", role: "assistant", parts: tools },
+            { id: "user-2", role: "user", parts },
+          ];
+          for (const format of [formatters.llm, formatters.ui]) {
+            expect(format(messages)[0].parts).toEqual(
+              tools.map((pendingTool) => ({
+                ...pendingTool,
+                state: "output-available",
+                output: { error: "User cancelled the tool call." },
+              })),
+            );
+          }
+        },
+      );
+    },
+  );
 
   it("keeps Enter submissions queued when the pending tool is auto-approved", async () => {
     autoApproveMocks.active = true;
@@ -316,7 +320,8 @@ describe("useChatSubmit", () => {
               "task-1",
               "user-abort",
             );
-            expect(context.queuedMessages).toEqual([]);
+            // Queued until the interrupted agent is ready for it.
+            expect(context.queuedMessages).toHaveLength(1);
 
             // Steering must wait for the executing lifecycle to settle.
             chatStateMocks.isExecuting = false;
@@ -325,6 +330,7 @@ describe("useChatSubmit", () => {
               await submission;
             });
             expect(context.sendMessage).toHaveBeenCalledOnce();
+            expect(context.queuedMessages).toEqual([]);
           }
         },
       );
@@ -616,7 +622,6 @@ describe("useChatSubmit", () => {
       const currentSkill = createSkill("changing", {
         instructions: "current instructions",
       });
-      const onBeforeSendText = vi.fn();
       const context = setup({
         isLoading: false,
         inputText: "/changing",
@@ -640,7 +645,6 @@ describe("useChatSubmit", () => {
         },
         skills: [currentSkill],
         isTodoMode: true,
-        onBeforeSendText,
       });
 
       await act(async () => {
@@ -662,7 +666,7 @@ describe("useChatSubmit", () => {
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["skill:current instructions", "text:/changing"],
       });
-      expect(onBeforeSendText).toHaveBeenCalledWith("/changing");
+      expect(context.todoObjectives).toEqual(["/changing"]);
     });
 
     it("adds a reminder for a selected custom agent mention", async () => {
@@ -762,7 +766,8 @@ describe("useChatSubmit", () => {
       expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
-    it("sends immediately when idle even if messages are already queued", async () => {
+    it("sends the queue first when idle with messages already queued", async () => {
+      chatStateMocks.autoApproveGuard.current = "stop";
       const existing = draftMessage({ text: "already queued" });
       const context = setup({
         isLoading: false,
@@ -773,11 +778,11 @@ describe("useChatSubmit", () => {
         await context.result.current.handleSubmit();
       });
 
-      expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:follow up"],
+      expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({
+        parts: ["text:already queued", "text:follow up"],
       });
-      // The pre-existing queue is left untouched by an immediate send.
-      expect(context.queuedMessages).toEqual([existing]);
+      expect(context.queuedMessages).toEqual([]);
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
     it("queues files and reviews while the chat is busy", async () => {
@@ -860,26 +865,23 @@ describe("useChatSubmit", () => {
       expect(context.result.current.isPreparingMessage).toBe(false);
     });
 
-    it("triggers onBeforeSendText when sending an immediate todo-mode message", async () => {
-      const onBeforeSendText = vi.fn();
+    it("sends an immediate todo-mode message with its todo objective", async () => {
       const context = setup({
         isLoading: false,
         isTodoMode: true,
-        onBeforeSendText,
       });
 
       await act(async () => {
         await context.result.current.handleSubmit();
       });
 
-      expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
+      expect(context.todoObjectives).toEqual(["follow up"]);
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: ["text:follow up"],
       });
     });
 
     it("includes pasted text in the todo objective when the editor is empty", async () => {
-      const onBeforeSendText = vi.fn();
       const pastedText = "large pasted text";
       messageUtilsMocks.prepareMessageParts.mockReturnValueOnce([
         {
@@ -892,16 +894,15 @@ describe("useChatSubmit", () => {
         inputText: "",
         pastedTexts: [pastedText],
         isTodoMode: true,
-        onBeforeSendText,
       });
 
       await act(async () => {
         await context.result.current.handleSubmit();
       });
 
-      expect(onBeforeSendText).toHaveBeenCalledWith(
+      expect(context.todoObjectives).toEqual([
         "Referenced pasted text files:\n- pasted text file: /tmp/pasted-0.txt. Read this file before continuing.",
-      );
+      ]);
       expect(context.sendMessage).toHaveBeenCalledWith({
         parts: [
           {
@@ -909,25 +910,6 @@ describe("useChatSubmit", () => {
             data: { filePath: "/tmp/pasted-0.txt", title: pastedText },
           },
         ],
-      });
-    });
-
-    it("does not trigger onBeforeSendText when todo creation is disabled", async () => {
-      const onBeforeSendText = vi.fn();
-      const context = setup({
-        isLoading: false,
-        isTodoMode: true,
-        canCreateTodo: false,
-        onBeforeSendText,
-      });
-
-      await act(async () => {
-        await context.result.current.handleSubmit();
-      });
-
-      expect(onBeforeSendText).not.toHaveBeenCalled();
-      expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:follow up"],
       });
     });
   });
@@ -949,6 +931,7 @@ describe("useChatSubmit", () => {
         });
 
         expect(context.queuedMessages).toEqual([
+          draftMessage({ text: "follow up" }),
           draftMessage({
             text: "new queued message",
             inputText: "new queued message",
@@ -963,16 +946,18 @@ describe("useChatSubmit", () => {
           await steering;
         });
       }
+      // Once ready, steering sends everything queued meanwhile as well.
+      expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({
+        parts: ["text:follow up", "text:new queued message"],
+      });
     });
 
     it("consumes Todo mode before waiting and does not clear it again afterwards", async () => {
       const onTodoModeSubmitted = vi.fn();
-      const onBeforeSendText = vi.fn();
       const context = setup({
         isLoading: true,
         isTodoMode: true,
         onTodoModeSubmitted,
-        onBeforeSendText,
       });
       let steering!: Promise<void>;
       await act(async () => {
@@ -982,7 +967,7 @@ describe("useChatSubmit", () => {
       try {
         expect(onTodoModeSubmitted).toHaveBeenCalledOnce();
         expect(context.result.current.isPreparingMessage).toBe(false);
-        expect(onBeforeSendText).not.toHaveBeenCalled();
+        expect(context.todoObjectives).toEqual([]);
       } finally {
         await act(async () => context.rerender({ isLoading: false }));
         await act(async () => {
@@ -991,7 +976,7 @@ describe("useChatSubmit", () => {
       }
       expect(onTodoModeSubmitted).toHaveBeenCalledOnce();
       expect(context.clearInput).toHaveBeenCalledOnce();
-      expect(onBeforeSendText).toHaveBeenCalledWith("follow up");
+      expect(context.todoObjectives).toEqual(["follow up"]);
     });
 
     it("stops the current stream and sends the message immediately", async () => {
@@ -1069,8 +1054,8 @@ describe("useChatSubmit", () => {
     });
   });
 
-  describe("handleSteerQueuedMessage", () => {
-    it("stops the current stream, sends the selected queued message, and removes it from the queue", async () => {
+  describe("handleSteer", () => {
+    it("stops the current stream and sends every queued message as one message", async () => {
       const first = draftMessage({ text: "first queued message" });
       const second = draftMessage({ text: "second queued message" });
       const context = setup({
@@ -1080,55 +1065,10 @@ describe("useChatSubmit", () => {
 
       let promise: Promise<void>;
       await act(async () => {
-        promise = context.result.current.handleSteerQueuedMessage(0);
+        promise = context.result.current.handleSteer();
       });
 
-      await act(async () => {
-        context.rerender({ isLoading: false });
-      });
-
-      await act(async () => {
-        await promise;
-      });
-
-      expect(context.stopChat).toHaveBeenCalledOnce();
-      expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:first queued message"],
-      });
-      expect(context.queuedMessages).toEqual([second]);
-    });
-
-    it("does nothing when the index has no matching queued message", () => {
-      const context = setup({ isLoading: true, queuedMessages: [] });
-
-      act(() => {
-        context.result.current.handleSteerQueuedMessage(0);
-      });
-
-      expect(context.stopChat).not.toHaveBeenCalled();
       expect(context.sendMessage).not.toHaveBeenCalled();
-      expect(context.queuedMessages).toEqual([]);
-    });
-  });
-
-  describe("handleSteerBackgroundJobNotifications", () => {
-    it("stops the current stream before the chat kit delivers them", async () => {
-      const flushBackgroundJobNotifications = vi.fn(() => {
-        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
-        return true;
-      });
-      const context = setup({
-        isLoading: true,
-        flushBackgroundJobNotifications,
-      });
-
-      let promise: Promise<void>;
-      await act(async () => {
-        promise =
-          context.result.current.handleSteerBackgroundJobNotifications();
-      });
-
-      expect(flushBackgroundJobNotifications).not.toHaveBeenCalled();
       expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
 
       await act(async () => {
@@ -1140,42 +1080,104 @@ describe("useChatSubmit", () => {
       });
 
       expect(context.stopChat).toHaveBeenCalledOnce();
-      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
-      // The kit owns the notifications, so nothing is sent from here.
-      expect(context.sendMessage).not.toHaveBeenCalled();
+      expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({
+        parts: ["text:first queued message", "text:second queued message"],
+      });
+      expect(context.queuedMessages).toEqual([]);
+      // Explicit steering resumes the agent after handleStop paused it.
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
     });
 
-    it("delivers right away when the chat is already idle", async () => {
-      chatStateMocks.autoApproveGuard.current = "stop";
-      const flushBackgroundJobNotifications = vi.fn(() => {
-        expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
-        return true;
-      });
+    it("sends right away without stopping when the chat is already idle", async () => {
+      const first = draftMessage({ text: "first", isTodoMode: true });
+      const second = draftMessage({ text: "second" });
       const context = setup({
         isLoading: false,
-        flushBackgroundJobNotifications,
+        queuedMessages: [first, second],
       });
 
       await act(async () => {
-        await context.result.current.handleSteerBackgroundJobNotifications();
+        await context.result.current.handleSteer();
       });
 
       expect(context.stopChat).not.toHaveBeenCalled();
-      expect(flushBackgroundJobNotifications).toHaveBeenCalledOnce();
+      expect(context.sendMessage).toHaveBeenCalledExactlyOnceWith({
+        parts: ["text:first", "text:second"],
+      });
+      expect(context.todoObjectives).toEqual(["first"]);
+      expect(context.queuedMessages).toEqual([]);
     });
 
-    it("sends the submitted message as typed, notifications ride along", async () => {
-      const context = setup({ isLoading: false });
+    it("delivers pending notifications after interrupting the agent", async () => {
+      const context = setup({ isLoading: true, pendingNotifications: 1 });
+
+      let promise: Promise<void>;
+      await act(async () => {
+        promise = context.result.current.handleSteer();
+      });
+
+      expect(context.flushPendingInput).not.toHaveBeenCalled();
 
       await act(async () => {
-        await context.result.current.handleSubmit();
+        context.rerender({ isLoading: false });
       });
 
-      // The kit attaches its pending notifications while preparing the
-      // request, so the message the user submitted is sent as typed.
-      expect(context.sendMessage).toHaveBeenCalledWith({
-        parts: ["text:follow up"],
+      await act(async () => {
+        await promise;
       });
+
+      expect(context.stopChat).toHaveBeenCalledOnce();
+      expect(context.flushPendingInput).toHaveBeenCalledExactlyOnceWith({
+        automatic: false,
+      });
+      expect(context.pendingNotifications).toBe(0);
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+    });
+  });
+
+  describe("sendPendingInput", () => {
+    it("leaves the approval guard alone for notifications delivered on their own", async () => {
+      chatStateMocks.autoApproveGuard.current = "manual";
+      const context = setup({ isLoading: false, pendingNotifications: 1 });
+
+      let sent = false;
+      await act(async () => {
+        sent = context.result.current.sendPendingInput({ automatic: true });
+      });
+
+      expect(sent).toBe(true);
+      expect(chatStateMocks.autoApproveGuard.current).toBe("manual");
+    });
+
+    it("resumes the agent when user input goes out with them", async () => {
+      chatStateMocks.autoApproveGuard.current = "stop";
+      const context = setup({
+        isLoading: false,
+        pendingNotifications: 1,
+        queuedMessages: [draftMessage({ text: "queued" })],
+      });
+
+      await act(async () => {
+        context.result.current.sendPendingInput({ automatic: true });
+      });
+
+      expect(context.sendMessage).toHaveBeenCalledWith({
+        parts: ["text:queued"],
+      });
+      expect(chatStateMocks.autoApproveGuard.current).toBe("auto");
+    });
+
+    it("changes nothing when the chat kit does not send", async () => {
+      chatStateMocks.autoApproveGuard.current = "stop";
+      const context = setup({ isLoading: false });
+
+      let sent = true;
+      await act(async () => {
+        sent = context.result.current.sendPendingInput();
+      });
+
+      expect(sent).toBe(false);
+      expect(chatStateMocks.autoApproveGuard.current).toBe("stop");
     });
   });
 
@@ -1218,7 +1220,7 @@ describe("useChatSubmit", () => {
 
     let steerPromise: Promise<void>;
     await act(async () => {
-      steerPromise = context.result.current.handleSteerQueuedMessage(0);
+      steerPromise = context.result.current.handleSteer();
     });
 
     await act(async () => {
@@ -1441,6 +1443,7 @@ function setup({
   inputJson = null,
   pastedTexts = [],
   queuedMessages: initialQueuedMessages = [],
+  pendingNotifications: initialPendingNotifications = 0,
   files = [],
   uploadedAttachments = [],
   reviews = [],
@@ -1449,10 +1452,7 @@ function setup({
   includeUserEdits: initialIncludeUserEdits = true,
   terminalContextSelections = [],
   isTodoMode = false,
-  canCreateTodo = true,
   onTodoModeSubmitted,
-  onBeforeSendText,
-  flushBackgroundJobNotifications,
   pendingApproval,
   taskStatus,
 }: {
@@ -1461,6 +1461,8 @@ function setup({
   inputJson?: JSONContent | null;
   pastedTexts?: string[];
   queuedMessages?: DraftMessage[];
+  /** Background job notifications the fake chat kit holds. */
+  pendingNotifications?: number;
   files?: File[];
   uploadedAttachments?: FileUIPart[];
   reviews?: Review[];
@@ -1469,14 +1471,13 @@ function setup({
   includeUserEdits?: boolean;
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
-  canCreateTodo?: boolean;
   onTodoModeSubmitted?: () => void;
-  onBeforeSendText?: (text: string) => void;
-  flushBackgroundJobNotifications?: () => boolean;
   pendingApproval?: PendingApproval;
   taskStatus?: Task["status"];
 }) {
-  const sendMessage = vi.fn(() => Promise.resolve());
+  const sendMessage = vi.fn((_message: { parts: Message["parts"] }) =>
+    Promise.resolve(),
+  );
   const stopChat = vi.fn();
   const clearInput = vi.fn();
   const clearFiles = vi.fn();
@@ -1484,22 +1485,50 @@ function setup({
 
   const upload = vi.fn(() => Promise.resolve(uploadedAttachments));
 
+  // A fake chat kit that owns the pending input like the real one: it sends
+  // everything pending as one message unless a request is in flight.
+  let nextId = 0;
+  let userInputs: QueuedUserInput[] = initialQueuedMessages.map((message) => ({
+    id: `queued-${nextId++}`,
+    parts: message.parts,
+    display: { raw: message.raw, draft: message.draft },
+  }));
+  let pendingNotifications = initialPendingNotifications;
+  const takenUserInputs: QueuedUserInput[][] = [];
+  let busy = initialIsLoading;
+  const flushPendingInput = vi.fn(
+    (_options?: { automatic?: boolean }): boolean => {
+      if (busy || (userInputs.length === 0 && pendingNotifications === 0)) {
+        return false;
+      }
+      const parts = userInputs.flatMap((input) => input.parts);
+      takenUserInputs.push(userInputs);
+      userInputs = [];
+      pendingNotifications = 0;
+      void sendMessage({ parts });
+      return true;
+    },
+  );
+  const pendingInputController: PendingInputController = {
+    get pendingInput() {
+      return { userInputs, notifications: [] };
+    },
+    queueUserInput: (input) => {
+      const id = `queued-${nextId++}`;
+      userInputs = [...userInputs, { ...input, id }];
+      return id;
+    },
+    removeUserInput: (id) => {
+      const input = userInputs.find((item) => item.id === id);
+      userInputs = userInputs.filter((item) => item.id !== id);
+      return input;
+    },
+    flushPendingInput,
+  };
+
   const hook = renderHook(
-    (props: {
-      isLoading: boolean;
-      includeUserEdits: boolean;
-      queuedMessages: DraftMessage[];
-    }) => {
-      const [queuedMessages, setQueuedMessages] = React.useState(
-        props.queuedMessages,
-      );
-
-      // Keep the state in sync with props for manual rerenders if needed,
-      // but also allow internal state updates to trigger rerenders.
-      React.useEffect(() => {
-        setQueuedMessages(props.queuedMessages);
-      }, [props.queuedMessages]);
-
+    (props: { isLoading: boolean; includeUserEdits: boolean }) => {
+      busy = props.isLoading;
       const {
         isRunning,
         isSubmitEnabled,
@@ -1525,10 +1554,7 @@ function setup({
       });
 
       const result = useChatSubmit({
-        chat: {
-          sendMessage,
-          stop: stopChat,
-        },
+        chat: { stop: stopChat },
         input: { json: inputJson, text: initialInputText, pastedTexts },
         clearInput,
         attachmentUpload: {
@@ -1545,8 +1571,7 @@ function setup({
         allowSendMessage,
         allowSteer,
         pendingApproval,
-        queuedMessages,
-        setQueuedMessages,
+        pendingInputController,
         reviews,
         userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
         skills,
@@ -1555,19 +1580,15 @@ function setup({
         clearTerminalContextSelections,
         taskId: "task-1",
         isTodoMode,
-        canCreateTodo,
         onTodoModeSubmitted,
-        onBeforeSendText,
-        flushBackgroundJobNotifications,
       });
 
-      return { ...result, queuedMessages, isRunning, allowSendMessage };
+      return { ...result, isRunning, allowSendMessage };
     },
     {
       initialProps: {
         isLoading: initialIsLoading,
         includeUserEdits: initialIncludeUserEdits,
-        queuedMessages: initialQueuedMessages,
       },
     },
   );
@@ -1578,16 +1599,21 @@ function setup({
       props: Partial<{
         isLoading: boolean;
         includeUserEdits: boolean;
-        queuedMessages: DraftMessage[];
       }>,
     ) =>
       hook.rerender({
         isLoading: props.isLoading ?? initialIsLoading,
         includeUserEdits: props.includeUserEdits ?? initialIncludeUserEdits,
-        queuedMessages: props.queuedMessages ?? initialQueuedMessages,
       }),
     get queuedMessages() {
-      return hook.result.current.queuedMessages;
+      return userInputs.map(toDraftMessage);
+    },
+    get pendingNotifications() {
+      return pendingNotifications;
+    },
+    /** The todo objective the page would create from each sent batch. */
+    get todoObjectives() {
+      return takenUserInputs.map(getTodoModeObjective);
     },
     clearInput,
     clearFiles,
@@ -1595,6 +1621,7 @@ function setup({
     upload,
     sendMessage,
     stopChat,
+    flushPendingInput,
   };
 }
 
