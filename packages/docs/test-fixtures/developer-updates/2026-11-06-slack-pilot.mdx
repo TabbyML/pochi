@@ -1,18 +1,18 @@
 ---
-title: 'TEST ONLY: Developer Updates workflow pilot'
+title: 'TEST ONLY: Developer Updates workflow pilot - 2026-11-06'
 ---
 
-# TEST ONLY: Developer Updates workflow pilot
+# TEST ONLY: Developer Updates workflow pilot - 2026-11-06
 
-This is a historical fixture for testing the Slack-to-GitHub draft PR workflow. It is not a new release announcement and must not be published or merged as a developer update. Release status and roadmap wording below are preserved as of October 8, 2026.
+This historical fixture tests the Slack-to-GitHub draft PR workflow. All dates below have been changed to November 6, 2026 (11/06) as synthetic test values, not actual release dates. The release-status wording is historical test copy, not a current release announcement. TEST ONLY: do not merge or publish.
 
-Source: [October 8, 2026 draft](https://gist.github.com/wsxiaoys/51cac965abc68ca5eed48b5e8d45c080#file-2026-10-08-md), revision `3aac8a23757b6c6b03d2b3ca4325c83454e07e56`.
+Source: [Historical source draft](https://gist.github.com/wsxiaoys/51cac965abc68ca5eed48b5e8d45c080), revision `3aac8a23757b6c6b03d2b3ca4325c83454e07e56`.
 
-## October 8, 2026
+## November 6, 2026
 
 ### TL;DR
 
-Pochi 0.74 shipped on September 24 with proactive monitors that bring ongoing events back into your task and the ability to revise queued messages before they run. This week's development work focuses on keeping background commands and conversations moving reliably, including when you open a subagent or work on Windows. Pochi 0.76 was scheduled for October 8, but its stable release is not yet confirmed; the upcoming fixes below are included in the 0.75.1 prerelease. More below!
+Pochi 0.74 shipped on November 6, 2026 with proactive monitors that bring ongoing events back into your task and the ability to revise queued messages before they run. This week's development work focuses on keeping background commands and conversations moving reliably, including when you open a subagent or work on Windows. Pochi 0.76 was scheduled for November 6, 2026, but its stable release is not yet confirmed; the upcoming fixes below are included in the 0.75.1 prerelease. More below!
 
 ### 🚀 Features
 
@@ -35,7 +35,3 @@ Pochi 0.74 shipped on September 24 with proactive monitors that bring ongoing ev
 - **Windows background commands will appear in the manager:** Commands explicitly started in the background on Windows will be listed with controls to open their recorded output and stop them, including their child processes. This does not add automatic background continuation for Windows foreground commands that time out. [**#1985**](https://github.com/TabbyML/pochi/pull/1985)
 
 - **Changed-file summaries keep up with background notifications:** File edits remain reflected in the chat's changed-files summary when a background-job notification arrives immediately afterward. Previously, that timing could leave an edited file missing from the summary. [**#1958**](https://github.com/TabbyML/pochi/pull/1958)
-
-### 👀 Coming Up
-
-- **Configurable isolated workspaces for subagents:** Roadmap work will add configuration for running subagents in separate Git worktrees, keeping their file changes apart from the main workspace.
