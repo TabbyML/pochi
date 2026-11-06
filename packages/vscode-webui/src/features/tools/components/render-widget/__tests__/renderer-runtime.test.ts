@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   installPochiWidgetStateRuntime,
   getWidgetRevealDelayMs,
+  handleWidgetCopyShortcut,
 } from "../renderer-runtime";
 
 describe("render widget renderer runtime", () => {
@@ -18,6 +19,67 @@ describe("render widget renderer runtime", () => {
     expect(getWidgetRevealDelayMs(5)).toBe(400);
     expect(getWidgetRevealDelayMs(75)).toBe(6000);
     expect(getWidgetRevealDelayMs(99)).toBe(6000);
+  });
+
+  describe("copy shortcut", () => {
+    function pressCopy(init: KeyboardEventInit) {
+      const event = new KeyboardEvent("keydown", {
+        key: "c",
+        cancelable: true,
+        ...init,
+      });
+      handleWidgetCopyShortcut(event);
+      return event;
+    }
+
+    function stubPlatform(platform: string) {
+      vi.spyOn(navigator, "platform", "get").mockReturnValue(platform);
+    }
+
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      document.execCommand = vi.fn(() => true);
+    });
+
+    it("copies the iframe selection on Cmd+C on macOS", () => {
+      stubPlatform("MacIntel");
+      const event = pressCopy({ metaKey: true });
+
+      expect(document.execCommand).toHaveBeenCalledWith("copy");
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("copies the iframe selection on Ctrl+C elsewhere", () => {
+      stubPlatform("Win32");
+      const event = pressCopy({ ctrlKey: true });
+
+      expect(document.execCommand).toHaveBeenCalledWith("copy");
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("ignores other shortcuts and widget-handled events", () => {
+      stubPlatform("MacIntel");
+      pressCopy({ ctrlKey: true });
+      pressCopy({ metaKey: true, shiftKey: true });
+      pressCopy({ metaKey: true, key: "v" });
+      const handled = new KeyboardEvent("keydown", {
+        key: "c",
+        metaKey: true,
+        cancelable: true,
+      });
+      handled.preventDefault();
+      handleWidgetCopyShortcut(handled);
+
+      expect(document.execCommand).not.toHaveBeenCalled();
+    });
+
+    it("leaves the event alone when the copy command fails", () => {
+      stubPlatform("MacIntel");
+      document.execCommand = vi.fn(() => false);
+      const event = pressCopy({ metaKey: true });
+
+      expect(event.defaultPrevented).toBe(false);
+    });
   });
 
   it("syncs initial pochi-widget state to the parent", () => {
