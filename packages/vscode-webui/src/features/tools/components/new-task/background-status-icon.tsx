@@ -1,4 +1,7 @@
-import { useBackgroundTaskStatus } from "@/features/chat";
+import {
+  useBackgroundTaskQueued,
+  useBackgroundTaskStatus,
+} from "@/features/chat";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { catalog } from "@getpochi/livekit";
 import { useTranslation } from "react-i18next";
@@ -13,11 +16,11 @@ export function useBackgroundSubagentStatus(taskId: string) {
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const jobStatus = useBackgroundTaskStatus(taskId);
+  const queued = useBackgroundTaskQueued(taskId);
   if (!task) return undefined;
+  if (jobStatus === "running" && queued) return "queued";
   return jobStatus
-    ? jobStatus === "stopped"
-      ? "failed"
-      : jobStatus
+    ? jobStatus
     : task.status === "pending-model" || task.status === "pending-tool"
       ? "running"
       : task.status === "failed"

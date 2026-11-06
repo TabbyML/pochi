@@ -1,4 +1,7 @@
-import { useBackgroundTaskStatus } from "../hooks/use-background-job-list";
+import {
+  useBackgroundTaskQueued,
+  useBackgroundTaskStatus,
+} from "../hooks/use-background-job-list";
 /**
  * Dev-mode background tasks, rendered as one group of the manage panel. Being
  * developer-only, the strings here are not translated.
@@ -52,6 +55,7 @@ export function BackgroundTaskDetail({
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const jobStatus = useBackgroundTaskStatus(taskId);
+  const queued = useBackgroundTaskQueued(taskId);
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
 
@@ -60,10 +64,10 @@ export function BackgroundTaskDetail({
       messages: messageRows.map((row) => row.data as Message),
       todos: task?.todos ? [...task.todos] : [],
       isLoading: jobStatus
-        ? jobStatus === "running"
+        ? jobStatus === "running" && !queued
         : task?.status === "pending-model" || task?.status === "pending-tool",
     }),
-    [messageRows, task?.todos, task?.status, jobStatus],
+    [messageRows, task?.todos, task?.status, jobStatus, queued],
   );
   const latestAssistantMessage = source.messages.findLast(
     (message) =>
@@ -97,7 +101,7 @@ export function BackgroundTaskDetail({
           {task &&
             (jobStatus ? (
               <RowStatusIndicator
-                isRunning={jobStatus === "running"}
+                isRunning={jobStatus === "running" && !queued}
                 tone={
                   jobStatus === "failed"
                     ? "danger"
