@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/tooltip";
 import { EditSummary, FileIcon } from "@/features/tools";
 import { cn } from "@/lib/utils";
+import { type DiffStats, getDiffStats } from "@/lib/utils/diff-stats";
 import { vscodeHost } from "@/lib/vscode";
 import type { UserEdits } from "@getpochi/common/vscode-webui-bridge";
 import { ChevronRight, FileDiff, FilePenLine } from "lucide-react";
@@ -23,18 +24,6 @@ interface Props {
     modified: string | undefined;
   };
   hideActions?: boolean;
-}
-
-interface DiffStats {
-  added: number;
-  removed: number;
-}
-
-function getDiffStats(diff: string): DiffStats {
-  return {
-    added: (diff.match(/^\+/gm) || []).length,
-    removed: (diff.match(/^\-/gm) || []).length,
-  };
 }
 
 export const UserEditsPart: React.FC<Props> = ({
