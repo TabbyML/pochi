@@ -1,4 +1,4 @@
-import { blobStore } from "@/lib/remote-blob-store";
+import { UploadError, blobStore } from "@/lib/remote-blob-store";
 import { getLogger } from "@getpochi/common";
 import {
   type BrowserAgentSettings,
@@ -17,6 +17,47 @@ const frameSubscriptions = new Map<string, Set<(frame: string) => void>>();
 const latestFrames = new Map<string, string>();
 
 const WebsocketRetryInterval = 2500;
+
+/** Backoff before each retry of a failed recording upload. */
+export const RecordingUploadRetryDelaysMs = [1_000, 2_000, 4_000];
+
+/** Why a finished browser session has no recording, keyed by tool call id. */
+const recordingErrors = new Map<string, string>();
+const recordingErrorSubscriptions = new Map<
+  string,
+  Set<(error: string) => void>
+>();
+
+function setRecordingError(toolCallId: string, error: string) {
+  recordingErrors.set(toolCallId, error);
+  for (const callback of recordingErrorSubscriptions.get(toolCallId) ?? []) {
+    callback(error);
+  }
+}
+
+function isRetryableUploadError(error: unknown) {
+  if (error instanceof UploadError) {
+    return error.status === 429 || error.status >= 500;
+  }
+  // fetch rejects with a TypeError on network failures.
+  return error instanceof TypeError;
+}
+
+async function uploadRecording(data: Uint8Array) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await blobStore.put(data, "video/mp4");
+    } catch (error) {
+      const delay = RecordingUploadRetryDelaysMs[attempt];
+      if (delay === undefined || !isRetryableUploadError(error)) throw error;
+      logger.warn(
+        `Browser recording upload failed, retrying in ${delay}ms`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
 
 type BrowserRecordingOptions = {
   viewport?: BrowserAgentSettings["managedBrowser"]["viewport"];
@@ -255,18 +296,17 @@ export class BrowserRecordingSession {
         const { buffer } = this.muxer.target;
         if (buffer.byteLength > 0) {
           const uint8Array = new Uint8Array(buffer);
-          const url = await blobStore.put(uint8Array, "video/mp4");
-          if (url) {
-            store.commit(
-              catalog.events.writeStoreFile({
-                filePath: `/browser-session/${toolCallId}.mp4`,
-                content: url,
-              }),
-            );
-          }
+          const url = await uploadRecording(uint8Array);
+          store.commit(
+            catalog.events.writeStoreFile({
+              filePath: `/browser-session/${toolCallId}.mp4`,
+              content: url,
+            }),
+          );
         }
       } catch (e) {
-        logger.error("Failed to stop recording", e);
+        logger.error("Failed to save browser recording", e);
+        setRecordingError(toolCallId, e instanceof Error ? e.message : `${e}`);
       } finally {
         this.muxer = null;
         if (this.videoEncoder?.state !== "closed") {
@@ -328,6 +368,25 @@ export class BrowserSessionManager {
       const subscriptions = frameSubscriptions.get(taskId);
       subscriptions?.delete(callback);
       if (subscriptions?.size === 0) frameSubscriptions.delete(taskId);
+    };
+  }
+
+  subscribeRecordingError(
+    toolCallId: string,
+    callback: (error: string) => void,
+  ) {
+    if (!recordingErrorSubscriptions.has(toolCallId)) {
+      recordingErrorSubscriptions.set(toolCallId, new Set());
+    }
+    recordingErrorSubscriptions.get(toolCallId)?.add(callback);
+    const error = recordingErrors.get(toolCallId);
+    if (error) callback(error);
+    return () => {
+      const subscriptions = recordingErrorSubscriptions.get(toolCallId);
+      subscriptions?.delete(callback);
+      if (subscriptions?.size === 0) {
+        recordingErrorSubscriptions.delete(toolCallId);
+      }
     };
   }
 

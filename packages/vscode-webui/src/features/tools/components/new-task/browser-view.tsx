@@ -7,6 +7,7 @@ import {
   isToolCallCancellationError,
 } from "@/lib/tool-call-error";
 import { useDefaultStore } from "@/lib/use-default-store";
+import { cn } from "@/lib/utils";
 import { type Message, catalog } from "@getpochi/livekit";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -54,6 +55,16 @@ export function BrowserView(props: NewTaskToolViewProps) {
     return browserSessionManager.subscribeFrame(uid, setFrame);
   }, [uid]);
 
+  const [recordingError, setRecordingError] = useState<string>();
+  useEffect(
+    () =>
+      browserSessionManager.subscribeRecordingError(
+        tool.toolCallId,
+        setRecordingError,
+      ),
+    [tool.toolCallId],
+  );
+
   const file = useStoreFile(`/browser-session/${tool.toolCallId}.mp4`);
   const videoUrl = file?.content;
   const hasToolSettled =
@@ -65,6 +76,47 @@ export function BrowserView(props: NewTaskToolViewProps) {
   const hidePlaceholder =
     (!isExecuting && tool.state === "input-available") ||
     isToolCallCancellationError(getToolPartError(tool));
+
+  const content = showBrowserArtifact ? (
+    <div className="aspect-video w-full overflow-hidden">
+      {showRecordingVideo ? (
+        // biome-ignore lint/a11y/useMediaCaption: No audio track available
+        <video
+          src={`${videoUrl}#t=${BrowserRecordingVideoOffsetSeconds}`}
+          controls
+          playsInline
+          className="h-full w-full object-contain"
+        />
+      ) : (
+        <img
+          src={`data:image/jpeg;base64,${frame}`}
+          alt="Browser view"
+          className="h-full w-full object-contain"
+        />
+      )}
+    </div>
+  ) : hasTaskThread ? (
+    <FixedStateChatContextProvider
+      toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
+    >
+      <TaskThread
+        source={taskSource}
+        showMessageList={true}
+        scrollAreaClassName="border-none"
+        assistant={{ name: "Browser" }}
+      />
+    </FixedStateChatContextProvider>
+  ) : !hidePlaceholder ? (
+    <div className="flex aspect-video w-full items-center justify-center overflow-hidden p-3 text-muted-foreground">
+      <span className="text-base">
+        {isBackground && isRunning
+          ? t("browserView.runningInBackground")
+          : isRunning
+            ? t("browserView.executing")
+            : t("browserView.paused")}
+      </span>
+    </div>
+  ) : null;
 
   return (
     <SubAgentView
@@ -90,45 +142,22 @@ export function BrowserView(props: NewTaskToolViewProps) {
         )
       }
     >
-      {showBrowserArtifact ? (
-        <div className="aspect-video w-full overflow-hidden">
-          {showRecordingVideo ? (
-            // biome-ignore lint/a11y/useMediaCaption: No audio track available
-            <video
-              src={`${videoUrl}#t=${BrowserRecordingVideoOffsetSeconds}`}
-              controls
-              playsInline
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <img
-              src={`data:image/jpeg;base64,${frame}`}
-              alt="Browser view"
-              className="h-full w-full object-contain"
-            />
+      {content || recordingError ? (
+        <>
+          {content}
+          {recordingError && (
+            <div
+              role="alert"
+              className={cn(
+                "px-3 py-1.5 text-error text-xs",
+                content && "border-t",
+              )}
+              title={recordingError}
+            >
+              {t("browserView.recordingSaveFailed", { error: recordingError })}
+            </div>
           )}
-        </div>
-      ) : hasTaskThread ? (
-        <FixedStateChatContextProvider
-          toolCallStatusRegistry={toolCallStatusRegistryRef?.current}
-        >
-          <TaskThread
-            source={taskSource}
-            showMessageList={true}
-            scrollAreaClassName="border-none"
-            assistant={{ name: "Browser" }}
-          />
-        </FixedStateChatContextProvider>
-      ) : !hidePlaceholder ? (
-        <div className="flex aspect-video w-full items-center justify-center overflow-hidden p-3 text-muted-foreground">
-          <span className="text-base">
-            {isBackground && isRunning
-              ? t("browserView.runningInBackground")
-              : isRunning
-                ? t("browserView.executing")
-                : t("browserView.paused")}
-          </span>
-        </div>
+        </>
       ) : null}
     </SubAgentView>
   );

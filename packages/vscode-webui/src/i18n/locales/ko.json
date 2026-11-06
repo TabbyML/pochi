@@ -651,7 +651,8 @@
     "noFrameAvailable": "프레임 없음",
     "executing": "실행 중...",
     "runningInBackground": "백그라운드에서 실행 중...",
-    "paused": "일시 중지됨"
+    "paused": "일시 중지됨",
+    "recordingSaveFailed": "브라우저 녹화를 저장하지 못했습니다: {{error}}"
   },
   "attemptTodoCompletionView": {
     "auditing": "Todos 감사 중",

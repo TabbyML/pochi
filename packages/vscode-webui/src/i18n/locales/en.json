@@ -660,7 +660,8 @@
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "runningInBackground": "Running in background...",
-    "paused": "Paused"
+    "paused": "Paused",
+    "recordingSaveFailed": "Browser recording could not be saved: {{error}}"
   },
   "attemptTodoCompletionView": {
     "auditing": "Auditing todos",

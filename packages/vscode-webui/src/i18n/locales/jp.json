@@ -656,7 +656,8 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "runningInBackground": "バックグラウンドで実行中...",
-    "paused": "一時停止"
+    "paused": "一時停止",
+    "recordingSaveFailed": "ブラウザの録画を保存できませんでした: {{error}}"
   },
   "attemptTodoCompletionView": {
     "auditing": "Todos を監査中",
