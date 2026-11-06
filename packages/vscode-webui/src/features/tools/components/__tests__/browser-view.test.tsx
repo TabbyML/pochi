@@ -20,6 +20,7 @@ const subAgentViewMock = vi.hoisted(() =>
 
 const useStoreFileMock = vi.hoisted(() => vi.fn());
 const subscribeFrameMock = vi.hoisted(() => vi.fn());
+const subscribeRecordingErrorMock = vi.hoisted(() => vi.fn());
 const queryMessages = vi.hoisted(() => vi.fn());
 const backgroundStatusMock = vi.hoisted(() => vi.fn());
 
@@ -38,6 +39,7 @@ vi.mock("@/components/files-provider", () => ({
 vi.mock("@/lib/browser-session-manager", () => ({
   browserSessionManager: {
     subscribeFrame: subscribeFrameMock,
+    subscribeRecordingError: subscribeRecordingErrorMock,
   },
 }));
 
@@ -110,6 +112,8 @@ describe("BrowserView", () => {
     useStoreFileMock.mockReset();
     subscribeFrameMock.mockReset();
     subscribeFrameMock.mockReturnValue(() => {});
+    subscribeRecordingErrorMock.mockReset();
+    subscribeRecordingErrorMock.mockReturnValue(() => {});
     backgroundStatusMock.mockReset();
     backgroundStatusMock.mockReturnValue(undefined);
   });
@@ -349,5 +353,30 @@ describe("BrowserView", () => {
       showToolCall: true,
       showTaskThread: true,
     });
+  });
+
+  it("shows why the recording could not be saved", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+    subscribeRecordingErrorMock.mockImplementation((_toolCallId, setError) => {
+      setError("Upload failed (HTTP 429)");
+      return () => {};
+    });
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(subscribeRecordingErrorMock).toHaveBeenCalledWith(
+      "browser-call",
+      expect.any(Function),
+    );
+    expect(screen.getByRole("alert").textContent).toBe(
+      "browserView.recordingSaveFailed",
+    );
   });
 });

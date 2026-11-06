@@ -5,12 +5,28 @@ const host = vi.hoisted(() => ({
   unregisterBrowserSession: vi.fn(async (_taskId: string) => {}),
 }));
 vi.mock("../vscode", () => ({ vscodeHost: host }));
-vi.mock("@/lib/remote-blob-store", () => ({ blobStore: {} }));
-vi.mock("@getpochi/livekit", () => ({ catalog: {} }));
-vi.mock("@getpochi/common", () => ({ getLogger: () => ({ error() {} }) }));
+const blob = vi.hoisted(() => {
+  class UploadError extends Error {
+    constructor(
+      message: string,
+      readonly status: number,
+    ) {
+      super(message);
+    }
+  }
+  return { UploadError, blobStore: { put: vi.fn() } };
+});
+vi.mock("@/lib/remote-blob-store", () => blob);
+vi.mock("@getpochi/livekit", () => ({
+  catalog: { events: { writeStoreFile: (file: unknown) => file } },
+}));
+vi.mock("@getpochi/common", () => ({
+  getLogger: () => ({ error() {}, warn() {} }),
+}));
 import {
   BrowserRecordingSession,
   BrowserSessionManager,
+  RecordingUploadRetryDelaysMs,
 } from "../browser-session-manager";
 
 class TestSocket {
@@ -29,6 +45,7 @@ class TestSocket {
   }
 }
 afterEach(() => {
+  vi.useRealTimers();
   TestSocket.instances = [];
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -272,5 +289,88 @@ describe("host session cleanup", () => {
     await manager.unregisterSession("retry-close", "call", {} as never);
     await manager.unregisterSession("retry-close", "call", {} as never);
     expect(host.unregisterBrowserSession).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("recording upload", () => {
+  async function stopWithRecording(manager: BrowserSessionManager, taskId: string) {
+    host.registerBrowserSession.mockResolvedValue({});
+    host.unregisterBrowserSession.mockResolvedValue(undefined);
+    await manager.registerSession(taskId, "parent", {});
+    const session = (
+      manager as unknown as {
+        browserSessions: Map<string, BrowserRecordingSession>;
+      }
+    ).browserSessions.get(taskId)!;
+    // A finished recording, as left behind by addFrame.
+    Object.assign(session, {
+      muxer: { finalize() {}, target: { buffer: new ArrayBuffer(4) } },
+    });
+    const store = { commit: vi.fn() };
+    const errors: string[] = [];
+    manager.subscribeRecordingError(`${taskId}-call`, (error) => errors.push(error));
+    const stopping = manager.unregisterSession(
+      taskId,
+      `${taskId}-call`,
+      store as never,
+    );
+    return { store, errors, stopping };
+  }
+
+  it("retries a rate-limited upload with backoff and keeps the recording", async () => {
+    vi.useFakeTimers();
+    blob.blobStore.put
+      .mockRejectedValueOnce(new blob.UploadError("Upload failed (HTTP 429)", 429))
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue("https://blob/recording.mp4");
+    const manager = new BrowserSessionManager();
+    const { store, errors, stopping } = await stopWithRecording(manager, "transient");
+    await vi.advanceTimersByTimeAsync(RecordingUploadRetryDelaysMs[0] - 1);
+    expect(blob.blobStore.put).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(blob.blobStore.put).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(RecordingUploadRetryDelaysMs[1]);
+    await stopping;
+    expect(blob.blobStore.put).toHaveBeenCalledTimes(3);
+    expect(store.commit).toHaveBeenCalledExactlyOnceWith({
+      filePath: "/browser-session/transient-call.mp4",
+      content: "https://blob/recording.mp4",
+    });
+    expect(errors).toEqual([]);
+    expect(host.unregisterBrowserSession).toHaveBeenCalledWith("transient");
+  });
+
+  it("reports the failure once retries are exhausted and still releases the host", async () => {
+    vi.useFakeTimers();
+    blob.blobStore.put.mockRejectedValue(
+      new blob.UploadError("Upload failed (HTTP 429)", 429),
+    );
+    const manager = new BrowserSessionManager();
+    const { store, errors, stopping } = await stopWithRecording(manager, "persistent");
+    await vi.waitFor(() =>
+      expect(host.unregisterBrowserSession).toHaveBeenCalledWith("persistent"),
+    );
+    await vi.runAllTimersAsync();
+    await stopping;
+    expect(blob.blobStore.put).toHaveBeenCalledTimes(
+      RecordingUploadRetryDelaysMs.length + 1,
+    );
+    expect(store.commit).not.toHaveBeenCalled();
+    expect(errors).toEqual(["Upload failed (HTTP 429)"]);
+    // A view mounted later still learns why there is no recording.
+    const late = vi.fn();
+    manager.subscribeRecordingError("persistent-call", late);
+    expect(late).toHaveBeenCalledWith("Upload failed (HTTP 429)");
+  });
+
+  it("does not retry a non-retryable upload failure", async () => {
+    blob.blobStore.put.mockRejectedValue(
+      new blob.UploadError("Upload failed (HTTP 413)", 413),
+    );
+    const manager = new BrowserSessionManager();
+    const { errors, stopping } = await stopWithRecording(manager, "too-large");
+    await stopping;
+    expect(blob.blobStore.put).toHaveBeenCalledOnce();
+    expect(errors).toEqual(["Upload failed (HTTP 413)"]);
   });
 });
