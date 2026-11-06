@@ -202,4 +202,5 @@ describe("BackgroundTaskDetail", () => {
 
 vi.mock("../hooks/use-background-job-list", () => ({
   useBackgroundTaskStatus: () => undefined,
+  useBackgroundTaskQueued: () => false,
 }));

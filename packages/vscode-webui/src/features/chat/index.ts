@@ -65,5 +65,8 @@ export type {
   RenderWidgetErrorKind,
 } from "./lib/render-widget-error";
 
-export { useBackgroundTaskStatus } from "./hooks/use-background-job-list";
+export {
+  useBackgroundTaskQueued,
+  useBackgroundTaskStatus,
+} from "./hooks/use-background-job-list";
 export { useBackgroundCommandJob } from "./hooks/use-background-command-job";

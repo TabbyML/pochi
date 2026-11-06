@@ -11,6 +11,7 @@ vi.mock("@/features/chat", async () => ({
   ...(await vi.importActual("../../../chat/lib/chat-state/fixed-state")),
   useToolCallLifeCycle: vi.fn(),
   useBackgroundTaskStatus: () => "running",
+  useBackgroundTaskQueued: () => false,
 }));
 vi.mock("@/components/task-thread", () => ({ TaskThread: () => null }));
 vi.mock("./attempt-todo-completion-view", () => ({

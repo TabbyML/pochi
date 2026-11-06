@@ -13,3 +13,10 @@ export function useBackgroundTaskStatus(taskId: string) {
   useSyncExternalStore(manager.subscribe, manager.getSnapshot);
   return manager.getTaskStatus(taskId);
 }
+
+/** Whether a running background task is still waiting for an execution slot. */
+export function useBackgroundTaskQueued(taskId: string) {
+  const manager = BackgroundJobManager.forStore(useDefaultStore());
+  useSyncExternalStore(manager.subscribe, manager.getSnapshot);
+  return manager.isTaskQueued(taskId);
+}

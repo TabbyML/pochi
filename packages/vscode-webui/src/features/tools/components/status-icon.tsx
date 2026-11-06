@@ -13,6 +13,7 @@ import {
   Check,
   CheckIcon,
   CircleSmall,
+  Clock,
   FilesIcon,
   Loader2,
   Pause,
@@ -28,7 +29,7 @@ interface StatusIconProps {
   iconClassName?: string;
   /** Actual asynchronous task state, when the tool has already returned. */
   statusOverride?: {
-    status: "running" | "completed" | "failed";
+    status: "queued" | "running" | "completed" | "failed" | "stopped";
     label: string;
   };
 }
@@ -116,9 +117,11 @@ export function StatusIcon({
 
   if (statusOverride) {
     const icons = {
+      queued: Clock,
       running: Loader2,
       completed: Check,
       failed: X,
+      stopped: X,
     };
     const Icon = icons[statusOverride.status];
     statusIcon = (
@@ -131,11 +134,15 @@ export function StatusIcon({
           className={cn(
             "size-4",
             {
-              "animate-spin text-zinc-500 dark:text-zinc-400":
-                statusOverride.status === "running",
+              "text-zinc-500 dark:text-zinc-400":
+                statusOverride.status === "running" ||
+                statusOverride.status === "queued",
+              "animate-spin": statusOverride.status === "running",
               "text-emerald-700 dark:text-emerald-300":
                 statusOverride.status === "completed",
-              "text-error": statusOverride.status === "failed",
+              "text-error":
+                statusOverride.status === "failed" ||
+                statusOverride.status === "stopped",
             },
             iconClassName,
           )}

@@ -660,6 +660,7 @@
     "noFrameAvailable": "No frame available",
     "executing": "Executing...",
     "runningInBackground": "Running in background...",
+    "queued": "Queued, waiting for an available slot...",
     "paused": "Paused"
   },
   "attemptTodoCompletionView": {
@@ -704,6 +705,7 @@
     "background": "Background",
     "started": "Started in background",
     "view": "View subtask",
+    "queued": "Queued",
     "running": "Running",
     "completed": "Completed",
     "failed": "Failed",
