@@ -227,7 +227,7 @@ describe("AutoMemoryManager project info file", () => {
     const info = JSON.parse(await fs.readFile(infoPath, "utf8"));
     expect(info).toEqual({
       repoKey: context?.repoKey,
-      repoPath: path.resolve(cwd),
+      repoPath: await fs.realpath(cwd),
     });
   });
 
@@ -383,7 +383,8 @@ describe("AutoMemoryManager project info file", () => {
 
     const manager = new AutoMemoryManager({ projectsRoot });
     const context = await manager.readContext(worktreeCwd);
-    expect(context?.repoKey).toBe(sanitizeMemoryRepoKey(cwd));
+    const realCwd = await fs.realpath(cwd);
+    expect(context?.repoKey).toBe(sanitizeMemoryRepoKey(realCwd));
 
     const infoPath = path.join(
       projectsRoot,
@@ -391,7 +392,89 @@ describe("AutoMemoryManager project info file", () => {
       AutoMemoryProjectInfoName,
     );
     const info = JSON.parse(await fs.readFile(infoPath, "utf8"));
-    expect(info.repoPath).toBe(path.resolve(cwd));
+    expect(info.repoPath).toBe(realCwd);
+  });
+
+  describe("when the repo is opened through a symlink", () => {
+    let linkParent: string;
+    let linkedCwd: string;
+    let realCwd: string;
+
+    beforeEach(async () => {
+      realCwd = await fs.realpath(cwd);
+      await fs.mkdir(path.join(realCwd, ".git", "worktrees", "feature"), {
+        recursive: true,
+      });
+      // Git records worktree links in resolved form.
+      await fs.writeFile(
+        path.join(worktreeCwd, ".git"),
+        `gitdir: ${path.join(realCwd, ".git", "worktrees", "feature")}\n`,
+      );
+      linkParent = await fs.mkdtemp(
+        path.join(os.tmpdir(), "pochi-auto-memory-link-"),
+      );
+      linkedCwd = path.join(linkParent, "repo");
+      await fs.symlink(realCwd, linkedCwd, "dir");
+    });
+
+    afterEach(async () => {
+      await fs.rm(linkParent, { recursive: true, force: true });
+    });
+
+    it("uses the same project as the repo's other worktrees", async () => {
+      const manager = new AutoMemoryManager({ projectsRoot });
+      const viaLink = await manager.readContext(linkedCwd);
+      const viaWorktree = await manager.readContext(worktreeCwd);
+
+      expect(viaLink?.repoKey).toBe(sanitizeMemoryRepoKey(realCwd));
+      expect(viaWorktree?.repoKey).toBe(viaLink?.repoKey);
+      expect(await fs.readdir(projectsRoot)).toEqual([viaLink?.repoKey]);
+    });
+
+    it("moves a project directory created under the unresolved key", async () => {
+      const legacyRoot = path.join(
+        projectsRoot,
+        sanitizeMemoryRepoKey(linkedCwd),
+      );
+      await fs.mkdir(path.join(legacyRoot, "transcripts"), { recursive: true });
+      await fs.writeFile(
+        path.join(legacyRoot, "transcripts", "old-task.md"),
+        "---\ntaskId: old-task\ncwd: x\nupdatedAt: 2026-01-01T00:00:00.000Z\ntitle: Old\n---\nbody\n",
+      );
+
+      const manager = new AutoMemoryManager({ projectsRoot });
+      const transcripts = await manager.listTranscripts({ cwd: worktreeCwd });
+      // Moving only happens once the unresolved key is seen.
+      expect(transcripts).toEqual([]);
+
+      const viaLink = await manager.listTranscripts({ cwd: linkedCwd });
+      expect(viaLink.map((entry) => entry.taskId)).toEqual(["old-task"]);
+      expect(
+        (await manager.listTranscripts({ cwd: worktreeCwd })).map(
+          (entry) => entry.taskId,
+        ),
+      ).toEqual(["old-task"]);
+      expect(await fs.readdir(projectsRoot)).toEqual([
+        sanitizeMemoryRepoKey(realCwd),
+      ]);
+    });
+
+    it("leaves the unresolved project directory when the resolved one exists", async () => {
+      const legacyRoot = path.join(
+        projectsRoot,
+        sanitizeMemoryRepoKey(linkedCwd),
+      );
+      await fs.mkdir(path.join(legacyRoot, "memory"), { recursive: true });
+      const manager = new AutoMemoryManager({ projectsRoot });
+      const viaWorktree = await manager.readContext(worktreeCwd);
+
+      const viaLink = await manager.readContext(linkedCwd);
+
+      expect(viaLink?.memoryDir).toBe(viaWorktree?.memoryDir);
+      expect((await fs.readdir(projectsRoot)).sort()).toEqual(
+        [sanitizeMemoryRepoKey(realCwd), path.basename(legacyRoot)].sort(),
+      );
+    });
   });
 });
 
