@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as _path from "node:path";
 import { after, before, beforeEach, describe, it } from "mocha";
@@ -283,6 +284,40 @@ describe("writeToFile Tool", () => {
       assert.strictEqual(result.success, true);
       const fileContent = await vscode.workspace.fs.readFile(fileUri);
       assert.strictEqual(fileContent.toString(), content);
+    });
+
+    it("should fail and leave a read-only file unchanged", async function () {
+      if (process.getuid?.() === 0) {
+        this.skip();
+      }
+      const filePath = _path.join(
+        currentTestTempDirRelativePath,
+        "read-only.txt",
+      );
+      const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
+      const originalContent = "Original content";
+      await createFile(fileUri, originalContent);
+      await fs.chmod(fileUri.fsPath, 0o444);
+
+      try {
+        await assert.rejects(
+          async () =>
+            writeToFileWithMock(
+              { path: filePath, content: "New content" },
+              {
+                toolCallId: "test-call-id-123",
+                messages: [],
+                cwd: testSuiteRootTempDir.fsPath,
+              },
+            ),
+          /Failed to save/,
+        );
+
+        const fileContent = await vscode.workspace.fs.readFile(fileUri);
+        assert.strictEqual(fileContent.toString(), originalContent);
+      } finally {
+        await fs.chmod(fileUri.fsPath, 0o644);
+      }
     });
   });
 });
