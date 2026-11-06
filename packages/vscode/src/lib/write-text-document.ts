@@ -48,8 +48,16 @@ export async function writeTextDocument(
     ),
     content,
   );
-  await vscode.workspace.applyEdit(edit);
-  await textDocument.save();
+  if (!(await vscode.workspace.applyEdit(edit))) {
+    throw new Error(
+      `Failed to edit ${path}. The file may be read-only; it was not modified.`,
+    );
+  }
+  if (!(await textDocument.save())) {
+    throw new Error(
+      `Failed to save ${path}. The file may be read-only or not writable; the file on disk was not modified.`,
+    );
+  }
   const postSaveContent = textDocument.getText();
   await waitForDiagnostic(abortSignal);
   const postSaveDiagnostics = vscode.languages.getDiagnostics();
