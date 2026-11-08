@@ -450,7 +450,6 @@
     "@ai-sdk/react": "3.0.299",
     "@better-auth/stripe": "1.2.9",
     "@daveyplate/better-auth-tanstack": "^1.3.6",
-    "@google/genai": "^1.13.0",
     "@hono/zod-validator": "^0.7.6",
     "@leeoniya/ufuzzy": "^1.0.19",
     "@livestore/adapter-cloudflare": "0.4.0-dev.22",
