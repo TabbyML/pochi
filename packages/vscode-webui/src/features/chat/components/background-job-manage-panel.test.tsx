@@ -298,6 +298,28 @@ describe("BackgroundJobManagePanel", () => {
     ).not.toBeNull();
   });
 
+  it("labels a subagent waiting for a slot as queued, still stoppable", () => {
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
+        kind: "subagent",
+        agentType: "browser",
+        title: "Check the page",
+        status: "running",
+        queued: true,
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    const row = screen.getByText("Check the page").closest('[role="button"]');
+    expect(screen.getByTitle("browser · backgroundTasks.queued")).toBeTruthy();
+    expect(row?.querySelector(".animate-spin")).toBeNull();
+    expect(row?.querySelector(".bg-muted-foreground\\/50")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: "backgroundTasks.stop" }),
+    ).toBeTruthy();
+  });
+
   it("labels stopped subagents awaiting delivery without a kill action", () => {
     backgroundJobs = [
       {

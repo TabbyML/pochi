@@ -17,9 +17,13 @@ export type BackgroundJobEntry = {
       kind: "subagent";
       taskId: string;
       agentType?: string;
+      /** Running, but still waiting for a free execution slot. */
+      queued?: boolean;
     }
   | {
       kind: "fork";
       taskId: string;
+      /** Running, but still waiting for a free execution slot. */
+      queued?: boolean;
     }
 );

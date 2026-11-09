@@ -656,6 +656,7 @@
     "noFrameAvailable": "フレームが利用できません",
     "executing": "実行中...",
     "runningInBackground": "バックグラウンドで実行中...",
+    "queued": "待機中、空き実行枠を待っています...",
     "paused": "一時停止"
   },
   "attemptTodoCompletionView": {
@@ -699,6 +700,7 @@
     "background": "バックグラウンド",
     "started": "バックグラウンドで開始しました",
     "view": "サブタスクを表示",
+    "queued": "待機中",
     "running": "実行中",
     "completed": "完了",
     "failed": "失敗",

@@ -185,6 +185,53 @@ describe("BrowserView", () => {
     });
   });
 
+  it("shows a background browser task waiting for a slot as queued", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+    backgroundStatusMock.mockReturnValue("queued");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("browserView.queued")).toBeTruthy();
+    expect(screen.queryByText("browserView.runningInBackground")).toBeNull();
+    expect(lastSubAgentProps()).toMatchObject({
+      isExecuting: false,
+      statusOverride: {
+        status: "queued",
+        label: "backgroundTasks.queued",
+      },
+    });
+  });
+
+  it("shows a background browser task stopped before it ran as stopped", () => {
+    useStoreFileMock.mockReturnValue(undefined);
+    backgroundStatusMock.mockReturnValue("stopped");
+
+    render(
+      <BrowserView
+        uid="browser-uid"
+        tool={backgroundTool}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("backgroundTasks.stopped")).toBeTruthy();
+    expect(screen.queryByText("browserView.paused")).toBeNull();
+    expect(lastSubAgentProps()).toMatchObject({
+      statusOverride: {
+        status: "stopped",
+        label: "backgroundTasks.stopped",
+      },
+    });
+  });
+
   it("shows the recording once a background browser task completes", () => {
     useStoreFileMock.mockReturnValue({ content: "blob://recording" });
     backgroundStatusMock.mockReturnValue("completed");

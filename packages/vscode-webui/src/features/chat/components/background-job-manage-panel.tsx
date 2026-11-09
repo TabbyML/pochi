@@ -346,7 +346,7 @@ function AgentJobRow({
   const [error, setError] = useState<string>();
   const summary = [
     badgeLabel,
-    t(`backgroundTasks.${job.status}`),
+    t(`backgroundTasks.${job.queued ? "queued" : job.status}`),
     job.notificationPending
       ? t("backgroundTasks.pendingNotification")
       : undefined,
@@ -390,6 +390,7 @@ function AgentJobRow({
             else hints that the row drills into its details. */}
         <RowStateSlot
           status={job.status}
+          queued={job.queued}
           action={
             job.status === "running" && parentTaskId ? (
               <StopJobAction
@@ -547,9 +548,12 @@ export function JobRow({
  */
 function RowStateSlot({
   status,
+  queued,
   action,
 }: {
   status: JobStatus;
+  /** A running job still waiting for a slot rests without a spinner. */
+  queued?: boolean;
   action?: ReactNode;
 }) {
   return (
@@ -561,8 +565,8 @@ function RowStateSlot({
         )}
       >
         <RowStatusIndicator
-          isRunning={status === "running"}
-          tone={statusTone(status)}
+          isRunning={status === "running" && !queued}
+          tone={queued ? "muted" : statusTone(status)}
         />
       </span>
       {action && (

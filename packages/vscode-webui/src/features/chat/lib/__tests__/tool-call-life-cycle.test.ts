@@ -660,7 +660,12 @@ describe("background subagent job lifecycle", () => {
       );
       try {
         lifecycle.execute(
-          { background, agentType: "explore", _meta: { uid: "child" } },
+          {
+            background,
+            agentType: "explore",
+            description: "Review the tests",
+            _meta: { uid: "child" },
+          },
           { taskId: "parent" },
         );
         await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
@@ -671,6 +676,7 @@ describe("background subagent job lifecycle", () => {
           expect.objectContaining({
             taskId: "child",
             agentType: "explore",
+            title: "Review the tests",
             status: "running",
           }),
         ]);

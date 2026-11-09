@@ -450,10 +450,29 @@ describe("background task registration and handoff", () => {
         await manager.backgroundSubTask({
           taskId: `child-${i}`,
           parentTaskId: "parent",
+          agentType: "browser",
+          title: `Check page ${i}`,
         });
       expect(waitUntilReady).toHaveBeenCalledTimes(10);
-      expect(manager.getJobsForTask("parent")).toHaveLength(11);
+      const jobs = manager.getJobsForTask("parent");
+      expect(jobs).toHaveLength(11);
+      // The queued task is named by its newTask description before it runs.
+      expect(jobs.at(-1)).toMatchObject({
+        taskId: "child-10",
+        title: "Check page 10",
+        agentType: "browser",
+        status: "running",
+        queued: true,
+      });
+      expect(jobs.filter((job) => "queued" in job)).toHaveLength(1);
+      expect(manager.isTaskQueued("child-10")).toBe(true);
+      expect(manager.isTaskQueued("child-0")).toBe(false);
       await manager.kill("bgjob-task-child-10", "parent");
+      expect(manager.isTaskQueued("child-10")).toBe(false);
+      expect(manager.getJobsForTask("parent").at(-1)).toMatchObject({
+        status: "stopped",
+        title: "Check page 10",
+      });
       expect(data.tasks.get("child-10")).toMatchObject({
         status: "failed",
         error: { kind: "AbortError" },

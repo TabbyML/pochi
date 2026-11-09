@@ -117,6 +117,8 @@ type CreateTaskExecutorOptions = {
     abortSignal: AbortSignal,
   ) => Promise<void>;
   onTaskSettled?: (taskId: string) => void;
+  /** Called when a task takes an execution slot, e.g. after waiting in the queue. */
+  onTaskStarted?: (taskId: string) => void;
 };
 
 type RunningTaskChat = {
@@ -266,6 +268,18 @@ export class TaskExecutor {
     return this.runningTasks.has(taskId);
   }
 
+  /** Whether a runnable task is waiting for a free execution slot. */
+  isTaskQueued(taskId: string) {
+    if (!this.started || this.disposed || this.runningTasks.has(taskId)) {
+      return false;
+    }
+    if (this.runningTasks.size < TaskExecutorMaxConcurrency) return false;
+    const task = this.options.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    );
+    return !!task?.background && isRunnableTaskStatus(task.status);
+  }
+
   private readRunnableTasks() {
     return this.options.store.query(catalog.queries.runnableTasks$);
   }
@@ -343,6 +357,7 @@ export class TaskExecutor {
         }),
     };
     this.runningTasks.set(taskId, runningTask);
+    this.options.onTaskStarted?.(taskId);
   }
 
   private async finishTask(taskId: string) {
@@ -389,7 +404,7 @@ class RunningTask {
   constructor(
     private readonly options: Omit<
       CreateTaskExecutorOptions,
-      "onTaskSettled"
+      "onTaskSettled" | "onTaskStarted"
     > & { taskId: string },
   ) {
     this.done = this.run();
