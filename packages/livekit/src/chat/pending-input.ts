@@ -55,3 +55,35 @@ export function attachUserInputParts(
 
   return [...messages, { id: crypto.randomUUID(), role: "user", parts }];
 }
+
+/**
+ * Takes user input parts back out of the message they were attached to, for a
+ * request that failed before the conversation was persisted. A message left
+ * without parts is removed.
+ *
+ * @returns the updated messages, or undefined when nothing was removed.
+ */
+export function detachUserInputParts(
+  messages: readonly Message[],
+  messageId: string,
+  parts: Message["parts"],
+): Message[] | undefined {
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index === -1 || parts.length === 0) return undefined;
+
+  const message = messages[index];
+  const remaining = [...message.parts];
+  for (const part of parts) {
+    const key = JSON.stringify(part);
+    const at = remaining.findLastIndex(
+      (item) => item === part || JSON.stringify(item) === key,
+    );
+    if (at !== -1) remaining.splice(at, 1);
+  }
+  if (remaining.length === message.parts.length) return undefined;
+
+  const updated = [...messages];
+  if (remaining.length === 0) updated.splice(index, 1);
+  else updated[index] = { ...message, parts: remaining };
+  return updated;
+}

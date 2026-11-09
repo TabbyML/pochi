@@ -85,6 +85,7 @@ import {
   type QueuedUserInput,
   type QueuedUserInputStorage,
   attachUserInputParts,
+  detachUserInputParts,
   getQueuedUserInputParts,
 } from "./pending-input";
 import { TaskTranscriptWriter } from "./task-transcript";
@@ -289,6 +290,13 @@ export type LiveChatKitPendingInputOptions = {
   storage?: QueuedUserInputStorage;
 };
 
+/** User inputs attached to one message of a request that is not persisted. */
+type InFlightUserInputs = {
+  inputs: readonly QueuedUserInput[];
+  messageId: string;
+  parts: Message["parts"];
+};
+
 export type LiveChatKitOptions<T> = {
   backgroundJobManager?: BackgroundJobManager;
   taskId: string;
@@ -382,7 +390,7 @@ export class LiveChatKit<
     readonly status: ChatStatus;
     stop: () => Promise<void>;
     sendMessage: (
-      message: { parts: Message["parts"] },
+      message: { id?: string; parts: Message["parts"] },
       options?: ChatRequestOptions,
     ) => Promise<void>;
   },
@@ -402,9 +410,18 @@ export class LiveChatKit<
     | LiveChatKitPendingInputOptions
     | undefined;
   private queuedUserInputs: QueuedUserInput[] = [];
+  /**
+   * User inputs already added to the conversation for a request that has not
+   * persisted it yet. They stay in storage until it does, and go back to the
+   * queue when the request fails before that.
+   */
+  private inFlightUserInputs: InFlightUserInputs[] = [];
   private pendingBackgroundJobNotificationParts: BackgroundJobNotificationPart[] =
     [];
   private pendingInputSnapshot: PendingInput = EmptyPendingInput;
+  /** Resolves once stored inputs are loaded; nothing is taken before that. */
+  private queuedUserInputsLoad: Promise<void> = Promise.resolve();
+  private queuedUserInputsLoaded = true;
   /** Serializes storage reads and writes, starting with the initial load. */
   private queuedUserInputsStorageTask: Promise<void> = Promise.resolve();
   private readonly pendingMemoryOperations = new Set<Promise<void>>();
@@ -639,36 +656,42 @@ export class LiveChatKit<
           await this.handleCompactFinish(compactSucceeded, onCompactFinish);
         }
       }
-      // Attach after compaction, but before checkpoint hooks so they update
-      // the final message that this request will send and persist.
-      await this.attachPendingInput(abortSignal);
+      try {
+        // Attach after compaction, but before checkpoint hooks so they update
+        // the final message that this request will send and persist.
+        await this.attachPendingInput(abortSignal);
 
-      // Append a complete reminder through the same pre-request flow as other
-      // messages. Normal user-message environment injection stays in transport.
-      if (
-        getters.getEnvironment &&
-        prompts.shouldAppendEnvironmentMessage(this.chat.messages)
-      ) {
-        this.chat.messages = prompts.injectEnvironment(
-          this.chat.messages,
-          await getters.getEnvironment(),
-        ) as Message[];
-      }
+        // Append a complete reminder through the same pre-request flow as other
+        // messages. Normal user-message environment injection stays in transport.
+        if (
+          getters.getEnvironment &&
+          prompts.shouldAppendEnvironmentMessage(this.chat.messages)
+        ) {
+          this.chat.messages = prompts.injectEnvironment(
+            this.chat.messages,
+            await getters.getEnvironment(),
+          ) as Message[];
+        }
 
-      if (onOverrideMessages) {
-        await runSideEffectSafely({
-          sideEffectName: "onOverrideMessages",
-          timeoutMs: OverrideMessagesSideEffectTimeoutMs,
-          abortSignal,
-          run: async () => {
-            await onOverrideMessages({
-              store: this.store,
-              taskId: this.taskId,
-              messages: this.chat.messages,
-              abortSignal,
-            });
-          },
-        });
+        if (onOverrideMessages) {
+          await runSideEffectSafely({
+            sideEffectName: "onOverrideMessages",
+            timeoutMs: OverrideMessagesSideEffectTimeoutMs,
+            abortSignal,
+            run: async () => {
+              await onOverrideMessages({
+                store: this.store,
+                taskId: this.taskId,
+                messages: this.chat.messages,
+                abortSignal,
+              });
+            },
+          });
+        }
+      } catch (err) {
+        // Nothing reached the store: the request never starts.
+        this.restoreInFlightUserInputs();
+        throw err;
       }
     };
 
@@ -858,21 +881,24 @@ export class LiveChatKit<
   private loadQueuedUserInputs() {
     const storage = this.pendingInputOptions?.storage;
     if (!storage) return;
-    this.queuedUserInputsStorageTask = storage
+    this.queuedUserInputsLoaded = false;
+    this.queuedUserInputsLoad = storage
       .load()
       .then((stored) => {
         // Inputs queued while loading were queued after the stored ones.
         const known = new Set(this.queuedUserInputs.map((input) => input.id));
         const restored = stored.filter((input) => !known.has(input.id));
-        if (restored.length === 0) return;
-        this.setQueuedUserInputs(
-          [...restored, ...this.queuedUserInputs],
-          false,
-        );
+        this.queuedUserInputs = [...restored, ...this.queuedUserInputs];
       })
       .catch((err) => {
         logger.warn("Failed to load queued user inputs", err);
+      })
+      .finally(() => {
+        this.queuedUserInputsLoaded = true;
+        // Always publish, so a host waiting to flush retries once loaded.
+        this.notifyPendingInputChange();
       });
+    this.queuedUserInputsStorageTask = this.queuedUserInputsLoad;
   }
 
   private queuedUserInputsSaveScheduled = false;
@@ -886,7 +912,12 @@ export class LiveChatKit<
     this.queuedUserInputsStorageTask = this.queuedUserInputsStorageTask
       .then(() => {
         this.queuedUserInputsSaveScheduled = false;
-        return storage.save([...this.queuedUserInputs]);
+        // In-flight inputs stay stored until the conversation holds them, so
+        // a reload before that delivers them again instead of losing them.
+        return storage.save([
+          ...this.inFlightUserInputs.flatMap((entry) => entry.inputs),
+          ...this.queuedUserInputs,
+        ]);
       })
       .catch((err) => {
         logger.warn("Failed to save queued user inputs", err);
@@ -895,11 +926,13 @@ export class LiveChatKit<
 
   /**
    * Takes every queued user input for the request that is about to go out.
+   * The caller must track them with `trackInFlightUserInputs`.
    */
   private takeQueuedUserInputs(): QueuedUserInput[] {
     const inputs = this.queuedUserInputs;
-    if (inputs.length === 0) return [];
-    this.setQueuedUserInputs([]);
+    if (inputs.length === 0 || !this.queuedUserInputsLoaded) return [];
+    // Storage is unchanged: the inputs are in flight, not delivered yet.
+    this.setQueuedUserInputs([], false);
     try {
       this.pendingInputOptions?.onTakeUserInputs?.(inputs);
     } catch (err) {
@@ -908,11 +941,45 @@ export class LiveChatKit<
     return inputs;
   }
 
-  /** Puts taken inputs back in front after their turn failed to start. */
-  private restoreQueuedUserInputs(inputs: readonly QueuedUserInput[]) {
+  private trackInFlightUserInputs(entry: InFlightUserInputs) {
+    if (entry.inputs.length === 0) return;
+    this.inFlightUserInputs = [...this.inFlightUserInputs, entry];
+  }
+
+  /** The conversation holding the in-flight inputs was persisted. */
+  private commitInFlightUserInputs() {
+    if (this.inFlightUserInputs.length === 0) return;
+    this.inFlightUserInputs = [];
+    this.saveQueuedUserInputs();
+  }
+
+  /**
+   * Takes in-flight inputs back out of the conversation and puts them in front
+   * of the queue, after their request failed before persisting them.
+   */
+  private restoreInFlightUserInputs(
+    entries: readonly InFlightUserInputs[] = this.inFlightUserInputs,
+  ) {
+    const restoring = entries.filter((entry) =>
+      this.inFlightUserInputs.includes(entry),
+    );
+    if (restoring.length === 0) return;
+    this.inFlightUserInputs = this.inFlightUserInputs.filter(
+      (entry) => !restoring.includes(entry),
+    );
+
+    let messages = this.chat.messages;
+    for (const entry of restoring) {
+      messages =
+        detachUserInputParts(messages, entry.messageId, entry.parts) ??
+        messages;
+    }
+    if (messages !== this.chat.messages) this.chat.messages = messages;
+
     const known = new Set(this.queuedUserInputs.map((input) => input.id));
-    const restored = inputs.filter((input) => !known.has(input.id));
-    if (restored.length === 0) return;
+    const restored = restoring
+      .flatMap((entry) => entry.inputs)
+      .filter((input) => !known.has(input.id));
     this.setQueuedUserInputs([...restored, ...this.queuedUserInputs]);
   }
 
@@ -1026,12 +1093,24 @@ export class LiveChatKit<
   private async attachPendingInput(abortSignal: AbortSignal) {
     const notifications =
       await this.backgroundJobManager.snapshotPendingNotifications(this.taskId);
+    // Inputs queued before the stored ones were loaded must not overtake them.
+    await this.queuedUserInputsLoad;
     abortSignal.throwIfAborted();
     this.enqueueBackgroundJobNotifications(notifications);
 
     let messages = this.chat.messages;
-    const userParts = getQueuedUserInputParts(this.takeQueuedUserInputs());
-    messages = attachUserInputParts(messages, userParts) ?? messages;
+    const userInputs = this.takeQueuedUserInputs();
+    const userParts = getQueuedUserInputParts(userInputs);
+    const withUserParts = attachUserInputParts(messages, userParts);
+    if (withUserParts) {
+      messages = withUserParts;
+      this.trackInFlightUserInputs({
+        inputs: userInputs,
+        // biome-ignore lint/style/noNonNullAssertion: attaching adds a message or extends the last one.
+        messageId: messages.at(-1)!.id,
+        parts: userParts,
+      });
+    }
 
     if (this.pendingBackgroundJobNotificationParts.length > 0) {
       const lastMessage = messages.at(-1);
@@ -1079,6 +1158,9 @@ export class LiveChatKit<
     if (this.chat.status === "submitted" || this.chat.status === "streaming")
       return false;
 
+    // Stored inputs go first; the load publishes a change when it finishes.
+    if (!this.queuedUserInputsLoaded) return false;
+
     const userInputs = this.takeQueuedUserInputs();
     // A user turn goes out anyway, so notifications ride along with it like
     // with any other request instead of waiting for their wake-up.
@@ -1099,12 +1181,18 @@ export class LiveChatKit<
         ? this.backgroundJobManager.startNotificationTurn(this.taskId)
         : () => {};
     const message: Message = { id: crypto.randomUUID(), role: "user", parts };
+    const inFlight: InFlightUserInputs = {
+      inputs: userInputs,
+      messageId: message.id,
+      parts: getQueuedUserInputParts(userInputs),
+    };
+    this.trackInFlightUserInputs(inFlight);
     const startTurn = this.pendingInputOptions?.startTurn;
-    const failed = (error: unknown, { started }: { started: boolean }) => {
+    const failed = (error: unknown) => {
       undoWakeup();
-      // Once sent, the message is part of the conversation even if its
-      // request failed; putting user input back would deliver it twice.
-      if (!started) this.restoreQueuedUserInputs(userInputs);
+      // A no-op once the conversation was persisted: then the message is
+      // delivered even if its request failed, and restoring would repeat it.
+      this.restoreInFlightUserInputs([inFlight]);
       // Only persistence in the conversation acknowledges the source queue,
       // and re-enqueueing skips notifications the conversation already holds.
       this.enqueueBackgroundJobNotificationParts(notificationParts);
@@ -1114,10 +1202,10 @@ export class LiveChatKit<
       if (startTurn) startTurn(message);
       else
         void this.chat
-          .sendMessage({ parts: message.parts })
-          .catch((error) => failed(error, { started: true }));
+          .sendMessage({ id: message.id, parts: message.parts })
+          .catch(failed);
     } catch (error) {
-      failed(error, { started: false });
+      failed(error);
       return false;
     }
     return true;
@@ -1313,6 +1401,7 @@ export class LiveChatKit<
           modelId: llm.id,
         }),
       );
+      this.commitInFlightUserInputs();
 
       this.onStreamStart?.({
         id: this.taskId,
@@ -1597,6 +1686,9 @@ export class LiveChatKit<
         lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
+    // A request that fails or is stopped before it started still persists
+    // its last message, which holds the in-flight inputs.
+    if (lastMessage) this.commitInFlightUserInputs();
 
     this.scheduleTranscriptWrite({
       messages: [...this.chat.messages],

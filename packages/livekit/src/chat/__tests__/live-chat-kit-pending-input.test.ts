@@ -2,9 +2,10 @@ import { createBackgroundJobNotification } from "@getpochi/common";
 import type { ChatInit, ChatStatus } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BlobStore, LiveKitStore, Message } from "../..";
+import type { OnStartCallback } from "../flexible-chat-transport";
 import type { LiveChatKitPendingInputOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
-import type { QueuedUserInput } from "../pending-input";
+import { type QueuedUserInput, detachUserInputParts } from "../pending-input";
 
 const kits = new Set<LiveChatKit<FakeChat>>();
 
@@ -176,7 +177,116 @@ describe("LiveChatKit pending input", () => {
       ]),
     );
   });
+
+  it("attaches stored inputs before inputs queued while loading", async () => {
+    let resolveLoad: (inputs: QueuedUserInput[]) => void = () => {};
+    const load = () =>
+      new Promise<QueuedUserInput[]>((resolve) => {
+        resolveLoad = resolve;
+      });
+    const kit = makeChatKit({ storage: { load, save: async () => {} } });
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    kit.queueUserInput({ parts: textParts("local") });
+
+    expect(kit.flushPendingInput()).toBe(false);
+
+    const request = makeRequest(kit);
+    await Promise.resolve();
+    resolveLoad([{ id: "stored", parts: textParts("stored") }]);
+    await request;
+
+    expect(kit.chat.messages.at(-1)?.parts).toEqual([
+      ...textParts("stored"),
+      ...textParts("local"),
+    ]);
+    expect(kit.pendingInput.userInputs).toEqual([]);
+  });
+
+  it("keeps attached inputs stored until the conversation persists them", async () => {
+    const save = vi.fn(async (_inputs: readonly QueuedUserInput[]) => {});
+    const kit = makeChatKit({ storage: { load: async () => [], save } });
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    const id = kit.queueUserInput({ parts: textParts("steer") });
+    await vi.waitFor(() =>
+      expect(save.mock.lastCall?.[0].map((input) => input.id)).toEqual([id]),
+    );
+
+    await makeRequest(kit);
+    expect(kit.pendingInput.userInputs).toEqual([]);
+    const savesBeforeStart = save.mock.calls.length;
+    await flushStorage();
+    expect(save.mock.calls.length).toBe(savesBeforeStart);
+
+    await startStream(kit);
+    await vi.waitFor(() => expect(save.mock.lastCall?.[0]).toEqual([]));
+  });
+
+  it("puts flushed inputs back when the send fails before persisting", async () => {
+    const save = vi.fn(async (_inputs: readonly QueuedUserInput[]) => {});
+    const kit = makeChatKit({ storage: { load: async () => [], save } });
+    await flushStorage();
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    const messagesBefore = [...kit.chat.messages];
+    const id = kit.queueUserInput({ parts: textParts("steer") });
+    kit.chat.failNextSend = true;
+
+    expect(kit.flushPendingInput()).toBe(true);
+    await vi.waitFor(() =>
+      expect(kit.pendingInput.userInputs.map((input) => input.id)).toEqual([
+        id,
+      ]),
+    );
+
+    expect(kit.chat.messages).toEqual(messagesBefore);
+    await vi.waitFor(() =>
+      expect(save.mock.lastCall?.[0].map((input) => input.id)).toEqual([id]),
+    );
+  });
+
+  it("keeps flushed inputs delivered once their message was persisted", async () => {
+    const kit = makeChatKit();
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    kit.queueUserInput({ parts: textParts("steer") });
+    kit.chat.failNextSend = true;
+    kit.chat.onSend = () => startStream(kit);
+
+    expect(kit.flushPendingInput()).toBe(true);
+    await flushStorage();
+
+    expect(kit.pendingInput.userInputs).toEqual([]);
+    expect(kit.chat.messages.at(-1)?.parts).toEqual(textParts("steer"));
+  });
 });
+
+describe("detachUserInputParts", () => {
+  it("removes only the given parts and drops an emptied message", () => {
+    const kept = userMessage("kept");
+    const extended: Message = {
+      ...kept,
+      parts: [...kept.parts, ...textParts("steer")],
+    };
+    expect(
+      detachUserInputParts([extended], kept.id, textParts("steer")),
+    ).toEqual([kept]);
+
+    const added = userMessage("steer");
+    expect(
+      detachUserInputParts([kept, added], added.id, textParts("steer")),
+    ).toEqual([kept]);
+  });
+
+  it("returns undefined when nothing matches", () => {
+    const message = userMessage("kept");
+    expect(
+      detachUserInputParts([message], "missing", textParts("kept")),
+    ).toBeUndefined();
+    expect(
+      detachUserInputParts([message], message.id, textParts("other")),
+    ).toBeUndefined();
+  });
+});
+
+const getters = { getLLM: () => ({ id: "test-model" }) as never };
 
 function makeChatKit(pendingInput?: LiveChatKitPendingInputOptions) {
   const kit = new LiveChatKit<FakeChat>({
@@ -184,9 +294,7 @@ function makeChatKit(pendingInput?: LiveChatKitPendingInputOptions) {
     store: new FakeStore() as unknown as LiveKitStore,
     blobStore: {} as BlobStore,
     chatClass: FakeChat,
-    getters: {
-      getLLM: () => ({ id: "test-model" }) as never,
-    },
+    getters,
     pendingInput,
   });
   kits.add(kit);
@@ -203,6 +311,22 @@ async function makeRequest(chatKit: LiveChatKit<FakeChat>) {
   await chat.onBeforeSnapshotInMakeRequest({
     abortSignal: new AbortController().signal,
   });
+}
+
+/** Runs the transport callback that persists the request's last message. */
+async function startStream(chatKit: LiveChatKit<FakeChat>) {
+  vi.spyOn(chatKit, "inited", "get").mockReturnValue(true);
+  vi.spyOn(chatKit, "task", "get").mockReturnValue({
+    background: true,
+  } as NonNullable<typeof chatKit.task>);
+  await (chatKit as unknown as { onStart: OnStartCallback }).onStart({
+    messages: chatKit.chat.messages,
+    getters,
+  });
+}
+
+async function flushStorage() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function textParts(text: string): Message["parts"] {
@@ -254,19 +378,32 @@ function followupQuestionMessage(): Message {
 class FakeChat {
   status: ChatStatus = "ready";
   messages: Message[];
-  readonly sentMessages: { parts: Message["parts"] }[] = [];
+  readonly sentMessages: { id?: string; parts: Message["parts"] }[] = [];
+  /** Makes the next send fail after adding its message, like the SDK. */
+  failNextSend = false;
+  /** Runs once the message is added, before a failure is reported. */
+  onSend?: () => Promise<void>;
   constructor(init: ChatInit<Message>) {
     this.messages = init.messages ?? [];
   }
   async stop() {}
-  async sendMessage(message: { parts: Message["parts"] }) {
+  async sendMessage(message: { id?: string; parts: Message["parts"] }) {
     this.sentMessages.push(message);
-    this.messages.push({
-      id: crypto.randomUUID(),
-      role: "user",
-      parts: message.parts,
-    });
+    this.messages = [
+      ...this.messages,
+      {
+        id: message.id ?? crypto.randomUUID(),
+        role: "user",
+        parts: message.parts,
+      },
+    ];
     this.status = "submitted";
+    await this.onSend?.();
+    if (this.failNextSend) {
+      this.failNextSend = false;
+      this.status = "error";
+      throw new Error("send failed");
+    }
   }
 }
 
