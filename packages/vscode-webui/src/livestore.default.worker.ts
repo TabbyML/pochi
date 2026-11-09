@@ -5,7 +5,7 @@ import { SyncBackend } from "@livestore/common";
 import { makeWsSync } from "@livestore/sync-cf/client";
 import { Effect, Stream, SubscriptionRef } from "@livestore/utils/effect";
 import { z } from "zod";
-import { observeSyncBackend } from "./lib/sync";
+import { observeSyncBackend, withSyncPushTimeout } from "./lib/sync";
 
 const Payload = z.object({
   jwt: z.string(),
@@ -17,7 +17,9 @@ const makeSyncBackend =
     Effect.gen(function* () {
       const { payload } = args;
       if (Payload.safeParse(payload).success) {
-        const backend = yield* makeWsSync({ url: getSyncBaseUrl() })(args);
+        const backend = yield* withSyncPushTimeout(
+          makeWsSync({ url: getSyncBaseUrl() }),
+        )(args);
         return yield* observeSyncBackend(backend, args.storeId);
       }
 
