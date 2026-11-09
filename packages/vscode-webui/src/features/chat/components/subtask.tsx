@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useMouseBackButton } from "@/lib/hooks/use-mouse-back-button";
 import { useNavigate } from "@/lib/hooks/use-navigate";
 import { cn } from "@/lib/utils";
 import { ChevronLeft } from "lucide-react";
@@ -21,6 +22,9 @@ export const SubtaskHeader: React.FC<{
       viewTransition: true,
     });
   }, [subtask.parentUid, navigate]);
+
+  // The mouse back button goes back to the parent task, like the Back button.
+  useMouseBackButton(handleBackClick);
 
   return (
     <div className={cn("px-2 pb-0", className)}>
