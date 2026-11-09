@@ -52,9 +52,16 @@ export class AutoMemoryManager {
   }
 
   async resolveProjectPaths(cwd: string) {
-    const repoRoot = await resolveMainWorktreePath(cwd);
+    const unresolvedRoot = await findMainWorktreePath(cwd);
+    const repoRoot = await realpathOrSelf(unresolvedRoot);
     const repoKey = sanitizeMemoryRepoKey(repoRoot);
     const projectRoot = path.join(this.projectsRoot, repoKey);
+    if (unresolvedRoot !== repoRoot) {
+      await adoptLegacyProjectRoot(
+        path.join(this.projectsRoot, sanitizeMemoryRepoKey(unresolvedRoot)),
+        projectRoot,
+      );
+    }
     return {
       repoRoot,
       repoKey,
@@ -341,7 +348,44 @@ export class AutoMemoryManager {
   }
 }
 
+/**
+ * The main worktree of the repo containing `cwd`, with symlinks resolved, so
+ * a repo opened through a symlinked path (e.g. /tmp -> /private/tmp on macOS)
+ * maps to the same project as its other worktrees, whose paths git records
+ * in resolved form.
+ */
 export async function resolveMainWorktreePath(cwd: string): Promise<string> {
+  return realpathOrSelf(await findMainWorktreePath(cwd));
+}
+
+async function realpathOrSelf(filePath: string): Promise<string> {
+  return fs.realpath(filePath).catch(() => filePath);
+}
+
+/**
+ * Project keys used to be computed from the unresolved path, so a repo opened
+ * through a symlink got a second project directory. Move it to the resolved
+ * key unless that directory already exists; then the old one is left as is.
+ */
+async function adoptLegacyProjectRoot(
+  legacyRoot: string,
+  projectRoot: string,
+): Promise<void> {
+  if (legacyRoot === projectRoot) return;
+  const exists = await fs
+    .access(projectRoot)
+    .then(() => true)
+    .catch(() => false);
+  if (exists) return;
+  try {
+    await fs.rename(legacyRoot, projectRoot);
+    logger.info(`Moved project directory ${legacyRoot} to ${projectRoot}`);
+  } catch {
+    // No legacy directory, or another window moved it first.
+  }
+}
+
+async function findMainWorktreePath(cwd: string): Promise<string> {
   const resolvedCwd = path.resolve(cwd);
   const mainWorktreePath = await readGitFileMainWorktreePath(resolvedCwd);
   if (mainWorktreePath) return path.resolve(mainWorktreePath);
