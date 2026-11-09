@@ -34,7 +34,14 @@ async function makeStore(backend?: SyncBackend.SyncBackendConstructor) {
   const store = await createStorePromise({
     storeId: crypto.randomUUID(),
     schema: catalog.schema,
-    adapter: makeInMemoryAdapter({ sync: backend ? { backend } : undefined }),
+    adapter: makeInMemoryAdapter({sync: {backend: (args) => Effect.gen(function* () {
+      const raw = backend ? yield* backend(args) : SyncBackend.of({
+        isConnected: yield* SubscriptionRef.make(false), connect: Effect.void, ping: Effect.void,
+        push: () => Effect.void, pull: () => Stream.empty,
+        supports: {pullPageInfoKnown: false, pullLive: false}, metadata: {name: "offline", description: "offline"},
+      });
+      return yield* observeSyncBackend(raw, args.storeId);
+    })}}),
     disableDevtools: true,
   });
   stores.push(store);
@@ -45,6 +52,83 @@ const messages: Message[] = Array.from({ length: 8 }, (_, i) => ({
   role: "user",
   parts: [{ type: "text", text: `Message ${i}` }],
 }));
+
+describe("sync status summaries", () => {
+  it("reads a small summary over Pochi's channel without requesting full SDK state", async () => {
+    const store = await makeStore();
+    const leader = store[StoreInternalsSymbol].clientSession.leaderThread;
+    const readFullState = vi.fn(() => { throw new Error("Must not request full state"); });
+    Object.defineProperty(leader, "syncState", { get: readFullState });
+    expect(await Effect.runPromise(readSyncStatus(store))).toEqual({ hasPending: false, localHead: 0, isConnected: false });
+    expect(readFullState).not.toHaveBeenCalled();
+  });
+
+  it("serves small Pochi summaries before connecting, using the unmodified SDK", async () => {
+    const store = await createStorePromise({
+      storeId: crypto.randomUUID(), schema: catalog.schema, disableDevtools: true,
+      adapter: makeInMemoryAdapter({sync: {backend: ({storeId}) => Effect.gen(function* () {
+        const isConnected = yield* SubscriptionRef.make(false);
+        return yield* observeSyncBackend(SyncBackend.of({
+          isConnected, connect: Effect.never, ping: Effect.void,
+          push: () => Effect.void, pull: () => Stream.empty,
+          supports: {pullPageInfoKnown: false, pullLive: false},
+          metadata: {name: "offline", description: "offline"},
+        }), storeId);
+      })}}),
+    });
+    stores.push(store);
+    const leader = store[StoreInternalsSymbol].clientSession.leaderThread;
+    expect("getSyncStatus" in leader).toBe(false);
+    const readFullState = vi.fn(() => { throw new Error("Must not transfer events or changesets"); });
+    Object.defineProperty(leader, "syncState", {get: readFullState});
+    expect(await Effect.runPromise(readSyncStatus(store))).toEqual({hasPending: false, localHead: 0, isConnected: false});
+    store.commit(catalog.events.taskInited({id: "large", createdAt: new Date(), initMessages: [{...messages[0], parts: [{type: "text", text: "x".repeat(790000)}]}]}));
+    await vi.waitFor(async () => {
+      const summary = await Effect.runPromise(readSyncStatus(store));
+      expect(summary.hasPending).toBe(true);
+      expect(summary.localHead).toBeGreaterThan(0);
+      expect(JSON.stringify(summary).length).toBeLessThan(100);
+    });
+    expect(readFullState).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed reply immediately instead of waiting for the query timeout", async () => {
+    const store = await createStorePromise({storeId: crypto.randomUUID(), schema: catalog.schema, disableDevtools: true, adapter: makeInMemoryAdapter()});
+    stores.push(store);
+    const channel = new BroadcastChannel(syncChannelName(store.storeId));
+    channel.onmessage = ({data}) => {
+      if (data?.type === "read-sync-status") channel.postMessage({type: "sync-status-summary", requestId: data.requestId, hasPending: "invalid", localHead: 1, isConnected: true});
+    };
+    try { await expect(Effect.runPromise(readSyncStatus(store).pipe(Effect.timeout(100)))).rejects.toThrow("Invalid sync status response"); }
+    finally { channel.close(); }
+  });
+
+  it("receives a typed worker timeout before the page query deadline", async () => {
+    const store = await createStorePromise({storeId: crypto.randomUUID(), schema: catalog.schema, disableDevtools: true, adapter: makeInMemoryAdapter()});
+    stores.push(store);
+    await Effect.runPromise(Effect.scoped(Effect.gen(function* () {
+      yield* observeSyncBackend(SyncBackend.of({
+        isConnected: yield* SubscriptionRef.make(false), connect: Effect.never, ping: Effect.void,
+        push: () => Effect.void, pull: () => Stream.empty,
+        supports: {pullPageInfoKnown: false, pullLive: false}, metadata: {name: "initializing", description: "initializing"},
+      }), store.storeId);
+      // No pull has started, so the worker is still waiting for its status reader.
+      const result = yield* readSyncStatus(store).pipe(Effect.timeout("5 seconds"), Effect.either);
+      expect(result).toMatchObject({_tag: "Left", left: {_tag: "TimeoutException", message: "Sync worker status query timed out"}});
+    })));
+  }, 10000);
+
+  it("closes the query channel when a missing worker response times out", async () => {
+    const store = await createStorePromise({storeId: crypto.randomUUID(), schema: catalog.schema, disableDevtools: true, adapter: makeInMemoryAdapter()});
+    stores.push(store);
+    const close = vi.spyOn(BroadcastChannel.prototype, "close");
+    try {
+      const result = await Effect.runPromise(readSyncStatus(store).pipe(Effect.timeout(30), Effect.either));
+      expect(result._tag).toBe("Left");
+      expect(close).toHaveBeenCalledOnce();
+    } finally { close.mockRestore(); }
+  });
+});
 
 describe("manual message sync", () => {
   it("resends one event per message, even when the task already exists", async () => {
@@ -173,7 +257,7 @@ describe("manual message sync", () => {
       }),
     );
     await vi.waitFor(async () =>
-      expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0),
+      expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(false),
     );
     local.commit(
       catalog.events.inlineCompactAttached({
@@ -182,7 +266,7 @@ describe("manual message sync", () => {
       }),
     );
     await vi.waitFor(async () => {
-      expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0);
+      expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(false);
       expect(
         remote.query(catalog.queries.makeMessagesQuery("task"))[0].data.parts,
       ).toHaveLength(2);
@@ -196,7 +280,7 @@ describe("manual message sync", () => {
     expect(local.query(catalog.queries.makeMessagesQuery("task"))).toEqual(
       before,
     );
-    expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(0);
+    expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(false);
     local.commit(
       catalog.events.updateTitle({
         id: "task",
@@ -274,8 +358,8 @@ describe("manual message sync", () => {
           cloud[StoreInternalsSymbol].syncProcessor.syncState,
         );
         expect(remote.localHead.global).toBeGreaterThanOrEqual(snapshotHead);
-        expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(
-          0,
+        expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(
+          false,
         );
       });
       expect(
@@ -349,7 +433,7 @@ describe("worker upload failures", () => {
     const storeId = crypto.randomUUID();
     const channel = new BroadcastChannel(syncChannelName(storeId));
     const notifications: (string | null)[] = [];
-    channel.onmessage = (event) => notifications.push(event.data.error);
+    channel.onmessage = (event) => { if (event.data?.type === "sync-status") notifications.push(event.data.error); };
     const events: RelayedEvent[] = [1, 2, 3, 4].map((seqNum) => ({
       name: "v1.MessageUpserted",
       args: {},
@@ -429,11 +513,10 @@ describe("worker upload failures", () => {
   it("clears the cached failure when pull confirms a retry before push returns", async () => {
     let attempts = 0;
     let interrupted = false;
-    const store = await makeStore(({ storeId }) =>
+    const store = await makeStore(() =>
       Effect.gen(function* () {
         const incoming = yield* Queue.unbounded<RelayedEvent>();
-        return yield* observeSyncBackend(
-          SyncBackend.of({
+        return SyncBackend.of({
             isConnected: yield* SubscriptionRef.make(true),
             connect: Effect.void,
             ping: Effect.void,
@@ -467,14 +550,12 @@ describe("worker upload failures", () => {
                   ),
                 );
               }),
-          }),
-          storeId,
-        );
+          });
       }),
     );
     const channel = new BroadcastChannel(syncChannelName(store.storeId));
     const notifications: (string | null)[] = [];
-    channel.onmessage = (event) => notifications.push(event.data.error);
+    channel.onmessage = (event) => { if (event.data?.type === "sync-status") notifications.push(event.data.error); };
     try {
       store.commit(
         catalog.events.taskInited({ id: "task", createdAt: new Date() }),
@@ -486,7 +567,7 @@ describe("worker upload failures", () => {
         async () => {
           expect(await Effect.runPromise(readSyncStatus(store))).toMatchObject({
             isConnected: true,
-            pending: 0,
+            hasPending: false,
           });
           expect(interrupted).toBe(true);
         },
@@ -509,7 +590,7 @@ describe("worker upload failures", () => {
     const storeId = crypto.randomUUID();
     const channel = new BroadcastChannel(syncChannelName(storeId));
     const notifications: (string | null)[] = [];
-    channel.onmessage = (event) => notifications.push(event.data.error);
+    channel.onmessage = (event) => { if (event.data?.type === "sync-status") notifications.push(event.data.error); };
     let fail = true;
     let attempts = 0;
     try {
@@ -675,8 +756,8 @@ describe("local fork agent events", () => {
       expect(replay.query(taskQuery)).toEqual(local.query(taskQuery));
       expect(replay.query(messagesQuery)).toEqual(local.query(messagesQuery));
       await vi.waitFor(async () =>
-        expect((await Effect.runPromise(readSyncStatus(local))).pending).toBe(
-          0,
+        expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(
+          false,
         ),
       );
       local.commit(

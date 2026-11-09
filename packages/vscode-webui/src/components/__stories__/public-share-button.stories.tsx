@@ -9,7 +9,7 @@ const sync = fn(async () => {});
 const synced: ComponentProps<typeof PublicShareButtonView>["syncStatus"] = {
   state: "synced",
   isLoading: false,
-  pending: 0,
+  hasPending: false,
   error: null,
   sync,
   isRequesting: false,
@@ -65,13 +65,18 @@ export const Synced: Story = {};
 
 export const Syncing: Story = {
   args: {
-    syncStatus: { ...synced, state: "syncing", pending: 3, isRequesting: true },
+    syncStatus: {
+      ...synced,
+      state: "syncing",
+      hasPending: true,
+      isRequesting: true,
+    },
   },
 };
 
 export const Offline: Story = {
   args: {
-    syncStatus: { ...synced, state: "offline", pending: 3 },
+    syncStatus: { ...synced, state: "offline", hasPending: true },
   },
 };
 
@@ -80,7 +85,7 @@ export const Failed: Story = {
     syncStatus: {
       ...synced,
       state: "offline",
-      pending: 3,
+      hasPending: true,
       error: "Upload failed",
     },
   },

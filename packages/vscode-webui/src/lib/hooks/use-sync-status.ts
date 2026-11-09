@@ -9,7 +9,7 @@ import {
 } from "@livestore/utils/effect";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  countPendingSyncEvents,
+  hasPendingSyncEvents,
   readSyncStatus,
   syncChannelName,
   syncTaskMessages,
@@ -18,7 +18,7 @@ import {
 export type SyncStatus = {
   state: "synced" | "syncing" | "offline";
   isLoading: boolean;
-  pending: number;
+  hasPending: boolean;
   error: string | null;
 };
 
@@ -26,9 +26,13 @@ type Snapshot = {
   store: LiveKitStore;
   connected?: boolean;
   connectionReady?: boolean;
-  pagePending?: number;
+  // Once initial loading ends, retries must not bring the skeleton back for this store.
+  initializationTimedOut?: boolean;
+  statusTimedOut?: boolean;
+  pageHasPending?: boolean;
   pageHead?: number;
-  summary?: { pending: number; localHead: number };
+  summary?: { hasPending: boolean; localHead: number };
+  statusError?: string | null;
   networkError?: string | null;
   sessionError?: string | null;
   // A rejected resend does not change pending, so queue refreshes cannot clear it.
@@ -100,13 +104,14 @@ export function useSyncStatus(
         (error) => update({ networkError: error }),
       ),
       watch(
+        // TODO: Share this single-consumer queue if multiple status views are mounted.
         Stream.concat(
           Stream.fromEffect(syncProcessor.syncState),
           syncProcessor.syncState.changes,
         ),
         (session) =>
           update({
-            pagePending: countPendingSyncEvents(session.pending),
+            pageHasPending: hasPendingSyncEvents(session.pending),
             pageHead: session.localHead.global,
             sessionError: null,
           }),
@@ -140,9 +145,14 @@ export function useSyncStatus(
         Effect.tap((status) =>
           Effect.sync(() =>
             update({
-              summary: { pending: status.pending, localHead: status.localHead },
+              summary: {
+                hasPending: status.hasPending,
+                localHead: status.localHead,
+              },
+              statusError: null,
+              statusTimedOut: false,
               connected: status.isConnected,
-              ...(status.isConnected && status.pending === 0
+              ...(status.isConnected && !status.hasPending
                 ? { error: null }
                 : {}),
             }),
@@ -155,16 +165,25 @@ export function useSyncStatus(
   useEffect(() => {
     if (!enabled || requesting === store) return;
     let active = true;
-    // The current SDK exposes only full leader syncState. Read it on demand
-    // while the menu is visible, at most once every five seconds.
+    // Read the worker's small summary while the menu is visible.
     const fiber = Effect.runFork(
       refresh().pipe(
         Effect.timeout("5 seconds"),
-        // A slow status RPC does not mean the upload failed. Try again later.
-        Effect.catchTag("TimeoutException", () => Effect.void),
+        Effect.catchTag("TimeoutException", () =>
+          Effect.sync(() =>
+            update({
+              statusError: null,
+              statusTimedOut: true,
+              initializationTimedOut: true,
+            }),
+          ),
+        ),
         Effect.catchAllCause((cause) => {
           if (active && !Cause.isInterruptedOnly(cause))
-            update({ error: Cause.pretty(cause) });
+            update({
+              statusError: Cause.pretty(cause),
+              initializationTimedOut: true,
+            });
           return Effect.void;
         }),
         Effect.repeat(Schedule.spaced("5 seconds")),
@@ -182,20 +201,39 @@ export function useSyncStatus(
     request.current = controller;
     setRequesting(store);
     update({ requestError: null });
+    let queryFailed = false;
+    const read = refresh().pipe(
+      Effect.timeout("5 seconds"),
+      Effect.tapError((error) =>
+        Effect.sync(() => {
+          queryFailed = true;
+          update({
+            statusError: Cause.isTimeoutException(error) ? null : String(error),
+            statusTimedOut: Cause.isTimeoutException(error),
+            initializationTimedOut: true,
+          });
+        }),
+      ),
+    );
     try {
       // Read fresh pending before deciding whether a full resend is needed.
-      const initial = await Effect.runPromise(refresh(), {
+      const initial = await Effect.runPromise(read, {
         signal: controller.signal,
       });
       controller.signal.throwIfAborted();
-      if (initial.pending === 0) syncTaskMessages(store, taskId);
+      if (!initial.hasPending) syncTaskMessages(store, taskId);
       // Keep waiting for confirmation; upload retries/backoff belong to the SDK.
       // There is no overall timeout here. Unmount/store changes cancel the wait.
       await Effect.runPromise(
         Effect.gen(function* () {
           while (true) {
-            const status = yield* refresh();
-            if (status.isConnected && status.pending === 0) return;
+            // A slow status reply is not an upload failure; keep waiting.
+            const status = yield* read.pipe(
+              Effect.catchTag("TimeoutException", () =>
+                Effect.succeed(undefined),
+              ),
+            );
+            if (status?.isConnected && !status.hasPending) return;
             // Check after the fresh read, which can clear a cached worker error.
             // Only end this UI wait on failure; the SDK continues retrying.
             if (
@@ -209,7 +247,7 @@ export function useSyncStatus(
         { signal: controller.signal },
       );
     } catch (error) {
-      if (!controller.signal.aborted)
+      if (!controller.signal.aborted && !queryFailed)
         update({
           requestError: error instanceof Error ? error.message : String(error),
         });
@@ -221,29 +259,47 @@ export function useSyncStatus(
   }, [store, taskId, refresh, update]);
 
   const current = snapshot.store === store ? snapshot : undefined;
-  const ahead = current?.summary
-    ? Math.max(0, (current.pageHead ?? 0) - current.summary.localHead)
-    : 0;
-  const pending = Math.max(
-    current?.pagePending ?? 0,
-    (current?.summary?.pending ?? 0) + ahead,
+  const hasPending = Boolean(
+    current?.pageHasPending ||
+      current?.summary?.hasPending ||
+      (current?.summary && (current.pageHead ?? 0) > current.summary.localHead),
   );
   const error =
     current?.requestError ??
     current?.networkError ??
     current?.sessionError ??
+    current?.statusError ??
     current?.error ??
     null;
   const state: SyncStatus["state"] =
-    error || current?.connected === false
+    error || (current?.connected === false && current.connectionReady)
       ? "offline"
-      : requesting === store || !current?.summary || pending > 0
+      : requesting === store ||
+          !current?.summary ||
+          !current.connectionReady ||
+          current.statusTimedOut ||
+          hasPending
         ? "syncing"
         : "synced";
+  const isLoading =
+    !error &&
+    !current?.initializationTimedOut &&
+    (!current?.summary || !current.connectionReady);
+  useEffect(() => {
+    if (!enabled || !isLoading) return;
+    const timer = setTimeout(
+      () =>
+        update({
+          initializationTimedOut: true,
+        }),
+      5000,
+    );
+    return () => clearTimeout(timer);
+  }, [enabled, isLoading, update]);
   return {
     state,
-    isLoading: !error && (!current?.summary || !current.connectionReady),
-    pending,
+    isLoading,
+    hasPending,
     error,
     sync,
     isRequesting: requesting === store,
