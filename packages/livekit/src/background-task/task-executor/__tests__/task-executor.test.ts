@@ -111,7 +111,7 @@ class MockLiveChatKit {
   subscribeBackgroundJobs() {
     return () => {};
   }
-  flushBackgroundJobNotifications() {
+  flushPendingInput() {
     return false;
   }
   markStartToolsExecution() {}
@@ -190,6 +190,49 @@ describe("TaskExecutor", () => {
       }
     },
   );
+
+  it("reports a task as queued until an execution slot frees up", async () => {
+    const store = new FakeLiveKitStore(
+      Array.from({ length: 11 }, (_, i) =>
+        makeTask({ id: `task${i}`, status: "pending-model" }),
+      ),
+    );
+    const first = deferred<void>();
+    const ready = deferred<void>();
+    let readyCalls = 0;
+    const onTaskStarted = vi.fn();
+    const executor = new TaskExecutor({
+      store: store as never,
+      blobStore: {} as never,
+      readTaskState: () => ({}),
+      adaptor: {
+        ...makeAdaptor({ executeToolCall: vi.fn() }),
+        waitUntilReady: () =>
+          readyCalls++ === 0 ? first.promise : ready.promise,
+      },
+      createChatKit: ({ taskId, store }) =>
+        new MockLiveChatKit({ taskId, store: store as never }),
+      onTaskStarted,
+    });
+    try {
+      expect(executor.isTaskQueued("task10")).toBe(false);
+      executor.start();
+      expect(onTaskStarted).toHaveBeenCalledTimes(10);
+      expect(executor.isTaskQueued("task0")).toBe(false);
+      expect(executor.isTaskQueued("task10")).toBe(true);
+      const stopping = executor.stopTask("task0");
+      first.resolve();
+      await stopping;
+      await waitFor(() => executor.isTaskRunning("task10"));
+      expect(executor.isTaskQueued("task0")).toBe(false);
+      expect(executor.isTaskQueued("task10")).toBe(false);
+      expect(onTaskStarted).toHaveBeenLastCalledWith("task10");
+    } finally {
+      const disposing = executor.dispose();
+      ready.resolve();
+      await disposing;
+    }
+  });
 
   it("unsubscribes from background jobs before reporting that a task has settled", async () => {
     const store = new FakeLiveKitStore([

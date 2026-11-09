@@ -1,0 +1,45 @@
+---
+title: 'Weekly Update #44'
+---
+# Weekly Update #44
+
+### TL;DR
+
+Pochi 0.80 shipped on October 28 with isolated workspaces for subagents, keeping their changes separate from your current files. Large task histories sync more reliably, with clearer status and a retry option in the Share menu. Pochi 0.82 is planned for November 9, with background browser work and new ways to connect and delegate tasks already available in the 0.81 prerelease.
+
+More below!
+
+### 🚀 Features
+
+- **Give subagents their own workspace:** Subagents can now run in separate Git worktrees when isolation is enabled, so they can inspect, test or change code without mixing their edits into your current files. Their checkouts normally start from the repository’s latest default branch, rather than your uncommitted work. Startup fixes also prevent an isolated subagent from getting stuck while its checkout is being prepared. [**#2015**](https://github.com/TabbyML/pochi/pull/2015), [**#2032**](https://github.com/TabbyML/pochi/pull/2032)
+
+  Unused checkouts are cleaned up after the subagent finishes. If a checkout contains changes, it stays available until you archive the parent task. **Before archiving, bring any work you want to keep into another branch or workspace: archiving removes the subagent checkout and its branch, including uncommitted changes.** [**#2035**](https://github.com/TabbyML/pochi/pull/2035)
+
+  <video
+    controls
+    playsInline
+    preload="metadata"
+    aria-label="Subagent running in an isolated Git worktree with its own branch and directory"
+    style={{
+      width: "100%",
+      borderRadius: "8px",
+      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    }}
+  >
+    <source src="https://assets.docs.getpochi.com/docs/80/80843cd8969cbd121fecdbf1964e507447bac37ced4e967d3fd1bc889f128d07.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+
+### ✨ Enhancements
+
+- **See when a shared conversation needs to sync:** Large task histories sync more reliably, and the Share menu shows when syncing is still in progress, offline or failing. If there is a problem, **Retry sync** lets you try again from the same menu. [**#2023**](https://github.com/TabbyML/pochi/pull/2023), [**#2029**](https://github.com/TabbyML/pochi/pull/2029)
+
+### 👀 Coming Up
+
+The following capabilities are available to try in the [0.81.0 prerelease](https://github.com/TabbyML/pochi/releases/tag/vscode%400.81.0), ahead of the planned November 9 release of Pochi 0.82:
+
+- **Keep working while the Browser Agent runs:** Browser tasks can run in the background while the main conversation continues, with controls to inspect their progress and review the recording afterward. [**#2039**](https://github.com/TabbyML/pochi/pull/2039)
+
+- **Let Pochi find relevant earlier work:** Pochi can consult a project’s task-history index and read saved conversations when it needs context from previous work. Task history is available independently of the Project Memory setting. [**#2041**](https://github.com/TabbyML/pochi/pull/2041)
+
+- **Start a separate task without leaving the current one:** When you explicitly ask for a new or separate task, Pochi can open an independent task in its own tab without taking focus away from your current work. It appears in the sidebar and runs separately, rather than returning its result as a subagent response. [**#2044**](https://github.com/TabbyML/pochi/pull/2044)

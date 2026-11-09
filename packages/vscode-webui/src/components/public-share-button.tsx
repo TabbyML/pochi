@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard";
+import { usePochiCredentials } from "@/lib/hooks/use-pochi-credentials";
 import { useSyncStatus } from "@/lib/hooks/use-sync-status";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { vscodeHost } from "@/lib/vscode";
@@ -43,6 +44,7 @@ interface PublicShareButtonProps {
 
 export function PublicShareButton(props: PublicShareButtonProps) {
   const [open, setOpen] = useState(false);
+  const { jwt } = usePochiCredentials();
   const syncStatus = useSyncStatus(useDefaultStore(), {
     taskId: props.task?.id,
     enabled: open,
@@ -53,6 +55,8 @@ export function PublicShareButton(props: PublicShareButtonProps) {
       open={open}
       onOpenChange={setOpen}
       syncStatus={syncStatus}
+      // Without a JWT the worker has no sync backend, so a retry can never finish.
+      canRetrySync={jwt !== null}
     />
   );
 }
@@ -61,6 +65,7 @@ interface PublicShareButtonViewProps extends PublicShareButtonProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   syncStatus: ReturnType<typeof useSyncStatus>;
+  canRetrySync?: boolean;
 }
 
 export function PublicShareButtonView({
@@ -72,6 +77,7 @@ export function PublicShareButtonView({
   open,
   onOpenChange,
   syncStatus,
+  canRetrySync = true,
 }: PublicShareButtonViewProps) {
   const { t } = useTranslation();
   const menuItemRef = useRef<"share" | "support">(null);
@@ -237,7 +243,10 @@ ${environmentInfo}
               <TooltipContent>{syncLabel}</TooltipContent>
             </Tooltip>
           ) : null}
-          {!syncStatus.isLoading && hasSyncProblem && !isSyncing ? (
+          {!syncStatus.isLoading &&
+          hasSyncProblem &&
+          !isSyncing &&
+          canRetrySync ? (
             <DropdownMenuItem
               onSelect={(event) => {
                 event.preventDefault();

@@ -1,10 +1,10 @@
 import { Chat, useChat } from "@ai-sdk/react";
 import type { BackgroundMonitorNotification } from "@getpochi/common";
 import {
-  type BackgroundJobNotificationPart,
   type BlobStore,
   LiveChatKit,
   type Message,
+  type PendingInput,
   getBackgroundJobNotificationIds,
 } from "@getpochi/livekit";
 import { makeJobStore } from "@getpochi/livekit/testing";
@@ -61,22 +61,19 @@ it.each([0, 6100])(
       openStreams.delete(stream);
     };
     const { store } = makeJobStore();
-    let onPendingChange: (parts: BackgroundJobNotificationPart[]) => void =
-      () => {};
+    let onPendingChange: (pending: PendingInput) => void = () => {};
     const kit = new LiveChatKit({
       taskId: "task-1",
       store,
       blobStore: {} as BlobStore,
       chatClass: StreamChat,
       getters: { getLLM: () => ({ id: "test" }) as never },
-      backgroundJobNotifications: {
-        onPendingChange: (parts) => onPendingChange(parts),
+      pendingInput: {
+        onChange: (pending) => onPendingChange(pending),
       },
     });
     function Host() {
-      const [pending, setPending] = useState<BackgroundJobNotificationPart[]>(
-        [],
-      );
+      const [pending, setPending] = useState<PendingInput>();
       onPendingChange = setPending;
       const { messages, status } = useChat({
         chat: kit.chat,
@@ -84,7 +81,7 @@ it.each([0, 6100])(
       });
       // biome-ignore lint/correctness/useExhaustiveDependencies: match the toolbar's wakeups for new messages and queued notifications.
       useEffect(() => {
-        if (status === "ready") kit.flushBackgroundJobNotifications();
+        if (status === "ready") kit.flushPendingInput();
       }, [messages, status, pending]);
       return null;
     }
@@ -120,13 +117,13 @@ it.each([0, 6100])(
         },
       ]);
       // A stale idle caller must not start a concurrent request.
-      expect(kit.flushBackgroundJobNotifications()).toBe(false);
+      expect(kit.flushPendingInput()).toBe(false);
       expect(requests).toHaveLength(1);
       if (responseDuration)
         await new Promise((resolve) => setTimeout(resolve, responseDuration));
       finish(streams[0]);
       await expect.poll(() => requests.length, { timeout: 1000 }).toBe(2);
-      expect(kit.pendingBackgroundJobNotifications).toEqual([]);
+      expect(kit.pendingInput.notifications).toEqual([]);
       expect(
         getBackgroundJobNotificationIds(
           requests[1].flatMap((message) => message.parts),
@@ -136,7 +133,7 @@ it.each([0, 6100])(
       await expect.poll(() => kit.chat.status).toBe("ready");
       const send = vi.spyOn(kit.chat, "sendMessage");
       kit.enqueueBackgroundJobNotifications([event]);
-      expect(kit.flushBackgroundJobNotifications()).toBe(false);
+      expect(kit.flushPendingInput()).toBe(false);
       expect(send).not.toHaveBeenCalled();
     } finally {
       root.unmount();

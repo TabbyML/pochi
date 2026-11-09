@@ -20,13 +20,17 @@ import { PublicShareButton } from "../public-share-button";
 
 const sync = vi.hoisted(() => ({
   state: "synced" as "synced" | "syncing" | "offline",
-  pending: 0,
+  hasPending: false,
   error: null as string | null,
   isLoading: false,
   isRequesting: false,
   sync: vi.fn(async () => {}),
 }));
+const credentials = vi.hoisted(() => ({ jwt: "jwt" as string | null }));
 vi.mock("@/lib/hooks/use-sync-status", () => ({ useSyncStatus: () => sync }));
+vi.mock("@/lib/hooks/use-pochi-credentials", () => ({
+  usePochiCredentials: () => credentials,
+}));
 vi.mock("@/lib/use-default-store", () => ({ useDefaultStore: () => ({}) }));
 vi.mock("@/lib/vscode", () => ({ vscodeHost: {} }));
 vi.mock("react-i18next", () => ({
@@ -36,11 +40,12 @@ vi.mock("react-i18next", () => ({
 afterEach(cleanup);
 beforeEach(() => {
   sync.state = "synced";
-  sync.pending = 0;
+  sync.hasPending = false;
   sync.error = null;
   sync.isLoading = false;
   sync.isRequesting = false;
   sync.sync.mockClear();
+  credentials.jwt = "jwt";
 });
 beforeAll(() => {
   globalThis.ResizeObserver = class {
@@ -115,7 +120,7 @@ describe("share sync controls", () => {
 
   it("shows pending changes as syncing without another sync action", () => {
     sync.state = "syncing";
-    sync.pending = 3;
+    sync.hasPending = true;
     render(<PublicShareButton task={task} />);
     fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowDown" });
     expect(screen.getByText("share.sync.syncing").className).toContain(
@@ -175,5 +180,18 @@ describe("share sync controls", () => {
     expect(
       screen.getByRole("menuitem", { name: "share.copyLink" }),
     ).toBeTruthy();
+  });
+
+  it("shows offline without a retry action when signed out", () => {
+    sync.state = "offline";
+    credentials.jwt = null;
+    render(<PublicShareButton task={task} />);
+    fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowDown" });
+    expect(
+      screen.getByTestId("sync-status-icon").getAttribute("aria-label"),
+    ).toBe("share.sync.offline");
+    expect(
+      screen.queryByRole("menuitem", { name: /^share\.sync\./ }),
+    ).toBeNull();
   });
 });

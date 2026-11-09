@@ -8,8 +8,10 @@ import {
 } from "@livestore/common";
 import { StoreInternalsSymbol } from "@livestore/livestore";
 import {
+  Cause,
   Deferred,
   Effect,
+  Fiber,
   RpcClientError,
   Socket,
   Stream,
@@ -17,13 +19,48 @@ import {
   SubscriptionRef,
 } from "@livestore/utils/effect";
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { observeSyncBackend, syncChannelName } from "../sync";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  hasPendingSyncEvents,
+  observeSyncBackend,
+  syncChannelName,
+} from "../sync";
 import { useSyncStatus } from "./use-sync-status";
 
+const channels = new Set<TestBroadcastChannel>();
+const responses: Fiber.RuntimeFiber<unknown, unknown>[] = [];
+class TestBroadcastChannel extends EventTarget {
+  closed = false;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  constructor(readonly name: string) {
+    super();
+    channels.add(this);
+  }
+  postMessage(data: unknown) {
+    if (this.closed) throw new Error("Channel is closed");
+    for (const peer of channels)
+      if (peer !== this && peer.name === this.name) {
+        Promise.resolve().then(() => {
+          if (peer.closed) return;
+          const event = new MessageEvent("message", { data });
+          peer.onmessage?.(event);
+          peer.dispatchEvent(event);
+        });
+      }
+  }
+  close() {
+    this.closed = true;
+    channels.delete(this);
+  }
+}
+beforeEach(() => vi.stubGlobal("BroadcastChannel", TestBroadcastChannel));
 afterEach(() => {
   cleanup();
+  for (const fiber of responses.splice(0))
+    Effect.runFork(Fiber.interrupt(fiber));
+  for (const channel of channels) channel.close();
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 function makeFakeStore() {
@@ -40,7 +77,7 @@ function makeFakeStore() {
     networkStatus: Subscribable.fromSubscriptionRef(
       network,
     ) as Subscribable.Subscribable<{ isConnected: boolean }, Error>,
-    syncState: Subscribable.make({
+    syncState: Subscribable.make<ReturnType<typeof getLeader>, Error, never>({
       get: Effect.sync(getLeader),
       changes: Stream.die("Must not subscribe to all pending event bodies"),
     }),
@@ -62,9 +99,50 @@ function makeFakeStore() {
       syncProcessor: { syncState: Subscribable.fromSubscriptionRef(session) },
     },
   } as unknown as LiveKitStore;
+  const channel = new BroadcastChannel(syncChannelName(store.storeId));
+  channel.onmessage = ({ data }) => {
+    if (data?.type !== "read-sync-status") return;
+    responses.push(
+      Effect.runFork(
+        Effect.gen(function* () {
+          const state = yield* leaderThread.syncState;
+          const connection = yield* network;
+          return {
+            hasPending: hasPendingSyncEvents(
+              state.pending as { name: string }[],
+            ),
+            localHead: state.localHead.global,
+            isConnected: connection.isConnected,
+          };
+        }).pipe(
+          Effect.matchCauseEffect({
+            onSuccess: (summary) =>
+              Effect.sync(() =>
+                channel.postMessage({
+                  type: "sync-status-summary",
+                  requestId: data.requestId,
+                  ...summary,
+                }),
+              ),
+            onFailure: (cause) =>
+              Cause.isInterruptedOnly(cause)
+                ? Effect.void
+                : Effect.sync(() =>
+                    channel.postMessage({
+                      type: "sync-status-summary",
+                      requestId: data.requestId,
+                      error: Cause.pretty(cause),
+                    }),
+                  ),
+          }),
+        ),
+      ),
+    );
+  };
   return {
     store,
     leaderThread,
+    statusChannel: channel,
     commit,
     query,
     getLeader,
@@ -137,7 +215,10 @@ describe("useSyncStatus", () => {
     await act(() => fake.setConnected(true));
     expect(result.current).toMatchObject({ isLoading: false, state: "synced" });
     await act(() => fake.setConnected(false));
-    expect(result.current).toMatchObject({ isLoading: false, state: "offline" });
+    expect(result.current).toMatchObject({
+      isLoading: false,
+      state: "offline",
+    });
   });
 
   it("excludes local fork events from both page and leader pending", async () => {
@@ -145,15 +226,29 @@ describe("useSyncStatus", () => {
     await fake.setLeader(4, 1, "v1.ForkAgentLocalEvent");
     await fake.setSession(2, 1, "v1.ForkAgentLocalEvent");
     const { result } = renderHook(() => useSyncStatus(fake.store));
-    await waitFor(() => expect(result.current).toMatchObject({ state: "synced", pending: 0 }));
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        state: "synced",
+        hasPending: false,
+      }),
+    );
   });
   it("does not read full leader pending while the menu is closed", async () => {
     const fake = makeFakeStore();
     const { result } = renderHook(() =>
       useSyncStatus(fake.store, { enabled: false }),
     );
-    await act(() => fake.setConnected(false));
+    const channel = new BroadcastChannel(syncChannelName(fake.store.storeId));
+    await act(async () => {
+      await fake.setConnected(false);
+      channel.postMessage({
+        type: "sync-status",
+        error: null,
+        isConnecting: false,
+      });
+    });
     await waitFor(() => expect(result.current.state).toBe("offline"));
+    channel.close();
     expect(fake.getLeader).not.toHaveBeenCalled();
     expect(result.current.error).toBeNull();
   });
@@ -169,7 +264,10 @@ describe("useSyncStatus", () => {
     rerender({ enabled: false });
     rerender({ enabled: true });
     await waitFor(() =>
-      expect(result.current).toMatchObject({ state: "syncing", pending: 3 }),
+      expect(result.current).toMatchObject({
+        state: "syncing",
+        hasPending: true,
+      }),
     );
     await act(() => fake.setConnected(false));
     expect(result.current.state).toBe("offline");
@@ -180,7 +278,7 @@ describe("useSyncStatus", () => {
     await fake.setSession(1, 2);
     const { result } = renderHook(() => useSyncStatus(fake.store));
     await waitFor(() => expect(fake.getLeader).toHaveBeenCalled());
-    await waitFor(() => expect(result.current.pending).toBe(1));
+    await waitFor(() => expect(result.current.hasPending).toBe(true));
     expect(result.current.state).toBe("syncing");
   });
 
@@ -229,6 +327,41 @@ describe("useSyncStatus", () => {
       expect.objectContaining({ name: "v1.MessageUpserted" }),
     );
     expect(result.current.isRequesting).toBe(false);
+  });
+
+  it("recovers from a manual status-query timeout on the next successful refresh", async () => {
+    const fake = makeFakeStore();
+    const { result } = renderHook(() =>
+      useSyncStatus(fake.store, { taskId: "task" }),
+    );
+    await waitFor(() => expect(result.current.state).toBe("synced"));
+    vi.useFakeTimers();
+    fake.leaderThread.syncState = Subscribable.make({
+      get: Effect.never,
+      changes: Stream.never,
+    });
+    let operation: Promise<unknown>;
+    await act(async () => {
+      operation = result.current.sync().catch((error) => error);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+      await operation;
+    });
+    expect(result.current).toMatchObject({
+      state: "syncing",
+      isLoading: false,
+      isRequesting: false,
+      error: null,
+    });
+    fake.leaderThread.syncState = Subscribable.make({
+      get: Effect.sync(fake.getLeader),
+      changes: Stream.never,
+    });
+    // An automatic read already started while unavailable; let it time out and retry.
+    await act(() => vi.advanceTimersByTimeAsync(10000));
+    expect(result.current).toMatchObject({ state: "synced", error: null });
+    expect(fake.commit).not.toHaveBeenCalled();
   });
 
   it("keeps a rejected resend visible across refreshes and clears it on a successful retry", async () => {
@@ -362,12 +495,72 @@ describe("useSyncStatus", () => {
       isRequesting: true,
     });
     expect(fake.commit).toHaveBeenCalledTimes(1);
-    fake.getLeader.mockReturnValue({ pending: [], localHead: { global: 2, client: 0, rebaseGeneration: 0 } });
+    fake.getLeader.mockReturnValue({
+      pending: [],
+      localHead: { global: 2, client: 0, rebaseGeneration: 0 },
+    });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000);
       await operation;
     });
     expect(finished).toBe(true);
+    expect(result.current).toMatchObject({
+      state: "synced",
+      error: null,
+      isRequesting: false,
+    });
+  });
+
+  it("keeps the manual wait alive across a status-query timeout", async () => {
+    const fake = makeFakeStore();
+    const { result } = renderHook(() =>
+      useSyncStatus(fake.store, { taskId: "task" }),
+    );
+    await waitFor(() => expect(result.current.state).toBe("synced"));
+    vi.useFakeTimers();
+    const available = fake.leaderThread.syncState;
+    fake.commit.mockImplementation(() => {
+      fake.getLeader.mockReturnValue({
+        pending: [{}],
+        localHead: { global: 2, client: 0, rebaseGeneration: 0 },
+      });
+      // The worker stops answering right after the resend is queued.
+      fake.leaderThread.syncState = Subscribable.make({
+        get: Effect.never,
+        changes: Stream.never,
+      });
+    });
+    let finished = false;
+    let failure: unknown;
+    let operation: Promise<void>;
+    await act(async () => {
+      operation = result.current.sync().then(
+        () => {
+          finished = true;
+        },
+        (error) => {
+          failure = error;
+        },
+      );
+    });
+    await act(() => vi.advanceTimersByTimeAsync(6000));
+    expect(failure).toBeUndefined();
+    expect(result.current).toMatchObject({
+      state: "syncing",
+      error: null,
+      isRequesting: true,
+    });
+    fake.getLeader.mockReturnValue({
+      pending: [],
+      localHead: { global: 2, client: 0, rebaseGeneration: 0 },
+    });
+    fake.leaderThread.syncState = available;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000);
+      await operation;
+    });
+    expect(finished).toBe(true);
+    expect(fake.commit).toHaveBeenCalledOnce();
     expect(result.current).toMatchObject({
       state: "synced",
       error: null,
@@ -418,7 +611,10 @@ describe("useSyncStatus", () => {
         await act(() => fake.setLeader(0));
         await act(() => result.current.sync());
         expect(fake.commit).toHaveBeenCalledOnce();
-        expect(result.current).toMatchObject({ error: null, isRequesting: false });
+        expect(result.current).toMatchObject({
+          error: null,
+          isRequesting: false,
+        });
       } finally {
         unmount();
         channel.close();
@@ -444,14 +640,20 @@ describe("useSyncStatus", () => {
       await act(async () => {
         operation = result.current.sync().catch(() => {});
       });
-      channel.postMessage({ type: "sync-status", error: "Previous upload failed" });
+      channel.postMessage({
+        type: "sync-status",
+        error: "Previous upload failed",
+      });
       await waitFor(() => expect(result.current.error).not.toBeNull());
       await act(async () => {
         await Effect.runPromise(Deferred.succeed(initial, undefined));
         await operation;
       });
       expect(fake.commit).toHaveBeenCalledOnce();
-      expect(result.current).toMatchObject({ error: null, isRequesting: false });
+      expect(result.current).toMatchObject({
+        error: null,
+        isRequesting: false,
+      });
     } finally {
       unmount();
       channel.close();
@@ -499,7 +701,7 @@ describe("useSyncStatus", () => {
     expect(fake.getLeader).toHaveBeenCalledTimes(reads + 1);
   });
 
-  it("does not report a slow status read as an upload failure", async () => {
+  it("ends the initial skeleton when the worker status query times out", async () => {
     vi.useFakeTimers();
     const fake = makeFakeStore();
     fake.leaderThread.syncState = Subscribable.make({
@@ -508,7 +710,101 @@ describe("useSyncStatus", () => {
     });
     const { result } = renderHook(() => useSyncStatus(fake.store));
     await act(() => vi.advanceTimersByTimeAsync(6000));
+    expect(result.current.isLoading).toBe(false);
     expect(result.current).toMatchObject({ state: "syncing", error: null });
+    fake.leaderThread.syncState = Subscribable.make({
+      get: Effect.sync(fake.getLeader),
+      changes: Stream.never,
+    });
+    await act(() => vi.advanceTimersByTimeAsync(5000));
+    expect(result.current).toMatchObject({
+      state: "synced",
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it("treats an explicit worker query timeout as syncing rather than a failure", async () => {
+    vi.useFakeTimers();
+    const fake = makeFakeStore();
+    fake.statusChannel.onmessage = ({ data }) => {
+      if (data?.type === "read-sync-status")
+        fake.statusChannel.postMessage({
+          type: "sync-status-summary",
+          requestId: data.requestId,
+          timedOut: true,
+        });
+    };
+    const { result } = renderHook(() => useSyncStatus(fake.store));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(result.current).toMatchObject({
+      state: "syncing",
+      isLoading: false,
+      error: null,
+    });
+  });
+
+  it("clears a worker query error on recovery while uploads are still pending", async () => {
+    const fake = makeFakeStore();
+    const { result, rerender } = renderHook(
+      ({ enabled }) => useSyncStatus(fake.store, { enabled }),
+      { initialProps: { enabled: true } },
+    );
+    await waitFor(() => expect(result.current.state).toBe("synced"));
+    rerender({ enabled: false });
+    await act(() => fake.setLeader(1));
+    fake.leaderThread.syncState = Subscribable.make({
+      get: Effect.fail(new Error("Worker query failed")),
+      changes: Stream.never,
+    });
+    rerender({ enabled: true });
+    await waitFor(() =>
+      expect(result.current.error).toContain("Worker query failed"),
+    );
+    rerender({ enabled: false });
+    fake.leaderThread.syncState = Subscribable.make({
+      get: Effect.sync(fake.getLeader),
+      changes: Stream.never,
+    });
+    rerender({ enabled: true });
+    await waitFor(() =>
+      expect(result.current).toMatchObject({
+        state: "syncing",
+        error: null,
+        hasPending: true,
+      }),
+    );
+  });
+
+  it("bounds connection initialization even when the status query returns", async () => {
+    vi.useFakeTimers();
+    const fake = makeFakeStore();
+    await fake.setConnected(false);
+    const { result } = renderHook(() => useSyncStatus(fake.store));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(result.current.isLoading).toBe(true);
+    await act(() => vi.advanceTimersByTimeAsync(6000));
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current).toMatchObject({ state: "syncing", error: null });
+    const channel = new BroadcastChannel(syncChannelName(fake.store.storeId));
+    await act(async () =>
+      channel.postMessage({
+        type: "sync-status",
+        error: null,
+        isConnecting: false,
+      }),
+    );
+    expect(result.current.state).toBe("offline");
+    channel.close();
+    await act(async () => {
+      await fake.setConnected(true);
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(result.current).toMatchObject({
+      state: "synced",
+      isLoading: false,
+      error: null,
+    });
   });
 
   it("classifies backend disconnects, reports real failures, and clears them on recovery", async () => {

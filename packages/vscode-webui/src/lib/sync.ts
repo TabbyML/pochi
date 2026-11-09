@@ -1,8 +1,22 @@
 import { type LiveKitStore, catalog } from "@getpochi/livekit";
-import type { SyncBackend } from "@livestore/common";
+import { InvalidPushError, SyncBackend, UnknownError } from "@livestore/common";
+import { LeaderThreadCtx } from "@livestore/common/leader-thread";
 import { Schema, StoreInternalsSymbol } from "@livestore/livestore";
-import { MAX_WS_MESSAGE_BYTES } from "@livestore/sync-cf/common";
-import { Effect, Socket, Stream } from "@livestore/utils/effect";
+import {
+  MAX_PUSH_EVENTS_PER_REQUEST,
+  MAX_WS_MESSAGE_BYTES,
+  splitChunkBySize,
+} from "@livestore/sync-cf/common";
+import {
+  Cause,
+  Chunk,
+  Deferred,
+  Effect,
+  KeyValueStore,
+  Option,
+  Socket,
+  Stream,
+} from "@livestore/utils/effect";
 
 export const syncChannelName = (storeId: string) => `pochi-sync:${storeId}`;
 
@@ -39,36 +53,155 @@ export function syncTaskMessages(store: LiveKitStore, taskId: string) {
 }
 
 /** Client-only events can remain pending locally but never need cloud acknowledgement. */
-export function countPendingSyncEvents(
-  pending: ReadonlyArray<{ name: string }>,
-) {
-  return pending.filter(
+export function hasPendingSyncEvents(pending: ReadonlyArray<{ name: string }>) {
+  return pending.some(
     (event) =>
       !catalog.schema.eventsDefsMap.get(event.name)?.options.clientOnly,
-  ).length;
+  );
 }
 
-/** Read only on demand: the SDK transfers full pending bodies over this RPC. */
+type SyncSummary = {
+  hasPending: boolean;
+  localHead: number;
+  isConnected: boolean;
+};
+/** Request only scalars over Pochi's channel, never the SDK's full-state RPC. */
+function requestSyncSummary(storeId: string) {
+  return Effect.scoped(
+    Effect.gen(function* () {
+      const channel = yield* Effect.acquireRelease(
+        Effect.sync(() => new BroadcastChannel(syncChannelName(storeId))),
+        (channel) => Effect.sync(() => channel.close()),
+      );
+      const requestId = crypto.randomUUID();
+      return yield* Effect.async<SyncSummary, Error | Cause.TimeoutException>(
+        (resume) => {
+          channel.onmessage = ({ data }) => {
+            if (
+              data?.type !== "sync-status-summary" ||
+              data.requestId !== requestId
+            )
+              return;
+            if (data.timedOut === true)
+              resume(
+                Effect.fail(
+                  new Cause.TimeoutException(
+                    "Sync worker status query timed out",
+                  ),
+                ),
+              );
+            else if (typeof data.error === "string")
+              resume(Effect.fail(new Error(data.error)));
+            else if (
+              typeof data.hasPending === "boolean" &&
+              typeof data.isConnected === "boolean" &&
+              Number.isSafeInteger(data.localHead) &&
+              data.localHead >= 0
+            )
+              resume(
+                Effect.succeed({
+                  hasPending: data.hasPending,
+                  isConnected: data.isConnected,
+                  localHead: data.localHead,
+                }),
+              );
+            else resume(Effect.fail(new Error("Invalid sync status response")));
+          };
+          channel.postMessage({ type: "read-sync-status", requestId });
+        },
+      );
+    }),
+  );
+}
+
+/** The worker returns only scalars, never pending events or changesets. */
 export function readSyncStatus(store: LiveKitStore) {
   return Effect.gen(function* () {
-    const { clientSession, syncProcessor } = store[StoreInternalsSymbol];
-    const leader = yield* clientSession.leaderThread.syncState;
+    const { syncProcessor } = store[StoreInternalsSymbol];
+    const leader = yield* requestSyncSummary(store.storeId);
     const session = yield* syncProcessor.syncState;
-    const network = yield* clientSession.leaderThread.networkStatus;
     // Include page events that were committed after the leader snapshot was read.
-    const ahead = Math.max(
-      0,
-      session.localHead.global - leader.localHead.global,
-    );
     return {
-      isConnected: network.isConnected,
-      pending: Math.max(
-        countPendingSyncEvents(session.pending),
-        countPendingSyncEvents(leader.pending) + ahead,
-      ),
+      isConnected: leader.isConnected,
+      hasPending:
+        leader.hasPending ||
+        hasPendingSyncEvents(session.pending) ||
+        session.localHead.global > leader.localHead,
       localHead: session.localHead.global,
     };
   });
+}
+
+/**
+ * Keep per-request deadlines in Pochi, using the SDK's existing payload splitter.
+ * The pinned SDK still uses unbounded exponential retry delays. These deadlines
+ * release stalled attempts; they do not bound recovery time after repeated failures.
+ */
+export function withSyncPushTimeout<T>(
+  makeBackend: SyncBackend.SyncBackendConstructor<T>,
+): SyncBackend.SyncBackendConstructor<T> {
+  return (args) =>
+    Effect.gen(function* () {
+      const backend = yield* makeBackend(args);
+      const kv = yield* KeyValueStore.KeyValueStore;
+      const readBackendId = SyncBackend.makeBackendIdHelper.pipe(
+        Effect.provideService(KeyValueStore.KeyValueStore, kv),
+      );
+      return {
+        ...backend,
+        push: (batch: Parameters<typeof backend.push>[0]) =>
+          Effect.gen(function* () {
+            if (batch.length === 0) return;
+            let backendId = (yield* readBackendId).get();
+            const split = (items: typeof batch) =>
+              Chunk.fromIterable(items).pipe(
+                splitChunkBySize({
+                  maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+                  maxBytes: MAX_WS_MESSAGE_BYTES,
+                  encode: (batch) => ({
+                    storeId: args.storeId,
+                    payload: args.payload,
+                    batch,
+                    backendId,
+                  }),
+                }),
+                Effect.mapError((cause) => new UnknownError({ cause })),
+              );
+            let chunks = Array.from(yield* split(batch));
+            while (chunks.length > 0) {
+              const currentId = (yield* readBackendId).get();
+              if (
+                Option.getOrUndefined(currentId) !==
+                Option.getOrUndefined(backendId)
+              ) {
+                backendId = currentId;
+                // A pull may establish the backend ID between requests, changing framing size.
+                chunks = Array.from(
+                  yield* split(
+                    chunks.flatMap((chunk) => Chunk.toReadonlyArray(chunk)),
+                  ),
+                );
+              }
+              const [chunk, ...remaining] = chunks;
+              chunks = remaining;
+              yield* backend.push(Chunk.toReadonlyArray(chunk)).pipe(
+                Effect.timeout("30 seconds"),
+                Effect.mapError((cause) =>
+                  cause._tag === "TimeoutException"
+                    ? new InvalidPushError({
+                        cause: new UnknownError({ cause }),
+                      })
+                    : cause,
+                ),
+              );
+            }
+          }).pipe(
+            Effect.catchTag("LiveStore.UnknownError", (cause) =>
+              Effect.fail(new InvalidPushError({ cause })),
+            ),
+          ),
+      };
+    });
 }
 
 /** Observe real upload failures in our worker without modifying LiveStore. */
@@ -81,6 +214,11 @@ export function observeSyncBackend<T>(
       Effect.sync(() => new BroadcastChannel(syncChannelName(storeId))),
       (channel) => Effect.sync(() => channel.close()),
     );
+    const scope = yield* Effect.scope;
+    const summaryReader = yield* Deferred.make<
+      Effect.Effect<SyncSummary>,
+      Error
+    >();
     let lastError: string | null = null;
     let isConnecting = true;
     let pushedHead:
@@ -92,6 +230,43 @@ export function observeSyncBackend<T>(
     };
     channel.onmessage = (event) => {
       if (event.data?.type === "get-sync-status") publish(lastError);
+      if (
+        event.data?.type === "read-sync-status" &&
+        typeof event.data.requestId === "string"
+      ) {
+        const requestId = event.data.requestId;
+        const reply = (
+          body: SyncSummary | { error: string } | { timedOut: true },
+        ) =>
+          Effect.sync(() =>
+            channel.postMessage({
+              type: "sync-status-summary",
+              requestId,
+              ...body,
+            }),
+          );
+        Effect.runFork(
+          summaryReader.pipe(
+            Effect.flatten,
+            // Leave time for this typed response to arrive before the page's 5s deadline.
+            Effect.timeout("4 seconds"),
+            Effect.matchCauseEffect({
+              onSuccess: reply,
+              onFailure: (cause) => {
+                if (Cause.isInterruptedOnly(cause)) return Effect.void;
+                const failure = Cause.failureOption(cause);
+                return reply(
+                  Option.isSome(failure) &&
+                    Cause.isTimeoutException(failure.value)
+                    ? { timedOut: true }
+                    : { error: Cause.pretty(cause) },
+                );
+              },
+            }),
+            Effect.forkIn(scope),
+          ),
+        );
+      }
     };
     return {
       ...backend,
@@ -106,7 +281,34 @@ export function observeSyncBackend<T>(
         ),
       ),
       pull: (...args: Parameters<typeof backend.pull>) =>
-        backend.pull(...args).pipe(
+        Stream.unwrap(
+          Effect.gen(function* () {
+            // The SDK runs backend pulls in its exported leader context, including offline boot.
+            const context = yield* Effect.serviceOption(LeaderThreadCtx);
+            if (Option.isSome(context)) {
+              const { syncProcessor, networkStatus } = context.value;
+              yield* Deferred.succeed(
+                summaryReader,
+                Effect.gen(function* () {
+                  const state = yield* syncProcessor.syncState;
+                  const network = yield* networkStatus;
+                  return {
+                    hasPending: hasPendingSyncEvents(state.pending),
+                    localHead: state.localHead.global,
+                    isConnected: network.isConnected,
+                  };
+                }),
+              );
+            } else
+              yield* Deferred.fail(
+                summaryReader,
+                new Error(
+                  "Sync status is unavailable outside the leader runtime",
+                ),
+              );
+            return backend.pull(...args);
+          }),
+        ).pipe(
           Stream.tap(({ batch }) =>
             Effect.sync(() => {
               // A pull echo can confirm the upload and interrupt push before its

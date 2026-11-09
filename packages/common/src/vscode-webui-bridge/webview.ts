@@ -52,6 +52,7 @@ import type {
 } from "./types/git";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
+import type { QueuedUserInputRecord } from "./types/task";
 import type { VSCodeSettings } from "./types/vscode-settings";
 
 export type BackgroundCommands = Record<
@@ -256,6 +257,15 @@ export interface VSCodeHostApi {
     snapshotPending: () => Promise<BackgroundJobNotification[]>;
     acknowledge: (notificationId: string) => Promise<void>;
   }>;
+
+  /** Reads the user messages queued for a task while its agent was busy. */
+  readQueuedUserInputs(taskId: string): Promise<QueuedUserInputRecord[]>;
+
+  /** Replaces the user messages queued for a task. */
+  saveQueuedUserInputs(
+    taskId: string,
+    inputs: QueuedUserInputRecord[],
+  ): Promise<void>;
 
   persistPastedTextFiles(
     taskId: string,

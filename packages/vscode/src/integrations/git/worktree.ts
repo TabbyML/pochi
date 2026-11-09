@@ -172,7 +172,9 @@ export class WorktreeManager implements vscode.Disposable {
             try {
               const content = await readFileContent(uri.fsPath);
               if (content) {
-                const worktreePath = path.dirname(content.trim());
+                const worktreePath = await this.toWorkspacePathForm(
+                  path.dirname(content.trim()),
+                );
                 logger.debug(`worktree added: ${worktreePath}`);
                 this.updateWorktrees(worktreePath);
               }
@@ -456,13 +458,46 @@ export class WorktreeManager implements vscode.Disposable {
   private async listGitWorktrees(): Promise<GitWorktree[]> {
     try {
       const result = await this.git.raw(["worktree", "list", "--porcelain"]);
-      return this.parseWorktreePorcelain(result).filter(
+      const worktrees = this.parseWorktreePorcelain(result).filter(
         (wt) => wt.prunable === undefined,
+      );
+      return await Promise.all(
+        worktrees.map(async (wt) => ({
+          ...wt,
+          path: await this.toWorkspacePathForm(wt.path),
+        })),
       );
     } catch (error) {
       logger.error(`Failed to list worktrees: ${toErrorMessage(error)}`);
       return [];
     }
+  }
+
+  /**
+   * Git reports worktree paths with symlinks resolved, while the workspace
+   * path and the cwd of its tasks keep the form VS Code opened. When the
+   * workspace was opened through a symlink, express a git path the same way,
+   * e.g. /private/tmp/repo-wt becomes /tmp/repo-wt for a workspace at /tmp/repo.
+   */
+  private async toWorkspacePathForm(worktreePath: string): Promise<string> {
+    const workspacePath = this.workspacePath;
+    if (!workspacePath) return worktreePath;
+    const realWorkspacePath = await fs
+      .realpath(workspacePath)
+      .catch(() => workspacePath);
+    const isSamePath = (a: string, b: string) =>
+      normalizePathForComparison(a) === normalizePathForComparison(b);
+    if (isSamePath(realWorkspacePath, workspacePath)) return worktreePath;
+    if (isSamePath(worktreePath, realWorkspacePath)) return workspacePath;
+
+    const candidate = path.join(
+      path.dirname(workspacePath),
+      path.relative(path.dirname(realWorkspacePath), worktreePath),
+    );
+    const realCandidate = await fs.realpath(candidate).catch(() => undefined);
+    return realCandidate && isSamePath(realCandidate, worktreePath)
+      ? candidate
+      : worktreePath;
   }
 
   private async getWorktrees(): Promise<GitWorktree[]> {

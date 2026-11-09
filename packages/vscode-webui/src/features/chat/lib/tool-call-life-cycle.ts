@@ -349,6 +349,7 @@ export class ManagedToolCallLifeCycle
             taskId: uid,
             parentTaskId: options.taskId ?? "",
             agentType: args.agentType,
+            title: args.description,
           },
           options.abortSignal,
         );

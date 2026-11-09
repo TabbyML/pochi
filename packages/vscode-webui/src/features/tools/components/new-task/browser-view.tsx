@@ -126,7 +126,12 @@ export function BrowserView(props: NewTaskToolViewProps) {
               ? t("browserView.runningInBackground")
               : isRunning
                 ? t("browserView.executing")
-                : t("browserView.paused")}
+                : backgroundStatus === "queued" && isBackground
+                  ? t("browserView.queued")
+                  : isBackground && backgroundStatus
+                    ? // A detached task never pauses: it has ended.
+                      t(`backgroundTasks.${backgroundStatus}`)
+                    : t("browserView.paused")}
           </span>
         </div>
       ) : null}

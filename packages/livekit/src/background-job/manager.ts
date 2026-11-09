@@ -195,6 +195,7 @@ export class BackgroundJobManager {
       store: this.store,
       blobStore: options.blobStore,
       onTaskSettled: (taskId) => this.taskChanged(taskId),
+      onTaskStarted: (taskId) => this.taskChanged(taskId),
       adaptor: {
         homeDir: options.adaptor.homeDir,
         waitUntilReady: () =>
@@ -263,7 +264,7 @@ export class BackgroundJobManager {
           blobStore,
           abortSignal,
           getters,
-          backgroundJobNotifications: { startTurn: appendMessage },
+          pendingInput: { startTurn: appendMessage },
           backgroundJobManager: this,
           chatClass: InMemoryChat,
           isSubTask: isSubagent,
@@ -287,11 +288,14 @@ export class BackgroundJobManager {
       taskId,
       parentTaskId,
       agentType,
+      title,
       stopForeground,
     }: {
       taskId: string;
       parentTaskId: string;
       agentType?: string;
+      /** The newTask description; names the task before it starts running. */
+      title?: string;
       stopForeground?: () => Promise<void>;
     },
     abortSignal?: AbortSignal,
@@ -329,6 +333,9 @@ export class BackgroundJobManager {
     const lastMessage = resume ? this.messages(taskId).at(-1) : undefined;
     if (resume && !lastMessage)
       throw new Error("Failed to resume the background subtask.");
+    // A queued task only gets its title when it starts streaming, so name it
+    // now: the jobs panel and task details show it while it waits for a slot.
+    const pendingTitle = settled.title ? undefined : title?.trim();
     this.batch(() => {
       const updatedAt = new Date();
       this.store.commit(
@@ -340,6 +347,15 @@ export class BackgroundJobManager {
                 data: lastMessage,
                 todos: settled.todos ? [...settled.todos] : [],
                 modelId: settled.modelId ?? undefined,
+                updatedAt,
+              }),
+            ]
+          : []),
+        ...(pendingTitle
+          ? [
+              catalog.events.updateTitle({
+                id: taskId,
+                title: pendingTitle,
                 updatedAt,
               }),
             ]
@@ -525,6 +541,14 @@ export class BackgroundJobManager {
 
   isTaskPending(taskId: string) {
     return this.getTaskStatus(taskId) === "running";
+  }
+
+  /**
+   * Whether a pending background task is still waiting for an execution slot.
+   * Its job status stays "running" so it can be stopped and awaited as usual.
+   */
+  isTaskQueued(taskId: string) {
+    return this.executor?.isTaskQueued(taskId) ?? false;
   }
 
   taskChanged(taskId: string) {
@@ -1048,12 +1072,13 @@ export class BackgroundJobManager {
             ...(job.kind === "subagent"
               ? { kind: job.kind, agentType: job.agentType }
               : { kind: job.kind }),
+            // The agent type is shown on its own, so it is not a title.
             title:
-              task.title ||
-              (job.kind === "subagent"
-                ? (job.agentType ?? "Subagent")
-                : "Fork"),
+              task.title || (job.kind === "subagent" ? "Subagent" : "Fork"),
             status,
+            ...(status === "running" && this.isTaskQueued(job.taskId)
+              ? { queued: true }
+              : {}),
             taskId: job.taskId,
           },
         ];

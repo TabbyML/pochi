@@ -1,5 +1,6 @@
 import * as assert from "node:assert";
 import { execFileSync } from "node:child_process";
+import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "mocha";
@@ -202,6 +203,41 @@ describe("worktree owner", () => {
         true,
       );
       assert.ok(simpleGitRaw.calledWith(["branch", "-D", "removed"]));
+    } finally {
+      manager.dispose();
+    }
+  });
+
+  it("lists worktrees in the symlinked form the workspace was opened with", async () => {
+    const realTmp = await fs.realpath(tmpDir.fsPath);
+    const worktreePath = addWorktree("wt-linked");
+    await writeWorktreeOwner(worktreePath, "user");
+    const linkDir = path.join(tmpDir.fsPath, "link");
+    await fs.symlink(realTmp, linkDir, "dir");
+    const linkedRepo = path.join(linkDir, "repo");
+    const manager = new WorktreeManager(
+      { workspacePath: linkedRepo },
+      { getRepository: () => undefined },
+      { get: () => undefined },
+      { detectWorktreesLimit: { value: 10 } },
+      { ready: Promise.resolve(), tasks: { value: {} } },
+      { getArchivedSignal: () => ({ value: {} }) },
+    );
+    sinon.stub(manager, "isGitRepository").resolves(true);
+    manager.git = {
+      branch: async () => ({ all: [] }),
+      raw: async (args: string[]) => git(repo, ...args),
+    };
+    try {
+      const worktrees: { path: string; isMain: boolean }[] =
+        await manager.getWorktrees();
+      assert.deepStrictEqual(
+        worktrees.map((wt) => [wt.path, wt.isMain]),
+        [
+          [linkedRepo, true],
+          [path.join(linkDir, "wt-linked"), false],
+        ],
+      );
     } finally {
       manager.dispose();
     }

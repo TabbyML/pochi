@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
     | "failed"
     | "stopped"
     | undefined,
+  queued: false,
   task: undefined as Pick<Task, "status" | "error"> | undefined,
 }));
 vi.mock("@/lib/use-default-store", () => ({
@@ -19,6 +20,7 @@ vi.mock("@/lib/use-default-store", () => ({
 }));
 vi.mock("@/features/chat", () => ({
   useBackgroundTaskStatus: () => state.jobStatus,
+  useBackgroundTaskQueued: () => state.queued,
 }));
 vi.mock("@/features/settings", () => ({ useIsDevMode: () => [false] }));
 vi.mock("@/lib/hooks/use-copy-to-clipboard", () => ({
@@ -42,6 +44,7 @@ const tool: ToolProps<"newTask">["tool"] = {
 afterEach(() => {
   cleanup();
   state.jobStatus = undefined;
+  state.queued = false;
 });
 
 describe("background subagent tool status", () => {
@@ -89,6 +92,34 @@ describe("background subagent tool status", () => {
     rerender(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
     expect(
       screen.getByRole("img", { name: "backgroundTasks.completed" }),
+    ).toBeTruthy();
+  });
+  it("shows a task waiting for an execution slot as queued, not running", () => {
+    state.task = { status: "pending-model", error: null };
+    state.jobStatus = "running";
+    state.queued = true;
+    const { rerender } = render(
+      <BackgroundSubagentStatusIcon taskId="child" tool={tool} />,
+    );
+    const queued = screen.getByRole("img", { name: "backgroundTasks.queued" });
+    expect(queued.querySelector(".animate-spin")).toBeNull();
+    state.queued = false;
+    rerender(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
+    expect(
+      screen
+        .getByRole("img", { name: "backgroundTasks.running" })
+        .querySelector(".animate-spin"),
+    ).toBeTruthy();
+  });
+  it("labels a task stopped by the user as stopped", () => {
+    state.task = {
+      status: "failed",
+      error: { kind: "AbortError", message: "Stopped by user." },
+    };
+    state.jobStatus = "stopped";
+    render(<BackgroundSubagentStatusIcon taskId="child" tool={tool} />);
+    expect(
+      screen.getByRole("img", { name: "backgroundTasks.stopped" }),
     ).toBeTruthy();
   });
   it("does not claim completion when the subtask cannot be found", () => {

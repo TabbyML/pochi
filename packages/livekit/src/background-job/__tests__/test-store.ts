@@ -66,6 +66,8 @@ export function makeJobStore() {
             } as Task);
           else if (event.name === "v1.TaskBackgrounded")
             tasks.set(id, { ...tasks.get(id), background: true } as Task);
+          else if (event.name === "v1.UpdateTitle")
+            tasks.set(id, { ...tasks.get(id), title: args.title } as Task);
           else if (event.name === "v1.ChatStreamStarted") {
             tasks.set(id, {
               ...tasks.get(id),

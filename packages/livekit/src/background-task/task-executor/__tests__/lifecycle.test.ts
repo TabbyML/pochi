@@ -179,7 +179,7 @@ it.each(["pending-model", "pending-tool"] as const)(
         markEndToolsExecution() {},
         markAsFailed: vi.fn(),
         subscribeBackgroundJobs: () => () => {},
-        flushBackgroundJobNotifications: () => false,
+        flushPendingInput: () => false,
       }),
     });
     manager.setExecutor(executor);
@@ -288,7 +288,7 @@ it("stops the task when its Webview is disposed during a response", async () => 
       markEndToolsExecution() {},
       markAsFailed: vi.fn(),
       subscribeBackgroundJobs: () => () => {},
-      flushBackgroundJobNotifications: () => false,
+      flushPendingInput: () => false,
     }),
   });
   manager.setExecutor(executor);
@@ -367,7 +367,7 @@ function backgroundAgent(initialMessage: Message) {
       } as Task);
       const kit = new LiveChatKit({
         ...options,
-        backgroundJobNotifications: { startTurn: options.appendMessage },
+        pendingInput: { startTurn: options.appendMessage },
         backgroundJobManager: manager,
         chatClass: InMemoryChat,
         isSubTask: true,

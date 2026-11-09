@@ -145,8 +145,21 @@ export function installPochiWidgetStateRuntime({
   };
 }
 
+/**
+ * VS Code runs its copy command in the Pochi webview document, which cannot
+ * see a selection inside this nested iframe, so the widget copies on its own.
+ */
+export function handleWidgetCopyShortcut(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.altKey || event.shiftKey) return;
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+  const hasCommandModifier = isMac ? event.metaKey : event.ctrlKey;
+  if (!hasCommandModifier || event.key.toLowerCase() !== "c") return;
+  if (document.execCommand("copy")) event.preventDefault();
+}
+
 export function startWidgetRenderer() {
   disableHostAndNetworkApis();
+  addEventListener("keydown", handleWidgetCopyShortcut);
 
   const root = document.getElementById("root");
   let lastVisualHtml = "";
