@@ -34,12 +34,8 @@ import type {
   DisplayModel,
   McpConfigOverride,
 } from "@getpochi/common/vscode-webui-bridge";
-import type {
-  BackgroundJobNotificationPart,
-  Message,
-  Task,
-} from "@getpochi/livekit";
-import { type Todo, initTodoModeTodos } from "@getpochi/tools";
+import type { Message, PendingInput, Task } from "@getpochi/livekit";
+import type { Todo } from "@getpochi/tools";
 import {
   SendHorizonal,
   ShieldCheck,
@@ -55,9 +51,14 @@ import {
 } from "../hooks/use-blocking-operations";
 import { useChatInputState } from "../hooks/use-chat-input-state";
 import { useChatStatus } from "../hooks/use-chat-status";
-import { type DraftMessage, useChatSubmit } from "../hooks/use-chat-submit";
+import {
+  type DraftMessage,
+  type PendingInputController,
+  useChatSubmit,
+} from "../hooks/use-chat-submit";
 import { useInlineCompactTask } from "../hooks/use-inline-compact-task";
 import { useNewCompactTask } from "../hooks/use-new-compact-task";
+import { toDraftMessage } from "../hooks/use-pending-input-sink";
 import { useShowCompleteSubtaskButton } from "../hooks/use-subtask-completed";
 import type { SubtaskInfo } from "../hooks/use-subtask-info";
 import { useTerminalContextState } from "../hooks/use-terminal-context-state";
@@ -98,12 +99,10 @@ interface ChatToolbarProps {
   isRepairingMermaid?: boolean;
   mcpConfigOverride?: McpConfigOverride;
   getSystemPrompt?: () => string | undefined;
-  /** Background job notifications the chat kit has not delivered yet. */
-  pendingBackgroundJobNotifications?: readonly BackgroundJobNotificationPart[];
-  /** Asks the chat kit to deliver those notifications right away. */
-  flushBackgroundJobNotifications?: (options?: {
-    automatic?: boolean;
-  }) => boolean;
+  /** Input the chat kit has not delivered yet, mirrored for rendering. */
+  pendingInput: PendingInput;
+  /** The chat kit, which owns that input and decides when it is delivered. */
+  pendingInputController: PendingInputController;
   persistToolOutput: () => void;
   onToolCallApprovalVisible?: () => void;
   onToolsExecutionStarted?: () => void;
@@ -131,8 +130,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   isRepairingMermaid = false,
   mcpConfigOverride,
   getSystemPrompt,
-  pendingBackgroundJobNotifications,
-  flushBackgroundJobNotifications,
+  pendingInput,
+  pendingInputController,
   persistToolOutput,
   onToolCallApprovalVisible,
   onToolsExecutionStarted,
@@ -157,7 +156,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const { customAgents, isLoading: isCustomAgentsLoading } =
     useCustomAgents(true);
 
-  const [queuedMessages, setQueuedMessages] = useState<DraftMessage[]>([]);
+  const queuedUserInputs = pendingInput.userInputs;
+  const pendingNotifications = pendingInput.notifications;
 
   const [excludedUserEditsContext, setExcludedUserEditsContext] =
     useState<string>();
@@ -202,15 +202,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const resetTodoMode = useCallback(() => {
     setTodoModeSelected(false);
   }, []);
-
-  const createTodoBeforeSend = useCallback(
-    (text: string) => {
-      if (hasActiveTodos(todos)) return;
-
-      updateTodos(initTodoModeTodos(text));
-    },
-    [todos, updateTodos],
-  );
 
   const {
     groupedModels,
@@ -279,7 +270,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isInputEmpty:
       !input.text.trim() &&
       (input.pastedTexts?.length ?? 0) === 0 &&
-      queuedMessages.length === 0,
+      queuedUserInputs.length === 0,
     isFilesEmpty: files.length === 0,
     isReviewsEmpty: reviews.length === 0,
     isTerminalContextEmpty: terminalContextSelections.length === 0,
@@ -302,8 +293,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     isPreparingMessage,
     handleSubmit,
     handleSteerSubmit,
-    handleSteerQueuedMessage,
-    handleSteerBackgroundJobNotifications,
+    handleSteer,
+    sendPendingInput,
     handleStop,
   } = useChatSubmit({
     chat,
@@ -317,8 +308,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     allowSendMessage,
     allowSteer: canSteer,
     pendingApproval,
-    queuedMessages,
-    setQueuedMessages,
+    pendingInputController,
     reviews,
     userEdits: includedUserEdits,
     skills,
@@ -327,10 +317,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     clearTerminalContextSelections,
     taskId,
     isTodoMode: todoModeSelected,
-    canCreateTodo: !todoModeDisabled,
     onTodoModeSubmitted: resetTodoMode,
-    onBeforeSendText: createTodoBeforeSend,
-    flushBackgroundJobNotifications,
   });
 
   const chatInputFormRef = useRef<ChatInputFormHandle>(null);
@@ -339,7 +326,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     await handleSubmit(undefined, chatInputFormRef.current?.getInputSnapshot());
   }, [handleSubmit]);
 
-  // Auto dequeue when ready
+  // While the agent works, the chat kit attaches pending input to its next
+  // request, e.g. the continuation after tool calls. Once it stops, send it.
   const taskStatus = task?.status;
   const isIdle =
     status === "ready" &&
@@ -349,39 +337,23 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       taskStatus === "pending-input" ||
       taskStatus === "completed");
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pendingBackgroundJobNotifications wakes this effect up when a background job finishes while the agent is idle.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages and pendingInput wake this effect up when the conversation or the pending input changes while the agent is idle.
   useEffect(() => {
     if (!isIdle) return;
-
-    const head = queuedMessages[0];
-    if (head) {
-      // Queued user input goes first; the chat kit attaches the pending
-      // notifications to that very request, so they cost no extra turn.
-      handleSteerQueuedMessage(0);
-      return;
-    }
-
-    // The chat kit owns notification delivery, including deferring it while a
+    // The chat kit owns delivery, including deferring notifications while a
     // follow-up question waits for its answer.
-    flushBackgroundJobNotifications?.();
-  }, [
-    isIdle,
-    messages,
-    queuedMessages,
-    pendingBackgroundJobNotifications,
-    flushBackgroundJobNotifications,
-    handleSteerQueuedMessage,
-  ]);
+    sendPendingInput({ automatic: true });
+  }, [isIdle, messages, pendingInput, sendPendingInput]);
 
-  // Notifications are rendered after the queued user messages, matching the
-  // order in which they reach the model.
+  // Rendered in the order they reach the model: user input, then
+  // notifications.
   const notificationEntry = useMemo<DraftMessage | undefined>(() => {
-    if (!pendingBackgroundJobNotifications?.length) return undefined;
+    if (!pendingNotifications.length) return undefined;
 
     return {
-      parts: [...pendingBackgroundJobNotifications],
+      parts: [...pendingNotifications],
       raw: {
-        text: pendingBackgroundJobNotifications
+        text: pendingNotifications
           .map((part) =>
             part.data.kind === "monitor"
               ? part.data.description
@@ -393,32 +365,33 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
         nonRemovable: true,
       },
     };
-  }, [pendingBackgroundJobNotifications]);
+  }, [pendingNotifications]);
 
-  const displayedQueuedMessages = useMemo(
-    () =>
-      notificationEntry
-        ? [...queuedMessages, notificationEntry]
-        : queuedMessages,
-    [notificationEntry, queuedMessages],
-  );
+  const displayedQueuedMessages = useMemo(() => {
+    const messages = queuedUserInputs.map(toDraftMessage);
+    return notificationEntry ? [...messages, notificationEntry] : messages;
+  }, [notificationEntry, queuedUserInputs]);
 
   // Remove a message from queue
   const handleRemoveQueuedMessage = useCallback(
     (index: number) => {
-      if (queuedMessages[index]?.raw.nonRemovable) return;
-      setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
+      const queued = queuedUserInputs[index];
+      if (!queued) return;
+      pendingInputController.removeUserInput(queued.id);
     },
-    [queuedMessages],
+    [queuedUserInputs, pendingInputController],
   );
 
   // Put a queued message back into the composer, replacing its current content.
   const handleEditQueuedMessage = useCallback(
     (index: number) => {
-      const message = queuedMessages[index];
-      if (isPreparingMessage || !message?.draft) return;
+      const queued = queuedUserInputs[index];
+      if (isPreparingMessage || !queued) return;
+      const message = toDraftMessage(queued);
+      if (!message.draft) return;
+      // It may have been delivered meanwhile; only edit what is still queued.
+      if (!pendingInputController.removeUserInput(queued.id)) return;
       const { draft } = message;
-      setQueuedMessages(queuedMessages.filter((_, i) => i !== index));
       setInput(draft.input);
       restoreFiles(draft.attachments);
       setTodoModeSelected(canSelectTodoMode && !!message.raw.isTodoMode);
@@ -426,26 +399,12 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
       setTimeout(() => chatInputFormRef.current?.focusInput(), 0);
     },
     [
-      queuedMessages,
+      queuedUserInputs,
+      pendingInputController,
       setInput,
       restoreFiles,
       canSelectTodoMode,
       isPreparingMessage,
-    ],
-  );
-
-  const handleSteerDisplayedMessage = useCallback(
-    (index: number) => {
-      if (index < queuedMessages.length) {
-        void handleSteerQueuedMessage(index);
-        return;
-      }
-      void handleSteerBackgroundJobNotifications();
-    },
-    [
-      queuedMessages.length,
-      handleSteerQueuedMessage,
-      handleSteerBackgroundJobNotifications,
     ],
   );
 
@@ -521,8 +480,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
             onToolCallApprovalVisible={onToolCallApprovalVisible}
             onToolsExecutionStarted={onToolsExecutionStarted}
             onToolsExecutionEnded={onToolsExecutionEnded}
-            hasQueuedMessages={queuedMessages.length > 0}
-            onContinueWithQueuedMessage={() => handleSteerQueuedMessage(0)}
+            hasQueuedMessages={queuedUserInputs.length > 0}
+            onContinueWithQueuedMessage={handleSteer}
           />
           {showRenderWidgetFixButton ? (
             <div className="flex select-none gap-3 [&>button]:flex-1 [&>button]:rounded-sm">
@@ -582,7 +541,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           onRemoveTerminalContextSelection={removeTerminalContextSelection}
           queuedMessages={displayedQueuedMessages}
           onRemoveQueuedMessage={handleRemoveQueuedMessage}
-          onSteerQueuedMessage={handleSteerDisplayedMessage}
+          onSteerQueuedMessages={handleSteer}
           onEditQueuedMessage={handleEditQueuedMessage}
           allowEditQueuedMessage={!isPreparingMessage}
           allowSteer={allowSteer}

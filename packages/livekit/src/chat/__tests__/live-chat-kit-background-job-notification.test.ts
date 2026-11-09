@@ -19,7 +19,7 @@ import {
   toBackgroundJobNotificationParts,
 } from "../background-job-notification";
 import type { OnStartCallback } from "../flexible-chat-transport";
-import type { LiveChatKitBackgroundJobNotificationOptions } from "../live-chat-kit";
+import type { LiveChatKitPendingInputOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
 const kits = new Set<LiveChatKit<FakeChat>>();
 afterEach(async () => {
@@ -32,28 +32,28 @@ describe("LiveChatKit background job notification delivery", () => {
     vi.useFakeTimers();
     const { kit, push, store, setMessages } = await makeQueuedChatKit();
     push("first");
-    expect(kit.flushBackgroundJobNotifications()).toBe(false);
+    expect(kit.flushPendingInput()).toBe(false);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(kit.flushBackgroundJobNotifications()).toBe(true);
+    expect(kit.flushPendingInput()).toBe(true);
     await makeRequest(kit);
     setMessages("task-1", kit.chat.messages);
     await Promise.resolve();
     const secondKit = makeChatKit(undefined, store);
     secondKit.chat.messages = [...kit.chat.messages, assistantMessage()];
     push("second");
-    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(secondKit.flushPendingInput()).toBe(false);
     await vi.advanceTimersByTimeAsync(9999);
-    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(secondKit.flushPendingInput()).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
-    expect(secondKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(secondKit.flushPendingInput()).toBe(true);
     await makeRequest(secondKit);
     setMessages("task-1", secondKit.chat.messages);
     await Promise.resolve();
     secondKit.chat.status = "ready";
     secondKit.chat.messages.push(assistantMessage());
     push("third");
-    expect(secondKit.flushBackgroundJobNotifications()).toBe(false);
-    expect(secondKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    expect(secondKit.flushPendingInput()).toBe(false);
+    expect(secondKit.flushPendingInput({ automatic: false })).toBe(true);
     expect(idsOf(secondKit.chat.messages.at(-1)!.parts)).toEqual(["third"]);
   });
 
@@ -65,12 +65,12 @@ describe("LiveChatKit background job notification delivery", () => {
       push(`head-${index}`, { lines, backgroundJobId });
       push(`buffer-${index}`, { lines, backgroundJobId });
     }
-    expect(kit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    expect(kit.flushPendingInput({ automatic: false })).toBe(true);
     await makeRequest(kit);
     const sent = idsOf(kit.chat.messages.at(-1)!.parts);
     expect(sent).toEqual(["head-0", "head-1", "head-2", "buffer-0"]);
     expect(pending()).toHaveLength(6);
-    expect(idsOf(kit.pendingBackgroundJobNotifications)).toEqual(["buffer-1", "buffer-2"]);
+    expect(idsOf(kit.pendingInput.notifications)).toEqual(["buffer-1", "buffer-2"]);
     setMessages("task-1", kit.chat.messages);
     await Promise.resolve();
     kit.chat.messages.push(assistantMessage(), userMessage("continue"));
@@ -91,9 +91,9 @@ describe("LiveChatKit background job notification delivery", () => {
       push("third");
       expect(pending().map((item) => item.notificationId)).toEqual(["first"]);
       if (trigger === "automatic") {
-        expect(kit.flushBackgroundJobNotifications()).toBe(false);
+        expect(kit.flushPendingInput()).toBe(false);
         await vi.advanceTimersByTimeAsync(1000);
-        expect(kit.flushBackgroundJobNotifications()).toBe(true);
+        expect(kit.flushPendingInput()).toBe(true);
       }
       await makeRequest(kit);
       const parts = kit.chat.messages.at(-1)!.parts;
@@ -205,7 +205,7 @@ describe("LiveChatKit background job notification delivery", () => {
     ]);
     await makeRequest(chatKit);
     expect(idsOf(chatKit.chat.messages.at(-1)!.parts)).toEqual(["next"]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
 
   it.each(["submitted", "streaming"] as const)(
@@ -215,13 +215,13 @@ describe("LiveChatKit background job notification delivery", () => {
       chatKit.chat.messages = [userMessage("watch"), assistantMessage()];
       chatKit.enqueueBackgroundJobNotifications([monitorEvent("event")]);
       chatKit.chat.status = status;
-      expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(false);
+      expect(chatKit.flushPendingInput({ automatic: false })).toBe(false);
       expect(chatKit.chat.sentMessages).toHaveLength(0);
-      expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
+      expect(idsOf(chatKit.pendingInput.notifications)).toEqual([
         "event",
       ]);
       chatKit.chat.status = "ready";
-      expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+      expect(chatKit.flushPendingInput({ automatic: false })).toBe(true);
       expect(chatKit.chat.sentMessages).toHaveLength(1);
     },
   );
@@ -235,16 +235,16 @@ describe("LiveChatKit background job notification delivery", () => {
     const event = monitorEvent("event");
     chatKit.chat.messages = [userMessage("watch"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications([event]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["event"]);
+    expect(chatKit.flushPendingInput()).toBe(false);
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual(["event"]);
     startTurn.mockImplementation((message) => {
       chatKit.chat.messages.push(message);
     });
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushPendingInput()).toBe(true);
     chatKit.enqueueBackgroundJobNotifications([event]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     expect(startTurn).toHaveBeenCalledTimes(2);
     expect(idsOf(startTurn.mock.calls[1][0].parts)).toEqual(["event"]);
   });
@@ -256,15 +256,15 @@ describe("LiveChatKit background job notification delivery", () => {
       .spyOn(chatKit.chat, "sendMessage")
       .mockRejectedValueOnce(new Error("send failed"));
     chatKit.enqueueBackgroundJobNotifications([monitorEvent("event")]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     await vi.advanceTimersByTimeAsync(1000);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushPendingInput()).toBe(true);
     await Promise.resolve();
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual(["event"]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual(["event"]);
+    expect(chatKit.flushPendingInput()).toBe(true);
     expect(send).toHaveBeenCalledTimes(2);
     expect(idsOf(send.mock.calls[1][0].parts)).toEqual(["event"]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
 
   it("shares one request budget between an idle flush and the request snapshot hook", async () => {
@@ -277,7 +277,7 @@ describe("LiveChatKit background job notification delivery", () => {
         lines: Array.from({ length: 4 }, () => "x".repeat(2048)),
       })),
     );
-    expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    expect(chatKit.flushPendingInput({ automatic: false })).toBe(true);
     await makeRequest(chatKit);
     expect(idsOf(chatKit.chat.messages.at(-1)!.parts)).toEqual([
       "0",
@@ -285,16 +285,16 @@ describe("LiveChatKit background job notification delivery", () => {
       "2",
       "3",
     ]);
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual([
       "4",
       "5",
     ]);
     chatKit.chat.messages.push(assistantMessage());
     chatKit.chat.status = "ready";
-    expect(chatKit.flushBackgroundJobNotifications({ automatic: false })).toBe(true);
+    expect(chatKit.flushPendingInput({ automatic: false })).toBe(true);
     await makeRequest(chatKit);
     expect(idsOf(chatKit.chat.messages.at(-1)!.parts)).toEqual(["4", "5"]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
   it("keeps monitor events pending for a follow-up, then attaches and deduplicates them", async () => {
     const chatKit = makeChatKit();
@@ -311,7 +311,7 @@ describe("LiveChatKit background job notification delivery", () => {
       followupQuestionMessage(),
     ];
     chatKit.enqueueBackgroundJobNotifications([event]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     chatKit.chat.messages.push(userMessage("continue"));
     await makeRequest(chatKit);
     expect(chatKit.chat.messages.at(-1)?.parts).toEqual([
@@ -319,7 +319,7 @@ describe("LiveChatKit background job notification delivery", () => {
       { type: "data-background-job-notification", data: event },
     ]);
     chatKit.enqueueBackgroundJobNotifications([event]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
 
   describe.each(["command", "subagent", "monitor"] as const)(
@@ -364,7 +364,7 @@ describe("LiveChatKit background job notification delivery", () => {
             manager.registerTask("child-1", { parentTaskId: "task-1" });
           }
           const startTurn = vi.fn();
-          const onPendingChange = vi.fn();
+          const onChange = vi.fn();
           const kit = new LiveChatKit<FakeChat>({
             taskId: "task-1",
             store: data.store,
@@ -372,14 +372,14 @@ describe("LiveChatKit background job notification delivery", () => {
             chatClass: FakeChat,
             getters: { getLLM: () => ({ id: "test-model" }) as never },
             backgroundJobManager: manager,
-            backgroundJobNotifications: { startTurn, onPendingChange },
+            pendingInput: { startTurn, onChange },
           });
           kit.chat.messages = [userMessage("run it"), assistantMessage()];
           await manager.watchTask("task-1");
           const unsubscribe = kit.subscribeBackgroundJobs();
           try {
             await vi.waitFor(() =>
-              expect(kit.pendingBackgroundJobNotifications).toHaveLength(1),
+              expect(kit.pendingInput.notifications).toHaveLength(1),
             );
             if (delivery !== "subscription") unsubscribe();
             await manager.kill(notice.backgroundJobId, "task-1", {
@@ -394,20 +394,20 @@ describe("LiveChatKit background job notification delivery", () => {
                 ),
               ).toEqual([]);
             } else if (delivery === "flush") {
-              expect(kit.flushBackgroundJobNotifications()).toBe(false);
+              expect(kit.flushPendingInput()).toBe(false);
               expect(startTurn).not.toHaveBeenCalled();
             }
-            expect(kit.pendingBackgroundJobNotifications).toEqual([]);
-            expect(onPendingChange).toHaveBeenLastCalledWith([]);
+            expect(kit.pendingInput.notifications).toEqual([]);
+            expect(onChange).toHaveBeenLastCalledWith({ userInputs: [], notifications: [] });
 
             // A stale snapshot must not bring back the silenced result, while
             // unrelated results still reach the model.
             const other = notifications("bgjob-cmd-other")[0];
             kit.enqueueBackgroundJobNotifications([notice, other]);
-            expect(idsOf(kit.pendingBackgroundJobNotifications)).toEqual([
+            expect(idsOf(kit.pendingInput.notifications)).toEqual([
               other.notificationId,
             ]);
-            expect(kit.flushBackgroundJobNotifications()).toBe(true);
+            expect(kit.flushPendingInput()).toBe(true);
             expect(idsOf(startTurn.mock.calls[0][0].parts)).toEqual([
               other.notificationId,
             ]);
@@ -432,14 +432,14 @@ describe("LiveChatKit background job notification delivery", () => {
       "data-background-job-notification",
       "data-background-job-notification",
     ]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
   it("deduplicates task outcomes but delivers a different terminal status", async () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [userMessage("continue")];
     chatKit.enqueueBackgroundJobNotifications([subagentResult, subagentResult]);
     chatKit.enqueueBackgroundJobNotifications([subagentResult]);
-    expect(chatKit.pendingBackgroundJobNotifications).toHaveLength(1);
+    expect(chatKit.pendingInput.notifications).toHaveLength(1);
     await makeRequest(chatKit);
     const resumed = makeChatKit();
     resumed.chat.messages = chatKit.chat.messages;
@@ -449,7 +449,7 @@ describe("LiveChatKit background job notification delivery", () => {
       status: "failed" as const,
     };
     resumed.enqueueBackgroundJobNotifications([subagentResult, retried]);
-    expect(resumed.pendingBackgroundJobNotifications).toEqual([
+    expect(resumed.pendingInput.notifications).toEqual([
       {
         type: "data-background-job-notification",
         data: retried,
@@ -461,18 +461,18 @@ describe("LiveChatKit background job notification delivery", () => {
     const chatKit = makeChatKit({ startTurn });
     chatKit.chat.messages = [userMessage("run it"), followupQuestionMessage()];
     chatKit.enqueueBackgroundJobNotifications([subagentResult]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     expect(startTurn).not.toHaveBeenCalled();
-    expect(chatKit.pendingBackgroundJobNotifications).toHaveLength(1);
+    expect(chatKit.pendingInput.notifications).toHaveLength(1);
     chatKit.chat.messages.push(userMessage("yes"));
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushPendingInput()).toBe(true);
     expect(startTurn.mock.calls[0][0].parts).toEqual([
       {
         type: "data-background-job-notification",
         data: subagentResult,
       },
     ]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
   it("persists the checkpoint added to a notification continuation", async () => {
     const store = new FakeStore();
@@ -533,7 +533,7 @@ describe("LiveChatKit background job notification delivery", () => {
     expect(
       getBackgroundJobNotificationIds(chatKit.chat.messages[1].parts),
     ).toEqual(["bgjob-cmd-1:terminal"]);
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
   });
   it("appends a message of its own to a continuation request", async () => {
     const chatKit = makeChatKit();
@@ -551,23 +551,23 @@ describe("LiveChatKit background job notification delivery", () => {
     expect(chatKit.chat.messages).toBe(messages);
   });
   it("reports the pending notifications to the host", () => {
-    const onPendingChange = vi.fn();
-    const chatKit = makeChatKit({ onPendingChange });
+    const onChange = vi.fn();
+    const chatKit = makeChatKit({ onChange });
     chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
-    expect(onPendingChange).toHaveBeenCalledTimes(1);
-    expect(idsOf(onPendingChange.mock.calls[0][0])).toEqual([
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(idsOf(onChange.mock.calls[0][0].notifications)).toEqual([
       "bgjob-cmd-1:terminal",
     ]);
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual([
       "bgjob-cmd-1:terminal",
     ]);
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
-    expect(onPendingChange).toHaveBeenLastCalledWith([]);
+    expect(chatKit.flushPendingInput()).toBe(true);
+    expect(onChange).toHaveBeenLastCalledWith({ userInputs: [], notifications: [] });
   });
   it("ignores notifications that are pending or already delivered", () => {
-    const onPendingChange = vi.fn();
-    const chatKit = makeChatKit({ onPendingChange });
+    const onChange = vi.fn();
+    const chatKit = makeChatKit({ onChange });
     chatKit.chat.messages = [
       userMessage("run it"),
       createBackgroundJobNotificationMessage(
@@ -575,20 +575,20 @@ describe("LiveChatKit background job notification delivery", () => {
       ),
     ];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
-    expect(chatKit.pendingBackgroundJobNotifications).toEqual([]);
+    expect(chatKit.pendingInput.notifications).toEqual([]);
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-2"));
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-2"));
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual([
       "bgjob-cmd-2:terminal",
     ]);
-    expect(onPendingChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
   it("starts a turn of its own through the host sender", () => {
     const startTurn = vi.fn();
     const chatKit = makeChatKit({ startTurn });
     chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushPendingInput()).toBe(true);
     expect(startTurn).toHaveBeenCalledTimes(1);
     expect(
       getBackgroundJobNotificationIds(startTurn.mock.calls[0][0].parts),
@@ -598,7 +598,7 @@ describe("LiveChatKit background job notification delivery", () => {
     const chatKit = makeChatKit();
     chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(true);
+    expect(chatKit.flushPendingInput()).toBe(true);
     expect(chatKit.chat.sentMessages).toHaveLength(1);
     expect(idsOf(chatKit.chat.sentMessages[0].parts)).toEqual([
       "bgjob-cmd-1:terminal",
@@ -609,9 +609,9 @@ describe("LiveChatKit background job notification delivery", () => {
     const chatKit = makeChatKit({ startTurn });
     chatKit.chat.messages = [userMessage("run it"), followupQuestionMessage()];
     chatKit.enqueueBackgroundJobNotifications(notifications("bgjob-cmd-1"));
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     expect(startTurn).not.toHaveBeenCalled();
-    expect(idsOf(chatKit.pendingBackgroundJobNotifications)).toEqual([
+    expect(idsOf(chatKit.pendingInput.notifications)).toEqual([
       "bgjob-cmd-1:terminal",
     ]);
   });
@@ -619,12 +619,12 @@ describe("LiveChatKit background job notification delivery", () => {
     const startTurn = vi.fn();
     const chatKit = makeChatKit({ startTurn });
     chatKit.chat.messages = [userMessage("run it"), assistantMessage()];
-    expect(chatKit.flushBackgroundJobNotifications()).toBe(false);
+    expect(chatKit.flushPendingInput()).toBe(false);
     expect(startTurn).not.toHaveBeenCalled();
   });
 });
 function makeChatKit(
-  backgroundJobNotifications?: LiveChatKitBackgroundJobNotificationOptions,
+  pendingInput?: LiveChatKitPendingInputOptions,
   store = new FakeStore() as unknown as LiveKitStore,
 ) {
   const kit = new LiveChatKit<FakeChat>({
@@ -635,7 +635,7 @@ function makeChatKit(
     getters: {
       getLLM: () => ({ id: "test-model" }) as never,
     },
-    backgroundJobNotifications,
+    pendingInput,
   });
   kits.add(kit);
   return kit;

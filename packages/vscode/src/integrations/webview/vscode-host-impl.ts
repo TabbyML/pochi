@@ -110,6 +110,7 @@ import {
   type McpConfigOverride,
   type PochiCredentials,
   type PochiTaskParams,
+  type QueuedUserInputRecord,
   type ResourceURI,
   type Review,
   type RuleFile,
@@ -537,6 +538,18 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
         notificationId,
       ),
   });
+
+  readQueuedUserInputs = async (
+    taskId: string,
+  ): Promise<QueuedUserInputRecord[]> =>
+    this.taskStateStore.getQueuedUserInputs(taskId);
+
+  saveQueuedUserInputs = async (
+    taskId: string,
+    inputs: QueuedUserInputRecord[],
+  ): Promise<void> => {
+    await this.taskStateStore.setQueuedUserInputs(taskId, inputs);
+  };
 
   saveWidget = async (
     html: string,

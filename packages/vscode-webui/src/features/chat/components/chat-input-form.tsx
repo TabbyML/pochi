@@ -61,7 +61,8 @@ interface ChatInputFormProps {
   className?: string;
   queuedMessages?: DraftMessage[];
   onRemoveQueuedMessage?: (index: number) => void;
-  onSteerQueuedMessage?: (index: number) => void;
+  /** Sends every queued message at once, interrupting the agent. */
+  onSteerQueuedMessages?: () => void;
   onEditQueuedMessage?: (index: number) => void;
   allowEditQueuedMessage?: boolean;
   allowSteer?: boolean;
@@ -108,7 +109,7 @@ export const ChatInputForm = forwardRef<
     className,
     queuedMessages = [],
     onRemoveQueuedMessage,
-    onSteerQueuedMessage,
+    onSteerQueuedMessages,
     onEditQueuedMessage,
     allowEditQueuedMessage,
     allowSteer,
@@ -228,11 +229,7 @@ export const ChatInputForm = forwardRef<
         <QueuedMessages
           messages={queuedMessages}
           onRemove={(index) => onRemoveQueuedMessage?.(index)}
-          onSteer={
-            onSteerQueuedMessage
-              ? (index) => onSteerQueuedMessage(index)
-              : undefined
-          }
+          onSteer={onSteerQueuedMessages}
           onEdit={onEditQueuedMessage}
           allowEdit={allowEditQueuedMessage}
           allowSteer={allowSteer}

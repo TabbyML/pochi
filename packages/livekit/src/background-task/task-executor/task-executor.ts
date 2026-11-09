@@ -134,7 +134,7 @@ type RunningTaskChatKit = {
   persistToolOutput: () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
   subscribeBackgroundJobs: () => () => void;
-  flushBackgroundJobNotifications: () => boolean;
+  flushPendingInput: () => boolean;
 };
 
 type CreateRunningTaskChatKit = (options: {
@@ -447,7 +447,7 @@ class RunningTask {
             this.abortController.signal,
           );
           this.abortController.signal.throwIfAborted();
-          if (!this.chatKit.flushBackgroundJobNotifications()) return;
+          if (!this.chatKit.flushPendingInput()) return;
           await this.sendNextMessage();
           continue;
         }

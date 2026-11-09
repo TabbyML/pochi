@@ -19,9 +19,18 @@ import { constants, formatters, isTopLevelTaskSpawn } from "@getpochi/common";
 import type { UserInfo } from "@getpochi/common/configuration";
 import { hasActiveTodos } from "@getpochi/common/message-utils";
 import type { PochiTaskInfo } from "@getpochi/common/vscode-webui-bridge";
-import { type Message, type Task, catalog } from "@getpochi/livekit";
+import {
+  type Message,
+  type QueuedUserInput,
+  type Task,
+  catalog,
+} from "@getpochi/livekit";
 import { useLiveChatKit } from "@getpochi/livekit/react";
-import { type Todo, parseOutputSchema } from "@getpochi/tools";
+import {
+  type Todo,
+  initTodoModeTodos,
+  parseOutputSchema,
+} from "@getpochi/tools";
 import { useStoreRegistry } from "@livestore/react";
 import { Schema } from "@livestore/utils/effect";
 import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
@@ -39,12 +48,15 @@ import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
 import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
-import { useBackgroundJobNotificationSink } from "./hooks/use-background-job-notification-sink";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
 import { useForkTask } from "./hooks/use-fork-task";
 import { useKeepTaskEditor } from "./hooks/use-keep-task-editor";
+import {
+  getTodoModeObjective,
+  usePendingInputSink,
+} from "./hooks/use-pending-input-sink";
 import { useRepairMermaid } from "./hooks/use-repair-mermaid";
 import { useRestoreTaskModel } from "./hooks/use-restore-task-model";
 import { useScrollToBottom } from "./hooks/use-scroll-to-bottom";
@@ -104,12 +116,13 @@ function Chat({
   const todoPausedRef = useLatest(todoPaused);
   const todoModeActiveRef = useRef(false);
   const lastAutoContinueStateRef = useRef<string | undefined>(undefined);
-  // The chat kit owns the notifications waiting for delivery; this only
-  // mirrors them for the toolbar.
-  const {
-    pending: pendingBackgroundJobNotifications,
-    options: backgroundJobNotifications,
-  } = useBackgroundJobNotificationSink();
+  const onTakeUserInputsRef = useRef<
+    ((inputs: readonly QueuedUserInput[]) => void) | undefined
+  >(undefined);
+  // The chat kit owns the input waiting for delivery (queued user messages
+  // and background job notifications); this only mirrors it for the toolbar.
+  const { pending: pendingInput, options: pendingInputOptions } =
+    usePendingInputSink(uid, onTakeUserInputsRef);
   const { initSubtaskAutoApproveSettings } = useSettingsStore();
   const defaultUser = {
     name: t("chatPage.defaultUserName"),
@@ -239,7 +252,7 @@ function Chat({
     onCompactStart,
     onCompactFinish,
     getRecentFilesForCompact: () => vscodeHost.readRecentFilesForCompact(uid),
-    backgroundJobNotifications,
+    pendingInput: pendingInputOptions,
     taskMemory,
     projectMemory,
     sendAutomaticallyWhen: (x) => {
@@ -317,6 +330,18 @@ function Chat({
     },
     [chatKit, info.cwd, updateTodos],
   );
+
+  // A todo-mode message starts its todo list right before it is sent, whether
+  // it goes out immediately or later from the queue.
+  useEffect(() => {
+    onTakeUserInputsRef.current = (inputs) => {
+      if (isSubTask || hasActiveTodos(todosRef.current)) return;
+      const objective = getTodoModeObjective(inputs);
+      if (objective) {
+        persistTodos(initTodoModeTodos(objective));
+      }
+    };
+  }, [isSubTask, todosRef, persistTodos]);
 
   const chat = useChat({
     chat: chatKit.chat,
@@ -530,10 +555,8 @@ function Chat({
           isRepairingMermaid={!!repairingChart}
           mcpConfigOverride={mcpConfigOverride}
           getSystemPrompt={() => chatKit.latestSystemPrompt}
-          pendingBackgroundJobNotifications={pendingBackgroundJobNotifications}
-          flushBackgroundJobNotifications={
-            chatKit.flushBackgroundJobNotifications
-          }
+          pendingInput={pendingInput}
+          pendingInputController={chatKit}
           persistToolOutput={chatKit.persistToolOutput}
           onToolCallApprovalVisible={onToolCallApprovalVisible}
           onToolsExecutionStarted={chatKit.markStartToolsExecution}
