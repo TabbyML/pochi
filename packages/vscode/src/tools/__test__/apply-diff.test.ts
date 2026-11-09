@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as _path from "node:path";
 import { after, before, beforeEach, describe, it } from "mocha";
@@ -122,5 +123,40 @@ describe("applyDiff Tool", () => {
       updatedContent.toString(),
       "Line 1\nModified Line 2\nLine 3",
     );
+  });
+
+  it("should fail and leave a read-only file unchanged", async function () {
+    if (process.getuid?.() === 0) {
+      this.skip();
+    }
+    const fileContent = "Line 1\nLine 2\nLine 3";
+    const filePath = _path.join(currentTestTempDirRelativePath, "read-only.txt");
+    const fileUri = vscode.Uri.joinPath(testSuiteRootTempDir, filePath);
+    await createFile(fileUri, fileContent);
+    await fs.chmod(fileUri.fsPath, 0o444);
+
+    try {
+      await assert.rejects(
+        async () =>
+          applyDiffWithMock(
+            {
+              path: filePath,
+              searchContent: "Line 2",
+              replaceContent: "Modified Line 2",
+            },
+            {
+              toolCallId: "test-call-id-123",
+              messages: [],
+              cwd: testSuiteRootTempDir.fsPath,
+            },
+          ),
+        /Failed to save/,
+      );
+
+      const diskContent = await vscode.workspace.fs.readFile(fileUri);
+      assert.strictEqual(diskContent.toString(), fileContent);
+    } finally {
+      await fs.chmod(fileUri.fsPath, 0o644);
+    }
   });
 });
