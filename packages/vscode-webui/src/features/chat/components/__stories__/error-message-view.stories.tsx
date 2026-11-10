@@ -52,20 +52,20 @@ export const ReachedOrgCreditLimit: Story = {
   },
 };
 
-export const ReachedUserSuperModelLimit: Story = {
+export const ReachedTeamMemberSuperModelLimit: Story = {
   args: {
     error: new TaskError(
-      "UserSuperModelLimitError",
-      PochiApiErrors.ReachedUserSuperModelLimit,
+      "TeamMemberSuperModelLimitError",
+      PochiApiErrors.ReachedTeamMemberSuperModelLimit,
     ),
   },
 };
 
-export const ReachedUserSwiftModelLimit: Story = {
+export const ReachedTeamMemberSwiftModelLimit: Story = {
   args: {
     error: new TaskError(
-      "UserSwiftModelLimitError",
-      PochiApiErrors.ReachedUserSwiftModelLimit,
+      "TeamMemberSwiftModelLimitError",
+      PochiApiErrors.ReachedTeamMemberSwiftModelLimit,
     ),
   },
 };

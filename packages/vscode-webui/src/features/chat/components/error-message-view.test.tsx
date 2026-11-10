@@ -53,12 +53,18 @@ describe("credit errors", () => {
   );
 });
 
-describe("per-user model budget errors", () => {
+describe("team member model budget errors", () => {
   it.each<[string, RegExp]>([
-    ["REACHED_USER_SUPER_MODEL_LIMIT", /personal Super model budget/],
-    ["REACHED_USER_SWIFT_MODEL_LIMIT", /personal Swift model budget/],
+    [
+      "REACHED_TEAM_MEMBER_SUPER_MODEL_LIMIT",
+      /per-member Super model budget/,
+    ],
+    [
+      "REACHED_TEAM_MEMBER_SWIFT_MODEL_LIMIT",
+      /per-member Swift model budget/,
+    ],
   ])(
-    "shows a personal budget message and a top-up action for %s",
+    "shows a team per-member budget message and a team link for %s",
     (message, messageText) => {
       const client = new QueryClient();
       render(
@@ -70,7 +76,7 @@ describe("per-user model budget errors", () => {
       expect(screen.getByText(messageText)).toBeTruthy();
       expect(
         screen.getByRole("link", { name: "Top up" }).getAttribute("href"),
-      ).toBe("http://localhost:4113/profile");
+      ).toBe("http://localhost:4113/team");
     },
   );
 });

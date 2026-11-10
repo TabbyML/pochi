@@ -69,21 +69,25 @@ export function ErrorMessageView({
       );
     }
 
-    if (debouncedError.message === PochiApiErrors.ReachedUserSuperModelLimit) {
+    if (
+      debouncedError.message === PochiApiErrors.ReachedTeamMemberSuperModelLimit
+    ) {
       return (
         <CreditAlert
-          message={t("errorMessageView.reachedUserSuperModelLimit")}
-          href={`${getServerBaseUrl()}/profile`}
+          message={t("errorMessageView.teamMemberReachedSuperModelLimit")}
+          href={`${getServerBaseUrl()}/team`}
           buttonText={t("errorMessageView.topUp")}
         />
       );
     }
 
-    if (debouncedError.message === PochiApiErrors.ReachedUserSwiftModelLimit) {
+    if (
+      debouncedError.message === PochiApiErrors.ReachedTeamMemberSwiftModelLimit
+    ) {
       return (
         <CreditAlert
-          message={t("errorMessageView.reachedUserSwiftModelLimit")}
-          href={`${getServerBaseUrl()}/profile`}
+          message={t("errorMessageView.teamMemberReachedSwiftModelLimit")}
+          href={`${getServerBaseUrl()}/team`}
           buttonText={t("errorMessageView.topUp")}
         />
       );
