@@ -506,6 +506,8 @@
     "reachedCreditLimit": "지출 한도에 도달했습니다.",
     "seeMore": "더 보기",
     "teamReachedCreditLimit": "팀이 지출 한도에 도달했습니다.",
+    "reachedUserSuperModelLimit": "이번 달 개인 Super 모델 예산에 도달했습니다.",
+    "reachedUserSwiftModelLimit": "이번 달 개인 Swift 모델 예산에 도달했습니다.",
     "insufficientCredits": "크레딧 잔액이 부족합니다. Pochi를 계속 사용하려면 충전하세요.",
     "topUp": "충전",
     "insufficientOrgCredits": "팀의 크레딧 잔액이 부족합니다. 소유자 또는 관리자에게 충전을 요청하세요.",
