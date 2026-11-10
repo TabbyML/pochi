@@ -55,14 +55,8 @@ describe("credit errors", () => {
 
 describe("team member model budget errors", () => {
   it.each<[string, RegExp]>([
-    [
-      "REACHED_TEAM_MEMBER_SUPER_MODEL_LIMIT",
-      /per-member Super model budget/,
-    ],
-    [
-      "REACHED_TEAM_MEMBER_SWIFT_MODEL_LIMIT",
-      /per-member Swift model budget/,
-    ],
+    ["REACHED_TEAM_MEMBER_SUPER_MODEL_LIMIT", /per-member Super model budget/],
+    ["REACHED_TEAM_MEMBER_SWIFT_MODEL_LIMIT", /per-member Swift model budget/],
   ])(
     "shows a team per-member budget message and a team link for %s",
     (message, messageText) => {
