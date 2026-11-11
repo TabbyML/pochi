@@ -5,52 +5,64 @@ description: Launch the local Pochi VS Code extension in an isolated Extension D
 
 # Run the Pochi VS Code extension
 
-Drive a real VS Code window running the local Pochi extension. Three helpers
-live in `.pochi/skills/run-vscode-extension/scripts/` (paths below are
+Drive a real VS Code window running the local Pochi extension. The helpers
+live in `.agents/skills/run-vscode-extension/scripts/` (paths below are
 relative to the repo root):
 
-- `launch.sh`: starts an isolated VS Code (`/tmp/pochi-vscode-debug-<port>`,
-  fresh user-data dir, throwaway git workspace) with CDP on port 9233.
+- `env.sh`: **the entry point.** `up` builds, launches an isolated VS Code
+  (`/tmp/pochi-vscode-debug-<port>`: fresh user-data dir, throwaway git
+  workspace, CDP on port 9233), starts the `webview.mjs` daemon, and waits
+  until Pochi is ready. `reload` rebuilds and reloads the window; `down` stops
+  everything. All long-running processes run detached with logs, and every
+  command returns, so no background-job support is needed from the agent.
 - `webview.mjs`: Playwright CLI for the Pochi webviews and the workbench. A
   `serve` daemon holds the CDP connection, and the other commands talk to it.
   Run it with `node`, not `bun`. It uses the root devDependency
   `playwright-core` (no browser download), so run `bun install` first.
-- `cleanup.sh`: closes that VS Code and deletes its state dir.
+- `launch.sh`, `cleanup.sh`: low-level launch/teardown that `env.sh` drives.
+  You don't need them directly.
 
 This never touches the user's own VS Code windows. Pochi credentials are
 global, so the isolated instance is already signed in; it starts with no tasks.
 
-## 1. Build and start
+```bash
+E=.agents/skills/run-vscode-extension/scripts/env.sh
+w() { node .agents/skills/run-vscode-extension/scripts/webview.mjs "$@"; }
+```
 
-1. If extension-side code (`packages/vscode/src`) changed, rebuild it:
-   `cd packages/vscode && bun run build:vscode`. For repeated edits, run
-   `bun run watch:vscode` there as a background job instead. Don't use
-   `watch`: it also starts Vite. Either way, apply the new build with
-   `w command "Developer: Reload Window"`.
-2. Choose how the webview is served:
-   - **Dev (default)**: Vite with HMR. If nothing is listening on :4112, start
-     `cd packages/vscode-webui && bun run start` as a background job. Webview
-     edits then apply live.
-   - **Prod** (`--prod`): the built bundle in
-     `packages/vscode/assets/webview-ui/dist`. Rebuild it with
-     `cd packages/vscode-webui && bun run build && cd ../vscode && bun run copy:assets`.
-3. Start both as **background jobs**:
-   ```bash
-   .pochi/skills/run-vscode-extension/scripts/launch.sh            # [--prod] [--port N] [--workspace DIR]
-   node .pochi/skills/run-vscode-extension/scripts/webview.mjs serve # same --port if changed
-   ```
-4. Wait until Pochi is ready (this opens the Pochi sidebar):
-   ```bash
-   node .pochi/skills/run-vscode-extension/scripts/webview.mjs wait-ready
-   ```
-   On failure, read the `launch.sh` and `serve` job output. Common causes are
-   Vite not running (blank webview) or a missing `dist/extension.js`.
+## 1. Start, rebuild, stop
+
+```bash
+$E up                 # build extension + prod webview, launch, wait until ready (~20s)
+$E reload             # after code changes: rebuild and reload the window
+$E down               # always, when done (also cancels a forgotten recording)
+$E status             # what's running
+```
+
+Options for `up`:
+- `--port N`: a different CDP port, for several instances in parallel. Pass
+  the same `--port` to every `env.sh`, `webview.mjs`, and `record.mjs` call.
+- `--dev`: serve the webview from Vite on :4112 with HMR (started if needed),
+  so webview edits apply live without `reload`. Use it for quick UI iteration
+  only: :4112 is one global port, so it refuses to start if Vite there belongs
+  to another checkout. The default prod bundle is what users get; use it for
+  verification and evidence.
+- `--no-build`: skip the build when you just built. `--workspace DIR`: open
+  that folder instead of a throwaway repo. `--inspect-extensions 9339`:
+  expose the extension host for a breakpoint debugger.
+
+`reload` rebuilds the extension, and in prod mode also the webview bundle.
+In dev mode webview edits are already live, so only extension-side changes
+(`packages/vscode/src`) need it.
+
+On failure, `env.sh` prints the relevant log tail. All logs are in
+`/tmp/pochi-vscode-env-<port>/` (`build.log`, `launch.log`, `serve.log`,
+`vite.log`). A blank webview in dev mode usually means Vite isn't serving.
 
 ## 2. Drive the UI
 
-All examples below use the alias `w="node .pochi/skills/run-vscode-extension/scripts/webview.mjs"`.
-zsh does not split variables, so in commands use a function:
-`w() { node .pochi/skills/run-vscode-extension/scripts/webview.mjs "$@"; }`.
+Examples use the `w` function defined above (a function, because zsh does
+not split variables).
 
 ```bash
 w snapshot                                   # ARIA tree of the sidebar: start here
@@ -88,9 +100,10 @@ add an `aria-label` in the component.
 
 ## 3. Workbench, reloads, and logs
 
-- Palette commands: `w command "Developer: Reload Webviews"` (reload the webview
-  UI, e.g. after Vite restarts) or `w command "Developer: Reload Window"`
-  (after rebuilding the extension). The daemon survives both.
+- Palette commands: `w command "Developer: Reload Webviews"` reloads the
+  webview UI (e.g. after Vite restarts). For a rebuilt extension use
+  `$E reload`, which also waits for the sidebar to come back. The daemon
+  survives both.
 - Workbench UI: `w -w workbench snapshot 'role=tablist >> nth=0'`,
   `w -w workbench click 'role=tab[name=/^Explorer/]'`,
   `w -w workbench screenshot /tmp/window.png`.
@@ -99,17 +112,22 @@ add an `aria-label` in the component.
   the moment it connected.
 - The extension output channel ("Pochi") is
   `/tmp/pochi-vscode-debug-9233/user-data/logs/*/window1/exthost/TabbyML.pochi/Pochi.log`.
-- For an extension host breakpoint debugger, launch with `--inspect-extensions 9339`.
+- For an extension host breakpoint debugger, start with `$E up --inspect-extensions 9339`.
 
 ## 4. Cleanup (always)
 
-1. Kill the `serve` background job. It also exits on its own when VS Code closes.
-2. Run `.pochi/skills/run-vscode-extension/scripts/cleanup.sh` (`--keep-state`
-   keeps the logs). The `launch.sh` job then ends.
-3. Kill any Vite or watch job you started.
+Run `$E down` (add `--keep-state` to keep the user-data dir and Pochi.log for
+later inspection). It stops the daemon, VS Code, and the Vite server it
+started.
 
 ## Gotchas
 
+- **Wait in the right webview.** A submitted task runs in its task tab
+  (`-w editor`); the sidebar only lists tasks ("Finished in 4s"), so
+  `w wait-text 'Task Completed'` on the sidebar never matches. Use
+  `w -w editor --timeout 60 wait-text 'Task Completed'`. Keep model waits
+  short (30–90 s). When one times out, look before waiting again:
+  `w list`, `w -w editor text | tail -30`.
 - Playwright cannot see into webviews that were loaded before it connected. For
   this reason everything goes through the long-lived `serve` daemon. On
   startup it runs "Developer: Reload Webviews" once if needed. This resets
@@ -127,7 +145,8 @@ add an `aria-label` in the component.
   target an element.
 - In dev mode the TanStack Router devtools badge overlaps the top-left of the
   webview. It is expected.
-- Use `--port` (on all three scripts) to run several instances in parallel.
+- Use `--port` (on `env.sh`, `webview.mjs`, and `record.mjs`) to run several
+  instances in parallel.
 - agent-browser can drive the workbench (`agent-browser connect 9233`), but it
   cannot reach into the Pochi webview. VS Code nests the app two iframe
   levels deep, and agent-browser only enters one. Use `webview.mjs` for

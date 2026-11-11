@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Close the VS Code instance started by launch.sh and remove its state dir.
+# Low-level: `env.sh down` calls this and also stops the daemon and Vite.
 # Usage: cleanup.sh [--port 9233] [--keep-state]
 set -uo pipefail
 

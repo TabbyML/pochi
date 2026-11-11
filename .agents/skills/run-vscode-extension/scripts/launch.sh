@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Launch an isolated VS Code Extension Development Host for the local Pochi
 # extension with a CDP endpoint. Blocks until the window is closed (uses
-# `--wait`), so run it as a background job.
+# `--wait`). Low-level: env.sh runs it detached; use `env.sh up` instead.
 #
 # Usage: launch.sh [--port 9233] [--workspace DIR] [--prod] [--inspect-extensions PORT]
 #   --port                CDP port (default: $POCHI_VSCODE_CDP_PORT or 9233)
@@ -29,7 +29,7 @@ repo="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 state="/tmp/pochi-vscode-debug-$port"
 
 if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "port $port is already in use; run cleanup.sh --port $port or pick another --port" >&2
+  echo "port $port is already in use; run env.sh down --port $port or pick another --port" >&2
   exit 1
 fi
 

@@ -7,17 +7,17 @@ description: Record a run of the local Pochi VS Code extension as one shareable 
 
 This skill turns a run into **one Jam link**: a video of the window,
 timestamped comments, a description, and logs. It does not start VS Code or
-drive the UI. That is the `run-vscode-extension` skill: launch the instance
-and run `wait-ready` with it first, then drive the UI with its `webview.mjs`
-as usual while this skill records.
+drive the UI. That is the `run-vscode-extension` skill: start the instance
+with its `env.sh up` first, then drive the UI with its `webview.mjs` as usual
+while this skill records.
 
-`record.mjs` lives in `.pochi/skills/record-vscode-extension/scripts/`. Run it
+`record.mjs` lives in `.agents/skills/record-vscode-extension/scripts/`. Run it
 with `node`, and pass the same `--port` as the instance (default 9233). The
 examples use these functions:
 
 ```bash
-r() { node .pochi/skills/record-vscode-extension/scripts/record.mjs "$@"; }
-w() { node .pochi/skills/run-vscode-extension/scripts/webview.mjs "$@"; }
+r() { node .agents/skills/record-vscode-extension/scripts/record.mjs "$@"; }
+w() { node .agents/skills/run-vscode-extension/scripts/webview.mjs "$@"; }
 ```
 
 ## When to use
@@ -120,11 +120,12 @@ r stop --summary-file /tmp/summary.md \
 
 - The recorder is a detached process with its own CDP connection, so it does
   not disturb the `webview.mjs serve` daemon and needs no webview reload. Its
-  output goes to `/tmp/pochi-vscode-debug-<port>/record.log`.
+  output goes to `/tmp/pochi-vscode-debug-<port>/record.log` (removed by
+  `env.sh down` unless you pass `--keep-state`).
 - Reload Webviews, Reload Window, and restarting the `serve` daemon are fine
   mid-recording. If VS Code exits, the recording is cancelled and the
   recorder exits.
-- Before cleanup, `stop` or `cancel` the recording. `cleanup.sh` closes VS
-  Code, which cancels a forgotten recording.
+- Before cleanup, `stop` or `cancel` the recording. `env.sh down` cancels a
+  forgotten one.
 - Labels starting with `1.` are rewritten to `[1]`, because Jam renders them
   as a markdown list.

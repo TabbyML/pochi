@@ -147,7 +147,7 @@ async function connectCdp(port) {
   );
   if (!response?.ok) {
     throw new Error(
-      `no VS Code with CDP on port ${port}; start it with run-vscode-extension's launch.sh`,
+      `no VS Code with CDP on port ${port}; start it with run-vscode-extension's env.sh up`,
     );
   }
   const { webSocketDebuggerUrl } = await response.json();
