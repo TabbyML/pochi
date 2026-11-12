@@ -18,6 +18,12 @@ interface TaskReferenceBadgeProps {
   /** Title recorded at mention time; falls back to the task's own title. */
   title?: string;
   className?: string;
+  /**
+   * `badge` (default): bordered chip with a task icon, for inline mentions.
+   * `plain`: just the title text, for places that already label the task
+   * (e.g. the spawned task card).
+   */
+  variant?: "badge" | "plain";
 }
 
 /** Resolves a referenced task from the task history, with a title fallback. */
@@ -43,6 +49,7 @@ export function TaskReferenceBadge({
   id,
   title,
   className,
+  variant = "badge",
 }: TaskReferenceBadgeProps) {
   const { jwt } = usePochiCredentials();
   const { task, displayTitle } = useTaskReference(id, title);
@@ -67,6 +74,21 @@ export function TaskReferenceBadge({
     },
     [cwd, id, task?.parentId, jwt],
   );
+
+  if (variant === "plain") {
+    return (
+      <span
+        onClick={cwd ? openTask : undefined}
+        className={cn(
+          "break-words",
+          cwd && "cursor-pointer hover:text-foreground hover:underline",
+          className,
+        )}
+      >
+        {displayTitle}
+      </span>
+    );
+  }
 
   return (
     <Tooltip>
