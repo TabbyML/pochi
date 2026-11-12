@@ -18,7 +18,6 @@ vi.mock("./attempt-todo-completion-view", () => ({
   AttemptTodoCompletionView: () => null,
 }));
 vi.mock("./browser-view", () => ({ BrowserView: () => null }));
-vi.mock("./planner-view", () => ({ PlannerView: () => null }));
 vi.mock("@/lib/hooks/use-navigate", () => ({ useNavigate: () => navigate }));
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({

@@ -26,7 +26,6 @@ import { AttemptTodoCompletionView } from "./attempt-todo-completion-view";
 import { BackgroundSubagentStatusIcon } from "./background-status-icon";
 import { BackgroundBrowserView, BrowserView } from "./browser-view";
 import { MoveToBackgroundButton } from "./move-to-background-button";
-import { PlannerView } from "./planner-view";
 import { hasNewTaskResult } from "./result";
 import { SpawnedTaskView } from "./spawned-task-view";
 import { TodoDetail } from "./todo-detail";
@@ -180,10 +179,6 @@ function NewTaskToolView(props: NewTaskToolViewProps) {
 
   if (agentType === "browser") {
     return <BrowserView {...props} taskSource={previewSource} />;
-  }
-
-  if (agentType === "planner" && !isBackground) {
-    return <PlannerView {...props} taskSource={previewSource} />;
   }
 
   if (agentType === "attemptTodoCompletion") {

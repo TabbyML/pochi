@@ -30,15 +30,10 @@
   "chat": {
     "attachmentTooltip": "Attach files to the chat. You can also drag and drop files, or paste them into the input box.",
     "submitTooltip": "Submit",
-    "createPlan": "Plan",
-    "createPlanTooltip": "Create an implementation plan for this task",
-    "planModeLabel": "Plan",
     "todoModeLabel": "Todo",
     "pauseTodo": "Pause todo",
     "resumeTodo": "Resume",
     "autoContinueTodo": "Auto-continue todo",
-    "planModeToggleShortcutTooltip": "Press Shift + Tab to toggle",
-    "planModeSubmitTooltip": "Submit as plan",
     "todoModeSubmitTooltip": "Submit in Todo mode",
     "queuedMessages": "Queued Messages ({{count}})",
     "noMessage": "No message",
@@ -175,7 +170,6 @@
       "developerMode": "Developer Mode",
       "developerSettings": "Developer Settings",
       "clearStorage": "Clear Storage",
-      "resetReviewPlanTutorialCounter": "Reset Review Plan Tutorial Counter",
       "language": "Language",
       "languageDescription": "Choose your preferred language",
       "openInTab": "Allow opening tasks in a new tab",
@@ -646,15 +640,6 @@
   "mermaid": {
     "failedToRender": "Failed to render Mermaid chart:",
     "fixError": "Fix Error with Pochi"
-  },
-  "plannerView": {
-    "reviewPlan": "Review",
-    "reviewPlanTitle": "Review Plan",
-    "reviewPlanTooltip": "Click the '+' before the line number of the plan artifact to leave comments.",
-    "executePlan": "Execute Plan",
-    "openPlan": "Open",
-    "creatingPlan": "Analyzing your code and creating a plan...",
-    "planCreationPaused": "Plan creation paused"
   },
   "browserView": {
     "noFrameAvailable": "No frame available",

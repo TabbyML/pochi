@@ -28,15 +28,10 @@
   "chat": {
     "attachmentTooltip": "채팅에 파일을 첨부합니다. 파일을 드래그 앤 드롭하거나 채팅 입력란에 붙여넣을 수도 있습니다.",
     "submitTooltip": "제출",
-    "createPlan": "계획",
-    "createPlanTooltip": "이 작업에 대한 구현 계획 생성",
-    "planModeLabel": "계획",
     "todoModeLabel": "Todo",
     "pauseTodo": "Todo 일시 중지",
     "resumeTodo": "Todo 재개",
     "autoContinueTodo": "할 일 자동 계속",
-    "planModeToggleShortcutTooltip": "Shift + Tab으로 전환",
-    "planModeSubmitTooltip": "계획으로 제출",
     "todoModeSubmitTooltip": "Todo 모드로 제출",
     "queuedMessages": "대기 중인 메시지 ({{count}})",
     "noMessage": "메시지 없음",
@@ -173,7 +168,6 @@
       "title": "고급 설정",
       "developerMode": "개발자 모드",
       "clearStorage": "저장소 지우기",
-      "resetReviewPlanTutorialCounter": "리뷰 계획 튜토리얼 카운터 재설정",
       "language": "언어",
       "languageDescription": "선호하는 언어를 선택하세요",
       "resetRecommendSettings": "추천 설정 재설정"
@@ -638,14 +632,6 @@
   "mermaid": {
     "failedToRender": "Mermaid 차트 렌더링 실패:",
     "fixError": "Pochi로 오류 수정"
-  },
-  "plannerView": {
-    "reviewPlan": "검토",
-    "reviewPlanTitle": "계획 검토",
-    "reviewPlanTooltip": "계획 아티팩트의 줄 번호 앞에 있는 '+'를 클릭하여 댓글을 남기세요",
-    "executePlan": "계획 실행",
-    "creatingPlan": "코드를 분석하고 계획을 수립 중입니다...",
-    "planCreationPaused": "계획 수립이 일시 중지되었습니다"
   },
   "browserView": {
     "noFrameAvailable": "프레임 없음",

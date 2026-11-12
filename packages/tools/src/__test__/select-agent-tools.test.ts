@@ -147,20 +147,22 @@ describe("selectAgentTools", () => {
     expect(tools).not.toHaveProperty("executeCommand(git status)");
   });
 
-  it("only enables askFollowupQuestion for planner and guide agents", () => {
-    const disallowed = selectAgentTools({
-      agent: createAgent({
-        name: "test-agent",
-        tools: ["askFollowupQuestion", "readFile"],
-      }),
-      isSubTask: false,
-    });
+  it("only enables askFollowupQuestion for the guide agent", () => {
+    for (const agentName of ["test-agent", "planner"]) {
+      const disallowed = selectAgentTools({
+        agent: createAgent({
+          name: agentName,
+          tools: ["askFollowupQuestion", "readFile"],
+        }),
+        isSubTask: false,
+      });
 
-    expect(toolNames(disallowed)).toEqual(
-      [...RequiredAgentToolNames, "readFile"].sort(),
-    );
+      expect(toolNames(disallowed)).toEqual(
+        [...RequiredAgentToolNames, "readFile"].sort(),
+      );
+    }
 
-    for (const agentName of ["planner", "guide"]) {
+    for (const agentName of ["guide"]) {
       const allowed = selectAgentTools({
         agent: createAgent({
           name: agentName,

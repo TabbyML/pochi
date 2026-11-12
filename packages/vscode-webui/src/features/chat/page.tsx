@@ -47,7 +47,6 @@ import { ChatSkeleton } from "./components/chat-skeleton";
 import { ChatToolbar } from "./components/chat-toolbar";
 import { SubtaskHeader } from "./components/subtask";
 import { useAbortBeforeNavigation } from "./hooks/use-abort-before-navigation";
-import { useAutoOpenPlanFile } from "./hooks/use-auto-open-plan-file";
 import { useChatInitialization } from "./hooks/use-chat-initialization";
 import { useChatMemory } from "./hooks/use-chat-memory";
 import { useChatNotifications } from "./hooks/use-chat-notifications";
@@ -449,11 +448,6 @@ function Chat({
 
   useAddSubtaskResult({ ...chat });
 
-  useAutoOpenPlanFile({
-    isSubTask,
-    subtask,
-  });
-
   useManageBrowserSession({
     messages,
   });
@@ -578,7 +572,7 @@ function shouldStopAutoApprove({ messages }: { messages: Message[] }) {
   return (
     lastToolPart?.type === "tool-newTask" &&
     !isTopLevelTaskSpawn(lastToolPart.input) &&
-    ["planner", "reviewer"].includes(lastToolPart?.input?.agentType || "") &&
+    lastToolPart?.input?.agentType === "reviewer" &&
     lastToolPart?.state === "output-available"
   );
 }

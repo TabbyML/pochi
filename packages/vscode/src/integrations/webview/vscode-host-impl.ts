@@ -728,11 +728,7 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       };
     }
 
-    const resolvedArgs = resolveToolCallArgs(
-      args,
-      options.storeId,
-      options.builtinSubAgentInfo,
-    );
+    const resolvedArgs = resolveToolCallArgs(args, options.storeId);
     const taskId = options.taskId;
     const fileStateCache = this.fileStateCacheRegistry.get(taskId);
     const rawResult = await safeCall(

@@ -1,11 +1,4 @@
 import * as R from "remeda";
-import type { BuiltinSubAgentInfo } from ".";
-
-export class PlannerPermissionError extends Error {
-  constructor() {
-    super("Planner only able to write pochi://-/plan.md");
-  }
-}
 
 const StoreIdAuthorityPrefix = "sid-hex-";
 const LowerHexPattern = /^[0-9a-f]+$/;
@@ -57,17 +50,9 @@ export function decodeStoreIdFromUriAuthority(
   }
 }
 
-export const resolvePochiUri = (
-  path: string,
-  storeId: string,
-  builtinSubAgentInfo?: BuiltinSubAgentInfo,
-): string => {
+export const resolvePochiUri = (path: string, storeId: string): string => {
   if (!path.startsWith("pochi:")) {
     return path;
-  }
-
-  if (builtinSubAgentInfo?.type === "planner" && path !== "pochi://-/plan.md") {
-    throw new PlannerPermissionError();
   }
 
   if (!storeId || storeId.length === 0) {
@@ -81,29 +66,21 @@ export const resolvePochiUri = (
 export const resolveToolCallArgs = (
   args: unknown,
   storeId: string,
-  builtinSubAgentInfo?: BuiltinSubAgentInfo,
 ): unknown => {
   if (typeof args === "string") {
     try {
-      return resolvePochiUri(args, storeId, builtinSubAgentInfo);
-    } catch (err) {
-      if (err instanceof PlannerPermissionError) {
-        throw err;
-      }
+      return resolvePochiUri(args, storeId);
+    } catch {
       return args;
     }
   }
 
   if (Array.isArray(args)) {
-    return args.map((item) =>
-      resolveToolCallArgs(item, storeId, builtinSubAgentInfo),
-    );
+    return args.map((item) => resolveToolCallArgs(item, storeId));
   }
 
   if (R.isObjectType(args)) {
-    return R.mapValues(args, (v) =>
-      resolveToolCallArgs(v, storeId, builtinSubAgentInfo),
-    );
+    return R.mapValues(args, (v) => resolveToolCallArgs(v, storeId));
   }
 
   return args;

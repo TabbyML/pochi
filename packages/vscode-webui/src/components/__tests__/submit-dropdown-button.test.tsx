@@ -26,19 +26,19 @@ beforeAll(() => {
 
 const defaultProps = {
   onSubmit: vi.fn(),
-  onSubmitPlan: vi.fn(),
   onToggleServer: vi.fn(),
   resetMcpTools: vi.fn(),
   mcpConfigOverride: {},
 };
 
 describe("SubmitDropdownButton", () => {
-  it("shows the plan mode toggle in the dropdown", () => {
+  it("no longer renders the plan mode toggle", () => {
     render(<SubmitDropdownButton {...defaultProps} />);
 
     fireEvent.mouseEnter(screen.getByRole("button"));
 
-    expect(screen.getByText("chat.planModeLabel")).not.toBeNull();
+    expect(screen.getByText("mcpSelect.servers")).not.toBeNull();
+    expect(screen.queryByText("chat.planModeLabel")).toBeNull();
   });
 
   it("no longer renders the todo mode toggle", () => {
@@ -49,11 +49,12 @@ describe("SubmitDropdownButton", () => {
     expect(screen.queryByText("chat.todoModeLabel")).toBeNull();
   });
 
-  it("shows the plan submit tooltip when plan mode is active", () => {
-    render(<SubmitDropdownButton {...defaultProps} isPlanMode />);
+  it("submits directly when the button is clicked", () => {
+    const onSubmit = vi.fn();
+    render(<SubmitDropdownButton {...defaultProps} onSubmit={onSubmit} />);
 
-    expect(
-      screen.getByRole("button", { name: "chat.planModeSubmitTooltip" }),
-    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "chat.submitTooltip" }));
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 });

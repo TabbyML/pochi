@@ -52,8 +52,6 @@ interface ChatInputFormProps {
   onRemoveUserEdits?: () => void;
   terminalContextSelections?: TerminalTextSelection[];
   onRemoveTerminalContextSelection?: (index: number) => void;
-  onSwitchSubmitMode?: () => void;
-  isPlanMode?: boolean;
   onSelectTodoMode?: () => void;
   todoModeDisabled?: boolean;
   onAttachFile?: () => void;
@@ -101,7 +99,6 @@ export const ChatInputForm = forwardRef<
     terminalContextSelections = [],
     onRemoveTerminalContextSelection,
     children,
-    onSwitchSubmitMode,
     onSelectTodoMode,
     todoModeDisabled,
     onAttachFile,
@@ -184,7 +181,6 @@ export const ChatInputForm = forwardRef<
       isSubTask={isSubTask}
       currentTaskId={currentTaskId}
       onFocus={onFocus}
-      onSwitchSubmitMode={onSwitchSubmitMode}
       className={className}
     >
       <div className="mt-1 flex select-none flex-wrap items-center gap-1.5 pl-2">

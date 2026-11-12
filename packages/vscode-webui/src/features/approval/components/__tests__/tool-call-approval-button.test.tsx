@@ -89,7 +89,6 @@ describe("background subtask approval with offhand disabled", () => {
     ["", false],
     ["browser", false],
     ["attemptTodoCompletion", true],
-    ["planner", true],
     ["guide", true],
   ] as const)(
     "keeps %s with background=%s on the manual path",
