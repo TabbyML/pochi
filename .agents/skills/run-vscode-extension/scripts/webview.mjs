@@ -14,6 +14,13 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 // playwright-core: the CDP client only, no bundled browsers (root devDependency).
 import { chromium } from "playwright-core";
+// Pochi locators/helpers shared with the E2E specs (packages/vscode/e2e).
+// Plain TypeScript loaded through Node's type stripping (Node >= 22.18).
+import {
+  createPochi,
+  openPochiSidebar,
+  pochiIframes,
+} from "../../../../packages/vscode/e2e/lib/pochi.ts";
 
 const usage = `Usage: node webview.mjs [--port 9233] [-w <webview>] [--timeout <sec>] <command> [args]
 
@@ -40,7 +47,8 @@ Commands (sent to the daemon):
   screenshot <file>         screenshot of the webview (or full window with -w workbench)
   command <title>           run a Command Palette entry, e.g. "Developer: Reload Webviews"
   logs [--clear]            console messages and page errors buffered by the daemon
-  run <script.mjs>          call the script's default export with { page, frame, webviews, locator, log }
+  run <script.mjs>          call the script's default export with { page, frame, webviews, locator, pochi, log }
+                            (pochi: the E2E helpers from packages/vscode/e2e/lib/pochi.ts)
 
 Locators: Playwright selectors, plus label=<aria-label or label, exact>.
   label=model-select   role=button[name="Submit"]   text=Task Completed
@@ -102,9 +110,6 @@ async function connect(port, seconds) {
   }
   throw new Error(`cannot connect to CDP port ${port}: ${lastError?.message}`);
 }
-
-const pochiIframes = (page) =>
-  page.locator('iframe.webview[src*="extensionId=TabbyML.pochi" i]');
 
 async function listWebviews(page) {
   const webviews = [];
@@ -182,12 +187,6 @@ function locate(frame, selector) {
   const label = selector.match(/^label=(.*)$/s);
   if (label) return frame.getByLabel(label[1], { exact: true });
   return frame.locator(selector);
-}
-
-async function openPochiSidebar(page) {
-  const tab = page.getByRole("tab", { name: /^Pochi/ }).first();
-  await tab.waitFor({ state: "attached", timeout: 30_000 });
-  if ((await tab.getAttribute("aria-selected")) !== "true") await tab.click();
 }
 
 async function runPaletteCommand(page, title, timeout) {
@@ -444,7 +443,15 @@ async function handle(ctx, request, out) {
         requireArg(args, 0, "script"),
       );
       const mod = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
-      await mod.default({ browser, page, frame, webviews, locator, log: out });
+      await mod.default({
+        browser,
+        page,
+        frame,
+        webviews,
+        locator,
+        pochi: createPochi(page),
+        log: out,
+      });
       break;
     }
     default:

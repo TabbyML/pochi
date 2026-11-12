@@ -14,3 +14,4 @@ coverage/**
 tests/**
 wdio.conf.ts
 .wdio-vscode-service/**
+e2e/**
