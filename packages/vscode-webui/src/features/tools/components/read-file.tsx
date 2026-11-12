@@ -1,5 +1,6 @@
 import { TaskReferenceBadge } from "@/components/message/task-reference-badge";
 import { getToolPartError } from "@/lib/tool-call-error";
+import { vscodeHost } from "@/lib/vscode";
 import {
   parseBackgroundJobOutputFilePath,
   parseTaskTranscriptFilePath,
@@ -78,7 +79,13 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
   }
 
   // A task transcript is shown as the task itself, not as the file storing it.
+  // Clicking it opens the transcript markdown, which is what was read and can
+  // be passed on to another task; the task itself is usually open already.
   const taskTranscript = path ? parseTaskTranscriptFilePath(path) : undefined;
+  const openTranscript = () => {
+    if (!path) return;
+    vscodeHost.openFile(path);
+  };
 
   const title = (
     <>
@@ -86,7 +93,11 @@ export const readFileTool: React.FC<ToolProps<"readFile">> = ({
       <span className="ml-2" />
       {t("toolInvocation.reading")}
       {taskTranscript ? (
-        <TaskReferenceBadge id={taskTranscript.taskId} className="ml-1" />
+        <TaskReferenceBadge
+          id={taskTranscript.taskId}
+          className="ml-1"
+          onClick={openTranscript}
+        />
       ) : (
         path && (
           <FileBadge

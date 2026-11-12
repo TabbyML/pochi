@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { readFileTool as ReadFileTool } from "../read-file";
 
@@ -79,11 +79,23 @@ vi.mock("../file-badge", () => ({
 }));
 
 vi.mock("@/components/message/task-reference-badge", () => ({
-  TaskReferenceBadge: ({ id }: { id: string }) => (
-    <span data-testid="task-reference-badge" data-task-id={id}>
+  TaskReferenceBadge: ({
+    id,
+    onClick,
+  }: { id: string; onClick?: () => void }) => (
+    <span
+      data-testid="task-reference-badge"
+      data-task-id={id}
+      onClick={onClick}
+    >
       Task title
     </span>
   ),
+}));
+
+const { openFile } = vi.hoisted(() => ({ openFile: vi.fn() }));
+vi.mock("@/lib/vscode", () => ({
+  vscodeHost: { openFile },
 }));
 
 interface ReadFileInput {
@@ -139,6 +151,17 @@ describe("readFileTool", () => {
     expect(getByTestId("task-reference-badge").dataset.taskId).toBe("task-1");
     expect(queryByTestId("file-badge")).toBeNull();
     expect(container.textContent).toBe("Reading Task title");
+  });
+
+  it("opens the transcript markdown when the task badge is clicked", () => {
+    openFile.mockClear();
+    const path = "/Users/me/.pochi/projects/repo-abc/transcripts/task-1.md";
+    const { getByTestId } = renderReadFileTool({ path });
+
+    fireEvent.click(getByTestId("task-reference-badge"));
+
+    expect(openFile).toHaveBeenCalledTimes(1);
+    expect(openFile).toHaveBeenCalledWith(path);
   });
 
   it("shows the standard reading label with the requested file path", () => {

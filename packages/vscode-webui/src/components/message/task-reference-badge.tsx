@@ -24,6 +24,11 @@ interface TaskReferenceBadgeProps {
    * (e.g. the spawned task card).
    */
   variant?: "badge" | "plain";
+  /**
+   * Overrides the default click action (opening the task in a panel). When
+   * set, the badge is always clickable.
+   */
+  onClick?: () => void;
 }
 
 /** Resolves a referenced task from the task history, with a title fallback. */
@@ -43,13 +48,14 @@ export function useTaskReference(id: string, title?: string) {
 /**
  * Badge for a referenced task, shown for a `<task-reference>` tag in a sent
  * message and for reads of a task transcript. Clicking opens the task in a
- * panel when the task's working directory is known.
+ * panel when the task's working directory is known, unless `onClick` is set.
  */
 export function TaskReferenceBadge({
   id,
   title,
   className,
   variant = "badge",
+  onClick,
 }: TaskReferenceBadgeProps) {
   const { jwt } = usePochiCredentials();
   const { task, displayTitle } = useTaskReference(id, title);
@@ -75,13 +81,23 @@ export function TaskReferenceBadge({
     [cwd, id, task?.parentId, jwt],
   );
 
+  const handleClick = onClick
+    ? (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick();
+      }
+    : cwd
+      ? openTask
+      : undefined;
+  const clickable = handleClick !== undefined;
+
   if (variant === "plain") {
     return (
       <span
-        onClick={cwd ? openTask : undefined}
+        onClick={handleClick}
         className={cn(
           "break-words",
-          cwd && "cursor-pointer hover:text-foreground hover:underline",
+          clickable && "cursor-pointer hover:text-foreground hover:underline",
           className,
         )}
       >
@@ -94,10 +110,10 @@ export function TaskReferenceBadge({
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          onClick={cwd ? openTask : undefined}
+          onClick={handleClick}
           className={cn(
             "mx-px rounded-sm border border-border box-decoration-clone p-0.5 text-sm/6",
-            cwd &&
+            clickable &&
               "cursor-pointer hover:bg-zinc-200 active:bg-zinc-200 dark:active:bg-zinc-700 dark:hover:bg-zinc-700",
             className,
           )}
