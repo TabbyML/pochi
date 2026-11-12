@@ -10,38 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Playwright E2E tests in packages/vscode/e2e: a real VS Code per test.
   test-integration:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Bun Install
-        run: bun install --frozen-lockfile
-
-      - name: Run integration tests
-        env:
-          POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
-        run: |
-          bun turbo test:integration --filter=pochi
-
-      - name: 📦 Upload Logs
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: logs
-          path: logs
-
-  # Playwright E2E tests (packages/vscode/e2e), replacing the WebdriverIO
-  # integration tests above step by step (#2068).
-  test-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -68,10 +38,10 @@ jobs:
           key: vscode-e2e-${{ runner.os }}-${{ github.run_id }}
           restore-keys: vscode-e2e-${{ runner.os }}-
 
-      - name: Run E2E tests
+      - name: Run integration tests
         env:
           POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
-        run: bun turbo test:e2e --filter=pochi
+        run: bun turbo test:integration --filter=pochi
 
       - name: 📦 Upload Playwright report
         uses: actions/upload-artifact@v4

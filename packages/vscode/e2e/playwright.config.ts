@@ -3,7 +3,7 @@ import { defineConfig } from "@playwright/test";
 const isCI = !!process.env.CI;
 
 // Each test launches its own VS Code (see fixtures.ts). Build the extension
-// first: `bun turbo test:e2e --filter=pochi` does it.
+// first: `bun turbo test:integration --filter=pochi` does it.
 export default defineConfig({
   testDir: "./specs",
   globalSetup: "./global-setup.ts",

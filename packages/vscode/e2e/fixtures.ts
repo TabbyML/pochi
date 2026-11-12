@@ -25,7 +25,7 @@ type TestFixtures = {
   electronApp: ElectronApplication;
   /** The VS Code workbench window. */
   page: Page;
-  /** Pochi sidebar opened with a model selected. */
+  /** Pochi sidebar opened, with a model selected (unless `workspace` is `none`). */
   pochi: Pochi;
 };
 
@@ -128,10 +128,11 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(page);
   },
 
-  pochi: async ({ page, model }, use) => {
+  pochi: async ({ page, model, workspace }, use) => {
     const pochi = createPochi(page);
     await pochi.openSidebar();
-    await pochi.selectModel(model);
+    // Without a folder the sidebar only asks to open one.
+    if (workspace !== "none") await pochi.selectModel({ model });
     await use(pochi);
   },
 });

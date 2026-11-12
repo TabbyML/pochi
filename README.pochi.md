@@ -15,21 +15,20 @@ We use mocha framework, when creating test, do not use mocks for filesystem, jus
 (assuming cwd is packages/vscode)
 test command: `bun run test`
 coverage test command: `bun run test:coverage`
-e2e test command: `bun turbo test:integration`, always run it with background job
+e2e test command: `bun turbo test:integration --filter=pochi`, always run it with background job
 
 When encountering issues like `TypeError: Descriptor for property readFile is non-configurable and non-writable`, please use `proxyquire` to mock the module.
 
 ### E2E Testing Guidelines
-1. **Architecture**: Follow Page Object Model. Page objects are in `packages/vscode/test/pageobjects`.
-2. **WebViews**: Pochi runs in a WebView. Always handle frame switching (enter/exit) when interacting with Pochi UI.
-3. **Session Safety**: Do NOT use `vscode.openFolder` with `forceNewWindow: false` inside `browser.executeWorkbench`. This reloads the window and invalidates the WebDriver session. Use `forceNewWindow: true`, wait for the new window handle, and switch to it.
-4. **Internal API**: Use `browser.executeWorkbench` for setup/teardown (e.g. commands, file creation) instead of UI interactions where possible.
-5. **Debugging**: Add verbose logging with `[Test Debug]` prefix to help trace issues in CI/headless modes.
-6. **Test Command**: `bun turbo test:integration`, always run it with background job.
-7. **Selector Stability**: Add/use `aria-label` or `data-testid` attributes for stable selectors. Don't use taiwind classes to locate element.
-8. **Await Operations**: Always `await` browser operations.
-9. **Test Granularity**: One behavior per test when possible.
-10. **Cleanup**: Clean up after tests (close views, reset state).
+1. **Framework**: Playwright, in `packages/vscode/e2e` (see its README). Each test launches a real VS Code with the local extension, a fresh profile and a fresh workspace.
+2. **Workspace**: one folder per workspace type under `e2e/specs/` (`git-workspace`, `plain-workspace`, `git-worktrees-workspace`, `no-workspace`); select it with `test.use({ workspace: "git" })`.
+3. **Fixtures and helpers**: use the `page` and `pochi` fixtures from `e2e/fixtures.ts`. Pochi locators and actions live in `e2e/lib/pochi.ts` (shared with the agent tool `webview.mjs`); add new helpers there instead of in specs.
+4. **WebViews**: `pochi.sidebar` and `pochi.taskTab` are frame locators into the Pochi webviews; no manual frame switching.
+5. **Selector Stability**: Add/use `aria-label` or `data-testid` attributes for stable selectors. Don't use tailwind classes to locate elements.
+6. **Assertions**: use web-first assertions (`await expect(locator).toBeVisible()`), not sleeps. Assert structured state, not exact model output.
+7. **Test Granularity**: One behavior per test when possible.
+8. **Debugging**: failures attach a Playwright trace and a screenshot (`npx playwright show-trace <trace.zip>`); CI uploads them as the `playwright-report` artifact.
+9. **Test Command**: `bun turbo test:integration --filter=pochi` (needs `POCHI_API_KEY`), always run it with background job. One file: append `-- <file or -g "title">`.
 
 
 # Misc

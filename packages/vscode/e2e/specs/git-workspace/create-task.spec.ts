@@ -16,7 +16,5 @@ test("creates a task from the sidebar", async ({ page, pochi }) => {
   ).toBeVisible();
 
   // The task tab shows the user message.
-  await expect(
-    pochi.taskTab.getByLabel("chat-message-user", { exact: true }).first(),
-  ).toContainText(message);
+  await expect(pochi.messages("user").first()).toContainText(message);
 });

@@ -11,8 +11,6 @@ const execFileAsync = promisify(execFile);
  * - `git`: a git repository with one commit (folder name `git-repo`)
  * - `git-worktrees`: a git repository with a linked worktree on `worktree-branch`
  * - `none`: no folder open
- *
- * Same shapes as `tests/lib/workspace-setup.ts` (WebdriverIO), created per test.
  */
 export type WorkspaceKind = "plain" | "git" | "git-worktrees" | "none";
 

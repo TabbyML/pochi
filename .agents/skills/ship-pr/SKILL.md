@@ -119,15 +119,14 @@ Update the root cause in `context.md` with what you actually found.
   `vscode-test` in `packages/vscode`). Tests should assert behavior and, for
   bugs, fail without the fix.
 - Add an integration test only when the behavior is a core flow that should
-  stay guarded and unit tests can't reach it. Write new ones as Playwright
-  specs in `packages/vscode/e2e/specs/<workspace type>/` (`git-workspace`,
-  ...; pick the workspace with `test.use({ workspace: "git" })`), using the
-  `pochi` fixture from `e2e/fixtures.ts`. A `w run` flow that uses `pochi`
+  stay guarded and unit tests can't reach it. They are Playwright specs in
+  `packages/vscode/e2e/specs/<workspace type>/` (`git-workspace`,
+  `plain-workspace`, `git-worktrees-workspace`, `no-workspace`; select it with
+  `test.use({ workspace: "git" })`), using the `page` and `pochi` fixtures from
+  `e2e/fixtures.ts`; follow an existing spec. A `w run` flow that uses `pochi`
   ports almost unchanged. Run one with
-  `bun turbo test:e2e --filter=pochi -- <file or -g "title">` (needs
-  `POCHI_API_KEY`, e.g. from `packages/vscode/.env`). The older WebdriverIO
-  specs in `packages/vscode/tests/specs/` are being migrated (#2068); edit
-  them only to keep them passing.
+  `bun turbo test:integration --filter=pochi -- <file or -g "title">` (needs
+  `POCHI_API_KEY`, e.g. from `packages/vscode/.env`).
 - Fast loop while iterating, per touched package:
   `bun run test` (or a single file), `bun tsc`, `bun check` from the root.
 
