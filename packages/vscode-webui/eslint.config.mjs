@@ -22,7 +22,16 @@ export default [
       "i18next/no-literal-string": [
         "error",
         {
-          mode: "jsx-text-only", // only check jsx
+          mode: "jsx-only", // limit to JSX text and attributes to reduce noise
+          // Only check user-facing attributes; ignore design/technical attrs like className/variant/size/id
+          "jsx-attributes": {
+            include: ["^title$", "^alt$", "^placeholder$", "^label$"],
+          },
+          // Ignore developer-oriented strings passed to specific utility calls
+          callees: {
+            // Do not validate any function call arguments globally to reduce noise
+            exclude: [".*"],
+          },
           words: {
             exclude: [
               // Numbers and common symbols
@@ -38,6 +47,10 @@ export default [
               "^(px|rem|em|%|vh|vw|auto|none|inherit|KB|MB|GB|ms|s|min|h)$",
               // Boolean and null values
               "^(true|false|null|undefined)$",
+              // Single letters (initials)
+              "^[A-Za-z]$",
+              // Brand names
+              "^Pochi$",
             ],
           },
         },
