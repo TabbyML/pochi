@@ -6,7 +6,15 @@
     },
     "test": {},
     "test:integration": {
-      "dependsOn": ["build"]
+      "dependsOn": ["build"],
+      "cache": false,
+      "passThroughEnv": [
+        "CI",
+        "DISPLAY",
+        "VSCODE_VERSION",
+        "POCHI_E2E_MODEL",
+        "POCHI_E2E_VSCODE_EXECUTABLE"
+      ]
     },
     "build": {
       "outputLogs": "errors-only",

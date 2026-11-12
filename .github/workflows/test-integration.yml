@@ -10,10 +10,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Playwright E2E tests in packages/vscode/e2e: a real VS Code per test.
   test-integration:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,18 +23,31 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Bun Install
         run: bun install --frozen-lockfile
+
+      - name: Cache VS Code
+        uses: actions/cache@v4
+        with:
+          path: packages/vscode/.vscode-test/vscode-*
+          key: vscode-e2e-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: vscode-e2e-${{ runner.os }}-
 
       - name: Run integration tests
         env:
           POCHI_API_KEY: ${{ secrets.POCHI_API_KEY }}
-        run: |
-          bun turbo test:integration --filter=pochi
+        run: bun turbo test:integration --filter=pochi
 
-      - name: 📦 Upload Logs
+      - name: 📦 Upload Playwright report
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: logs
-          path: logs
+          name: playwright-report
+          path: |
+            packages/vscode/e2e/playwright-report
+            packages/vscode/e2e/test-results

@@ -89,8 +89,12 @@ w -w editor screenshot /tmp/task.png         # then readFile /tmp/task.png
   `eval <js-expression>`, `screenshot <file>`, `command <palette title>`,
   `logs [--clear]`, `list`, `status`. Run `w --help` for the full list.
 - **Multi-step or conditional flows**: `w run /tmp/flow.mjs`. The script's
-  default export receives `{ page, frame, webviews, locator, log }`. Use `log()`
-  for output, because `console.log` goes to the daemon's job log.
+  default export receives `{ page, frame, webviews, locator, pochi, log }`. Use
+  `log()` for output, because `console.log` goes to the daemon's job log.
+  `pochi` is the same helper the E2E specs get (`packages/vscode/e2e/lib/pochi.ts`:
+  `pochi.sidebar`, `pochi.taskTab`, `pochi.taskRows`, `pochi.selectModel()`,
+  `pochi.sendMessage()`), so a flow written with it moves into a Playwright
+  spec almost unchanged.
 
 Known Pochi labels: `Add`, `model-select`, `Submit` (sidebar),
 `filter-tasks-button`, `worktree-more-actions`. The prompt editor is
