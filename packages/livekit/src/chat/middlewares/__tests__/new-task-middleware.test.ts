@@ -13,6 +13,25 @@ const customAgents: CustomAgent[] = [
   },
   { name: "explore", description: "Explores", systemPrompt: "Explore." },
   {
+    name: "reader",
+    description: "Reads",
+    systemPrompt: "Read.",
+    tools: ["readFile", "executeCommand(git status)"],
+  },
+  {
+    name: "isolated-reader",
+    description: "Reads in a worktree",
+    systemPrompt: "Read.",
+    tools: ["readFile"],
+    isolation: "worktree",
+  },
+  {
+    name: "writer",
+    description: "Writes",
+    systemPrompt: "Write.",
+    tools: ["readFile", "applyDiff"],
+  },
+  {
     name: "audit",
     description: "Internal audit",
     systemPrompt: "Audit.",
@@ -111,6 +130,34 @@ describe("createNewTaskMiddleware isolation", () => {
       ...base,
       agentType: "explore",
       isolation: "worktree",
+    });
+    expect(args.isolation).toBe("worktree");
+  });
+
+  it("keeps an explicit isolation for agents that can write files", async () => {
+    const { args } = await callNewTask({
+      ...base,
+      agentType: "writer",
+      isolation: "worktree",
+    });
+    expect(args.isolation).toBe("worktree");
+  });
+
+  it("drops an explicit isolation for read-only agents", async () => {
+    const getSubagentWorktreePath = vi.fn(async () => "/unused");
+    const { args, taskCwd } = await callNewTask(
+      { ...base, agentType: "reader", isolation: "worktree" },
+      getSubagentWorktreePath,
+    );
+    expect(args.isolation).toBeUndefined();
+    expect(taskCwd).toBe("/repo");
+    expect(getSubagentWorktreePath).not.toHaveBeenCalled();
+  });
+
+  it("applies the configured isolation of a read-only agent", async () => {
+    const { args } = await callNewTask({
+      ...base,
+      agentType: "isolated-reader",
     });
     expect(args.isolation).toBe("worktree");
   });

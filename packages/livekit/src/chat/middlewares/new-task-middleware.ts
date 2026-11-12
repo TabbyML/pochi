@@ -4,7 +4,12 @@ import type {
 } from "@ai-sdk/provider";
 import { safeParseJSON } from "@ai-sdk/provider-utils";
 import { isTopLevelTaskSpawn } from "@getpochi/common";
-import { type CustomAgent, newTaskInputSchema } from "@getpochi/tools";
+import {
+  type CustomAgent,
+  ToolsByPermission,
+  getAllowedToolNames,
+  newTaskInputSchema,
+} from "@getpochi/tools";
 import { InvalidToolInputError } from "ai";
 import { events } from "../../livestore/default-schema";
 import type { LiveKitStore } from "../../types";
@@ -118,9 +123,16 @@ export function createNewTaskMiddleware(
                 });
               }
 
-              const isolation = args.isolation ?? agent?.isolation;
+              // A worktree hides the current branch and uncommitted changes, so
+              // read-only agents only get one when their own config asks for it.
+              const isolation = isReadOnlyAgent(agent)
+                ? agent?.isolation
+                : (args.isolation ?? agent?.isolation);
               if (isolation) {
                 args.isolation = isolation;
+              } else {
+                // biome-ignore lint/performance/noDelete: keep the args JSON clean
+                delete args.isolation;
               }
 
               const uid = crypto.randomUUID();
@@ -181,4 +193,11 @@ export function createNewTaskMiddleware(
       };
     },
   };
+}
+
+/** An agent whose tool list has no file-writing tool, e.g. explore or reviewer. */
+function isReadOnlyAgent(agent: CustomAgent | undefined): boolean {
+  const tools = getAllowedToolNames(agent?.tools);
+  if (tools.size === 0) return false;
+  return !ToolsByPermission.write.some((name) => tools.has(name));
 }
