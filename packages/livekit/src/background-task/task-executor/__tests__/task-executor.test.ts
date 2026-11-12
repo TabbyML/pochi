@@ -716,6 +716,78 @@ describe("TaskExecutor", () => {
     }
   });
 
+  it("fails right away with the real error when a request fails with a non-retryable API error", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      {
+        id: "user",
+        role: "user",
+        parts: [{ type: "text", text: "Read the image." }],
+      },
+    ]);
+    const apiError =
+      "messages.1.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 8000 pixels";
+    const send = vi
+      .spyOn(MockChat.prototype, "sendMessage")
+      .mockImplementation(async () => {
+        store.failTask("task", apiError, "APICallError", false);
+      });
+    const adaptor = {
+      ...makeAdaptor({ executeToolCall: vi.fn() }),
+      onTaskFinished: vi.fn(),
+    };
+    const executor = makeExecutor(store, adaptor, {});
+    try {
+      await executor.drain();
+      expect(send).toHaveBeenCalledOnce();
+      expect(store.readTask("task")).toMatchObject({
+        status: "failed",
+        error: { message: apiError },
+      });
+      expect(adaptor.onTaskFinished).toHaveBeenCalledWith("task");
+    } finally {
+      await executor.dispose();
+    }
+  });
+
+  it("keeps retrying a retryable API error and reports it at the retry limit", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      {
+        id: "user",
+        role: "user",
+        parts: [{ type: "text", text: "Read the image." }],
+      },
+    ]);
+    const send = vi
+      .spyOn(MockChat.prototype, "sendMessage")
+      .mockImplementation(async () => {
+        store.failTask("task", "Overloaded", "APICallError", true);
+      });
+    const executor = makeExecutor(
+      store,
+      makeAdaptor({ executeToolCall: vi.fn() }),
+      {},
+    );
+    try {
+      await executor.drain();
+      expect(send).toHaveBeenCalledTimes(8);
+      expect(store.readTask("task")).toMatchObject({
+        status: "failed",
+        error: {
+          message:
+            "The task failed to complete, max retry count reached. Last error: Overloaded",
+        },
+      });
+    } finally {
+      await executor.dispose();
+    }
+  });
+
   it.each(["completed", "pending-input"])(
     "processes a new user message despite a stale %s status, like the CLI",
     async (status) => {
@@ -1513,13 +1585,18 @@ class FakeLiveKitStore {
     this.emit();
   }
 
-  failTask(taskId: string, message: string, kind = "InternalError") {
+  failTask(
+    taskId: string,
+    message: string,
+    kind = "InternalError",
+    isRetryable?: boolean,
+  ) {
     const task = this.readTask(taskId);
     if (!task) return;
     this.tasks.set(taskId, {
       ...task,
       status: "failed",
-      error: { kind, message },
+      error: { kind, message, isRetryable },
     });
     this.emit();
   }

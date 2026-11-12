@@ -259,8 +259,12 @@ export function useLiveSubTask(
       }
       setRetryCount((count) => count + 1);
       if (retryCount > SubtaskMaxRetry) {
+        const lastError =
+          error && !(error instanceof ReadyForRetryError)
+            ? ` Last error: ${error.message}`
+            : "";
         streamingResult.throws(
-          "The sub-task failed to complete, max retry count reached.",
+          `The sub-task failed to complete, max retry count reached.${lastError}`,
         );
         return;
       }
@@ -315,6 +319,12 @@ export function useLiveSubTask(
     setDebouncedPendingErrorForRetry(undefined);
     if (isRetryableError(pendingErrorForRetry)) {
       retryWithCount(pendingErrorForRetry);
+    } else {
+      // The sub-task can't recover on its own: end the parent's newTask call
+      // with the error so the parent agent knows it stopped and why.
+      streamingResult.throws(
+        `The sub-task stopped with an error: ${describeSubtaskError(pendingErrorForRetry)}`,
+      );
     }
   }, [
     retryWithCount,
@@ -446,6 +456,13 @@ const useInitAutoStart = ({
       start();
     }
   }, [start, enabled]);
+};
+
+const describeSubtaskError = (error: Error) => {
+  if (error instanceof ReadyForRetryError && error.kind === "content-filter") {
+    return "the model's response was blocked by the content filter.";
+  }
+  return error.message || "unknown error.";
 };
 
 const ensureNewTaskStreamingResult = (
