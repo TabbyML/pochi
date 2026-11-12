@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Drive the Pochi webview (and the VS Code workbench) of a VS Code window
-// started by launch.sh, using Playwright over CDP. Run with node, not bun.
+// started by env.sh (launch.sh), using Playwright over CDP. Run with node, not bun.
 //
 // VS Code webviews are out-of-process iframes with the app in a nested
 // `#active-frame`; Playwright resolves both levels, so selectors work without
@@ -18,7 +18,7 @@ import { chromium } from "playwright-core";
 const usage = `Usage: node webview.mjs [--port 9233] [-w <webview>] [--timeout <sec>] <command> [args]
 
 Daemon:
-  serve                     hold the CDP connection (run as a background job)
+  serve                     hold the CDP connection (env.sh up starts it detached)
   wait-ready [sec]          wait until the daemon is connected and the Pochi sidebar renders
   status                    daemon state and Pochi webviews
 
@@ -481,8 +481,7 @@ function send(port, payload) {
 
 async function waitReady(port, seconds) {
   const deadline = Date.now() + seconds * 1000;
-  let last =
-    "daemon not running (start `webview.mjs serve` as a background job)";
+  let last = "daemon not running (start the environment with `env.sh up`)";
   while (Date.now() < deadline) {
     try {
       const { output } = await send(port, { command: "status" });
@@ -527,7 +526,7 @@ async function main() {
     });
   } catch (error) {
     throw new Error(
-      `cannot reach the daemon at ${socketPath(opts.port)} (${error.code ?? error.message}); start \`node webview.mjs serve\` as a background job`,
+      `cannot reach the daemon at ${socketPath(opts.port)} (${error.code ?? error.message}); start the environment with \`env.sh up\``,
     );
   }
   if (response.ok) {
