@@ -4,8 +4,5 @@ export type BuiltinSubAgentInfo =
       sessionId: string;
     }
   | {
-      type: "planner";
-    }
-  | {
       type: "explore";
     };

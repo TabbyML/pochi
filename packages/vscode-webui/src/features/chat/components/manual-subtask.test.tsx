@@ -56,7 +56,6 @@ afterEach(() => {
 
 describe("manual subtask navigation", () => {
   it.each([
-    ["planner", true],
     ["guide", true],
     ["explore", false],
   ] as const)(

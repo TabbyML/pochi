@@ -199,8 +199,7 @@ type SelectAgentToolsOptions = {
 const RequiredAgentTools = ["attemptCompletion", "useSkill"];
 
 function isAgentToolDisabled(agentName: string, toolName: string): boolean {
-  const canAskFollowupQuestion =
-    agentName === "planner" || agentName === "guide";
+  const canAskFollowupQuestion = agentName === "guide";
   return toolName === "askFollowupQuestion" && !canAskFollowupQuestion;
 }
 

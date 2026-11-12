@@ -70,13 +70,6 @@ export class ReviewController implements vscode.Disposable {
           return [adHocRange];
         }
 
-        if (
-          document.uri.scheme === "pochi" &&
-          ["/plan.md"].includes(document.uri.path)
-        ) {
-          return [new vscode.Range(0, 0, document.lineCount, 0)];
-        }
-
         // Otherwise, allow comments if it's there exists original changes from content provider.
         const hasMatchingDiffDoc = vscode.workspace.textDocuments.some(
           (doc) => {

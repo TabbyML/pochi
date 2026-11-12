@@ -5,12 +5,8 @@ import { AccordionSection } from "../ui/accordion-section";
 
 export const DeveloperSettingsSection: React.FC = () => {
   const { t } = useTranslation();
-  const {
-    showResetRecommendBtn,
-    resetRecommendSettings,
-    clearOPFSStorage,
-    resetTutorialCount,
-  } = useDevSettings();
+  const { showResetRecommendBtn, resetRecommendSettings, clearOPFSStorage } =
+    useDevSettings();
 
   return (
     <AccordionSection
@@ -38,14 +34,6 @@ export const DeveloperSettingsSection: React.FC = () => {
           </span>
           <Button variant="default" size="sm" onClick={clearOPFSStorage}>
             {t("common.clear")}
-          </Button>
-        </div>
-        <div className="flex items-center justify-between border-border border-b pb-4 last:border-0 last:pb-0">
-          <span className="font-semibold text-sm">
-            {t("settings.advanced.resetReviewPlanTutorialCounter")}
-          </span>
-          <Button variant="default" size="sm" onClick={resetTutorialCount}>
-            {t("common.reset")}
           </Button>
         </div>
       </div>

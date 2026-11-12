@@ -135,7 +135,6 @@ interface FormEditorProps {
   isSubTask: boolean;
   /** Id of the task being edited; excluded from the task references list. */
   currentTaskId?: string;
-  onSwitchSubmitMode?: () => void;
   className?: string;
 }
 
@@ -158,7 +157,6 @@ export function FormEditor({
   messageContent = "",
   isSubTask,
   currentTaskId,
-  onSwitchSubmitMode,
   className,
 }: FormEditorProps) {
   const { t } = useTranslation();
@@ -806,12 +804,6 @@ export function FormEditor({
       onClick={(e) => {
         e.stopPropagation();
         focusEditor();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Tab" && e.shiftKey) {
-          e.preventDefault();
-          onSwitchSubmitMode?.();
-        }
       }}
     >
       {children}

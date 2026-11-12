@@ -6,12 +6,11 @@ export {
 } from "./background-job-id";
 
 /**
- * Agents that cannot be backgrounded: planner and guide talk to the user
+ * Agents that cannot be backgrounded: guide talks to the user
  * through askFollowupQuestion, and the todo audit resolves todos through the
  * foreground result flow.
  */
 const ForegroundAgents = new Set<string>([
-  "planner",
   "guide",
   AttemptTodoCompletionAgentName,
 ]);

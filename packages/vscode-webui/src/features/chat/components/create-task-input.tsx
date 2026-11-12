@@ -17,7 +17,6 @@ import { useSkills } from "@/lib/hooks/use-skills";
 import { useTaskInputDraft } from "@/lib/hooks/use-task-input-draft";
 import { useWorktrees } from "@/lib/hooks/use-worktrees";
 import { buildTodoModeObjective } from "@/lib/message-utils";
-import { serializeCustomAgentMention } from "@/lib/serialize-custom-agent-mention";
 import { vscodeHost } from "@/lib/vscode";
 import { type PastedTextFile, getPastedTextTitle } from "@getpochi/common";
 import type {
@@ -63,23 +62,8 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const { skills, isLoading: isSkillsLoading } = useSkills(true);
   const { customAgents, isLoading: isCustomAgentsLoading } =
     useCustomAgents(true);
-  const [planMode, setPlanMode] = useState(false);
   const [todoModeSelected, setTodoModeSelected] = useState(false);
-  const togglePlanMode = useCallback(() => {
-    setPlanMode((enabled) => {
-      const nextEnabled = !enabled;
-      if (nextEnabled) {
-        setTodoModeSelected(false);
-      }
-      return nextEnabled;
-    });
-  }, []);
-  const switchSubmitMode = useCallback(() => {
-    setTodoModeSelected(false);
-    setPlanMode((enabled) => !enabled);
-  }, []);
   const selectTodoMode = useCallback(() => {
-    setPlanMode(false);
     setTodoModeSelected(true);
   }, []);
   const {
@@ -284,12 +268,10 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
   const handleSubmitImpl = useCallback(
     async (options?: {
       shouldCreateWorktree?: boolean;
-      shouldCreatePlan?: boolean;
       shouldCreateTodo?: boolean;
       submittedInput?: ChatInput;
     }) => {
       const { shouldCreateWorktree } = options || {};
-      const shouldCreatePlan = options?.shouldCreatePlan ?? planMode;
       const shouldCreateTodo = options?.shouldCreateTodo ?? todoModeSelected;
 
       if (isCreatingTask || isSkillsLoading || isCustomAgentsLoading) return;
@@ -312,8 +294,7 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         });
         return;
       }
-      let content = validationResult.text.trim();
-      const invokedCustomAgents = [...validationResult.invokedCustomAgents];
+      const content = validationResult.text.trim();
 
       // Disallow empty submissions
       if (
@@ -323,14 +304,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         terminalContextSelections.length === 0
       )
         return;
-
-      if (shouldCreatePlan) {
-        // Use built-in planner agent
-        content = `${serializeCustomAgentMention("planner")} ${content}`;
-        if (!invokedCustomAgents.includes("planner")) {
-          invokedCustomAgents.push("planner");
-        }
-      }
 
       // Set isCreatingTask state true
       // Show loading and freeze input
@@ -371,12 +344,11 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
           uploadedFiles: uploadedFiles.length > 0 ? uploadedFiles : undefined,
           shouldCreateTodo,
           invokedSkills: validationResult.invokedSkills,
-          invokedCustomAgents,
+          invokedCustomAgents: validationResult.invokedCustomAgents,
           pastedTexts: currentInput.pastedTexts,
         });
 
         // Reset submit mode after each submission
-        setPlanMode(false);
         setTodoModeSelected(false);
       } finally {
         // Hide loading and unfreeze input
@@ -399,7 +371,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
       clearUploadError,
       setDebouncedIsCreatingTask,
       createWorktreeAndOpenTask,
-      planMode,
       todoModeSelected,
       terminalContextSelections,
     ],
@@ -424,16 +395,12 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
     [handleSubmitImpl],
   );
 
-  const handleClickSubmit = useCallback(
-    async (shouldCreatePlan?: boolean) => {
-      chatInputFormRef.current?.addToSubmitHistory();
-      handleSubmitImpl({
-        shouldCreatePlan: !!shouldCreatePlan,
-        submittedInput: chatInputFormRef.current?.getInputSnapshot(),
-      });
-    },
-    [handleSubmitImpl],
-  );
+  const handleClickSubmit = useCallback(async () => {
+    chatInputFormRef.current?.addToSubmitHistory();
+    handleSubmitImpl({
+      submittedInput: chatInputFormRef.current?.getInputSnapshot(),
+    });
+  }, [handleSubmitImpl]);
 
   return (
     <>
@@ -454,8 +421,6 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
         reviews={emptyReviews}
         terminalContextSelections={terminalContextSelections}
         onRemoveTerminalContextSelection={removeTerminalContextSelection}
-        onSwitchSubmitMode={switchSubmitMode}
-        isPlanMode={planMode}
         onSelectTodoMode={selectTodoMode}
         onAttachFile={() => fileInputRef.current?.click()}
         contextMenuSide="bottom"
@@ -520,13 +485,9 @@ export const CreateTaskInput: React.FC<CreateTaskInputProps> = ({
               !selectedModel || isUploadingAttachments || isSkillsLoading
             }
             onSubmit={() => handleClickSubmit()}
-            onSubmitPlan={() => handleClickSubmit(true)}
             mcpConfigOverride={mcpConfigOverride}
             onToggleServer={toggleServer}
             resetMcpTools={resetMcpTools}
-            isPlanMode={planMode}
-            onTogglePlanMode={togglePlanMode}
-            onSwitchSubmitMode={switchSubmitMode}
           />
         </div>
       </div>

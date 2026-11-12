@@ -161,13 +161,9 @@ export function useLiveSubTask(
               type: tool.input.agentType,
               sessionId: uid,
             }
-          : tool.input?.agentType === "planner"
-            ? {
-                type: "planner",
-              }
-            : tool.input?.agentType === "explore"
-              ? { type: "explore" }
-              : undefined;
+          : tool.input?.agentType === "explore"
+            ? { type: "explore" }
+            : undefined;
       const toolPolicies = compileToolPolicies(customAgent?.tools);
 
       if (abortController.current.signal.aborted) {

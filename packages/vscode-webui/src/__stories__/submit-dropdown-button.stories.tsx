@@ -11,7 +11,6 @@ const meta = {
   tags: ["autodocs"],
   args: {
     onSubmit: fn(),
-    onSubmitPlan: fn(),
     onToggleServer: fn(),
     resetMcpTools: fn(),
     mcpConfigOverride: {},

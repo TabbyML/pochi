@@ -25,7 +25,6 @@ import { cn } from "@/lib/utils";
 import type { McpServerConnection } from "@getpochi/common/mcp-utils";
 import type { McpConfigOverride } from "@getpochi/common/vscode-webui-bridge";
 import {
-  ClipboardList,
   Loader2,
   SendHorizonal,
   Settings2Icon,
@@ -38,35 +37,24 @@ interface SubmitDropdownButtonProps {
   isLoading?: boolean;
   disabled?: boolean;
   onSubmit: () => void;
-  onSubmitPlan: () => void;
   mcpConfigOverride: McpConfigOverride;
   onToggleServer: (serverName: string) => void;
   resetMcpTools: () => void;
-  isPlanMode?: boolean;
-  onTogglePlanMode?: () => void;
-  onSwitchSubmitMode?: () => void;
 }
 
 export function SubmitDropdownButton({
   isLoading = false,
   disabled = false,
   onSubmit,
-  onSubmitPlan,
   mcpConfigOverride,
   onToggleServer,
   resetMcpTools,
-  isPlanMode = false,
-  onTogglePlanMode,
-  onSwitchSubmitMode,
 }: SubmitDropdownButtonProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isHoveringRef = useRef(false);
-  const submitMode = isPlanMode ? "plan" : "default";
-  const submitTooltip = isPlanMode
-    ? t("chat.planModeSubmitTooltip")
-    : t("chat.submitTooltip");
+  const submitTooltip = t("chat.submitTooltip");
 
   if (isLoading) {
     return (
@@ -129,32 +117,13 @@ export function SubmitDropdownButton({
                     size="icon"
                     disabled={disabled}
                     className={cn(
-                      "button-focus relative h-6 w-6 overflow-hidden p-0",
+                      "button-focus h-6 w-6 p-0",
                       isOpen && "bg-accent",
                     )}
                     aria-label={submitTooltip}
-                    onClick={isPlanMode ? onSubmitPlan : onSubmit}
+                    onClick={onSubmit}
                   >
-                    <span
-                      className={cn(
-                        "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        submitMode === "plan"
-                          ? "translate-y-0 opacity-100"
-                          : "-translate-y-full opacity-0",
-                      )}
-                    >
-                      <ClipboardList className="size-4" />
-                    </span>
-                    <span
-                      className={cn(
-                        "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                        submitMode === "default"
-                          ? "translate-y-0 opacity-100"
-                          : "translate-y-full opacity-0",
-                      )}
-                    >
-                      <SendHorizonal className="size-4" />
-                    </span>
+                    <SendHorizonal className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
@@ -169,12 +138,6 @@ export function SubmitDropdownButton({
             onCloseAutoFocus={(e) => e.preventDefault()}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            onKeyDown={(e) => {
-              if (e.key === "Tab" && e.shiftKey) {
-                e.preventDefault();
-                onSwitchSubmitMode?.();
-              }
-            }}
             side="bottom"
             align="end"
             alignOffset={0}
@@ -182,34 +145,6 @@ export function SubmitDropdownButton({
             className="dropdown-menu w-auto min-w-0 animate-in overflow-hidden rounded-md border bg-background p-0 text-popover-foreground shadow"
           >
             <div className="p-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuItem
-                      className="flex cursor-pointer items-center gap-2 px-2 py-1"
-                      onSelect={(e) => e.preventDefault()}
-                      onClick={() => onTogglePlanMode?.()}
-                    >
-                      <ClipboardList className="size-3.5 transition-colors duration-200" />
-                      <span>{t("chat.planModeLabel")}</span>
-                      <Switch
-                        checked={isPlanMode}
-                        className="ml-auto scale-75"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePlanMode?.();
-                        }}
-                      />
-                    </DropdownMenuItem>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    <p>{t("chat.planModeToggleShortcutTooltip")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <DropdownMenuSeparator />
-
               <McpSubMenu
                 mcpConfigOverride={mcpConfigOverride}
                 onToggleServer={onToggleServer}

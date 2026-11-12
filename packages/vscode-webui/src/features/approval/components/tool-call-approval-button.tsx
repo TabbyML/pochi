@@ -103,8 +103,7 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
   const builtinSubAgentInfo: BuiltinSubAgentInfo | undefined =
     isSubTask && subtask?.agent === "browser" && taskId
       ? { type: subtask.agent, sessionId: taskId }
-      : isSubTask &&
-          (subtask?.agent === "planner" || subtask?.agent === "explore")
+      : isSubTask && subtask?.agent === "explore"
         ? { type: subtask.agent }
         : undefined;
   const toolPolicies = compileToolPolicies(customAgent?.tools);
@@ -134,10 +133,8 @@ export const ToolCallApprovalButton: React.FC<ToolCallApprovalButtonProps> = ({
       const tool = tools[i];
       const runManually =
         !subtaskOffhand ||
-        // planner and guide agents always run manually
-        (tool.type === "tool-newTask" &&
-          (tool.input?.agentType === "planner" ||
-            tool.input?.agentType === "guide"));
+        // guide agent always runs manually
+        (tool.type === "tool-newTask" && tool.input?.agentType === "guide");
       // Only an explicit background request overrides running the subtask
       // manually; the background default yields to the user's choice.
       // A spawned top-level task runs in its own tab, never as a subtask here.

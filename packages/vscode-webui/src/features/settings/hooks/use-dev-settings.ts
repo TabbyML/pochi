@@ -1,4 +1,3 @@
-import { useReviewPlanTutorialCounter } from "@/lib/hooks/use-review-plan-tutorial-counter";
 import { useVSCodeSettings } from "@/lib/hooks/use-vscode-settings";
 import { vscodeHost } from "@/lib/vscode";
 import { useSettingsStore } from "../store";
@@ -6,7 +5,6 @@ import { useSettingsStore } from "../store";
 export function useDevSettings() {
   const { isDevMode, updateIsDevMode } = useSettingsStore();
   const vscodeSettings = useVSCodeSettings();
-  const { resetCount: resetTutorialCount } = useReviewPlanTutorialCounter();
 
   const resetRecommendSettings = async () => {
     await vscodeHost.updateVSCodeSettings({
@@ -32,6 +30,5 @@ export function useDevSettings() {
     showResetRecommendBtn: !!vscodeSettings?.hideRecommendSettings,
     resetRecommendSettings,
     clearOPFSStorage,
-    resetTutorialCount,
   };
 }

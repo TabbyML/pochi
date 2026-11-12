@@ -179,7 +179,7 @@ describe("useLiveSubTask", () => {
   it("does not pass audit todos to other subtasks", () => {
     renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: false },
+        { tool: makeTool("guide"), isExecuting: false },
         makeToolCallStatusRegistry(),
       ),
     );
@@ -202,7 +202,7 @@ describe("useLiveSubTask", () => {
     } as never);
     renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: false },
+        { tool: makeTool("guide"), isExecuting: false },
         makeToolCallStatusRegistry(),
       ),
     );
@@ -215,7 +215,7 @@ describe("useLiveSubTask", () => {
   it("starts only after the lifecycle has prepared the subtask", () => {
     const { rerender } = renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: true },
+        { tool: makeTool("guide"), isExecuting: true },
         makeToolCallStatusRegistry(),
       ),
     );
@@ -241,7 +241,7 @@ describe("useLiveSubTask", () => {
 
     renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: true },
+        { tool: makeTool("guide"), isExecuting: true },
         makeToolCallStatusRegistry(),
       ),
     );
@@ -262,7 +262,7 @@ describe("useLiveSubTask", () => {
 
     const { rerender } = renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: true },
+        { tool: makeTool("guide"), isExecuting: true },
         makeToolCallStatusRegistry(),
       ),
     );
@@ -299,7 +299,7 @@ describe("useLiveSubTask", () => {
 
     const { rerender } = renderHook(() =>
       useLiveSubTask(
-        { tool: makeTool("planner"), isExecuting: true },
+        { tool: makeTool("guide"), isExecuting: true },
         makeToolCallStatusRegistry(),
       ),
     );
