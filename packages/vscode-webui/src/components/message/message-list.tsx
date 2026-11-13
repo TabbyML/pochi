@@ -39,11 +39,6 @@ import { TaskReferenceContextProvider } from "./task-reference-context";
 import { useMessageListPagination } from "./use-message-list-pagination";
 import { UserEditsPart } from "./user-edits";
 
-interface UserEditsCheckpoint {
-  origin: string | undefined;
-  modified: string | undefined;
-}
-
 const MessageContextProviders: React.FC<{
   messages: Message[];
   children: React.ReactNode;
@@ -128,14 +123,6 @@ export const MessageList: React.FC<{
   const shouldSeparatorUseLoading =
     isLoading || isExecuting || isAboutToExecuteWithAutoApprove;
   const assistantName = assistant?.name ?? "Pochi";
-  const toolCallCheckpoints = useMemo(
-    () => buildToolCallCheckpoints(messages),
-    [messages],
-  );
-  const userEditsCheckpoints = useMemo(
-    () => buildUserEditsCheckpoints(messages),
-    [messages],
-  );
 
   const mermaidContextValue = useMemo(
     () =>
@@ -243,12 +230,6 @@ export const MessageList: React.FC<{
                         isLoading={isLoading}
                         isSubTask={isSubTask}
                         hideUserEditsActions={hideUserEditsActions}
-                        userEditsCheckpoint={userEditsCheckpoints.get(m.id)}
-                        toolCallCheckpoint={
-                          isStaticToolUIPart(part)
-                            ? toolCallCheckpoints.get(part.toolCallId)
-                            : undefined
-                        }
                       />
                     ))}
                   </div>
@@ -398,8 +379,6 @@ function Part({
   isLoading,
   isSubTask,
   hideUserEditsActions,
-  userEditsCheckpoint,
-  toolCallCheckpoint,
 }: {
   role: Message["role"];
   partIndex: number;
@@ -410,11 +389,6 @@ function Part({
   isLoading: boolean;
   isSubTask?: boolean;
   hideUserEditsActions?: boolean;
-  userEditsCheckpoint?: {
-    origin: string | undefined;
-    modified: string | undefined;
-  };
-  toolCallCheckpoint?: ToolCallCheckpoint;
 }) {
   const paddingClass = partIndex === 0 ? "" : "mt-2";
   if (part.type === "text") {
@@ -458,7 +432,6 @@ function Part({
     return (
       <UserEditsPart
         userEdits={part.data.userEdits}
-        checkpoints={userEditsCheckpoint}
         hideActions={hideUserEditsActions}
       />
     );
@@ -482,7 +455,6 @@ function Part({
         className={paddingClass}
         tool={part}
         isLoading={isLoading}
-        changes={toolCallCheckpoint}
         isSubTask={isSubTask}
         isLastPart={isLastPartInMessages}
         isInLatestAssistantMessage={isInLatestAssistantMessage}
@@ -638,54 +610,6 @@ const OptionalSeparatorWithExecutionDuration: React.FC<{
   );
 };
 
-export interface ToolCallCheckpoint {
-  origin?: string;
-  modified?: string;
-}
-
-function buildToolCallCheckpoints(messages: Message[]) {
-  const toolCallCheckpoints = new Map<string, ToolCallCheckpoint>();
-  const partsInOrder: Array<Message["parts"][number]> = [];
-  let latestCheckpoint: string | undefined;
-
-  for (const message of messages) {
-    for (const part of message.parts) {
-      partsInOrder.push(part);
-
-      if (part.type === "data-checkpoint") {
-        latestCheckpoint = part.data.commit;
-        continue;
-      }
-
-      if (isStaticToolUIPart(part)) {
-        toolCallCheckpoints.set(part.toolCallId, {
-          origin: latestCheckpoint,
-        });
-      }
-    }
-  }
-
-  let nextCheckpoint: string | undefined;
-
-  for (let index = partsInOrder.length - 1; index >= 0; index -= 1) {
-    const part = partsInOrder[index];
-
-    if (part.type === "data-checkpoint") {
-      nextCheckpoint = part.data.commit;
-      continue;
-    }
-
-    if (isStaticToolUIPart(part)) {
-      const checkpoint = toolCallCheckpoints.get(part.toolCallId);
-      if (checkpoint) {
-        checkpoint.modified = nextCheckpoint;
-      }
-    }
-  }
-
-  return toolCallCheckpoints;
-}
-
 // The UI formatter merges consecutive assistant messages under the latest id,
 // so a hidden reminder followed by a new assistant message would change the
 // row id. Key each row by the first raw assistant message it merged instead,
@@ -715,41 +639,6 @@ function findCompactPart(message: Message): TextUIPart | undefined {
       return x;
     }
   }
-}
-
-function buildUserEditsCheckpoints(messages: Message[]) {
-  const userEditsCheckpoints = new Map<string, UserEditsCheckpoint>();
-  const checkpointHistory: string[] = [];
-
-  for (const message of messages) {
-    let hasUserEdits = false;
-
-    for (const part of message.parts) {
-      if (part.type === "data-checkpoint") {
-        checkpointHistory.push(part.data.commit);
-        continue;
-      }
-
-      if (part.type === "data-user-edits") {
-        hasUserEdits = true;
-      }
-    }
-
-    if (
-      message.role !== "user" ||
-      !hasUserEdits ||
-      checkpointHistory.length < 2
-    ) {
-      continue;
-    }
-
-    userEditsCheckpoints.set(message.id, {
-      origin: checkpointHistory.at(-2),
-      modified: checkpointHistory.at(-1),
-    });
-  }
-
-  return userEditsCheckpoints;
 }
 
 function computeExecutionDuration(message: Message) {

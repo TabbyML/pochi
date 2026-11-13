@@ -3,7 +3,6 @@ import type {
   ActiveSelection,
   Review,
   TerminalTextSelection,
-  UserEdits,
   ValidSkillFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import type { Message } from "@getpochi/livekit";
@@ -25,7 +24,6 @@ export function prepareMessageParts(
   prompt: string,
   files: FileUIPart[],
   reviews: Review[],
-  userEdits?: UserEdits,
   activeSelection?: ActiveSelection,
   terminalContextSelections?: TerminalTextSelection[],
   invokedSkills?: ValidSkillFile[],
@@ -109,13 +107,6 @@ export function prepareMessageParts(
       },
     });
     vscodeHost.deleteReviews(reviews.map((r) => r.id));
-  }
-
-  if (userEdits) {
-    parts.push({
-      type: "data-user-edits",
-      data: { userEdits },
-    });
   }
 
   if (activeSelection) {

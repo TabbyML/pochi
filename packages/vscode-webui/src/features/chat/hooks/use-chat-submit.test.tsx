@@ -57,7 +57,6 @@ const messageUtilsMocks = vi.hoisted(() => ({
       text: string,
       _files,
       _reviews,
-      _userEdits,
       _activeSelection,
       _terminalContextSelections,
       invokedSkills: ValidSkillFile[] = [],
@@ -83,14 +82,6 @@ const vscodeMocks = vi.hoisted(() => ({
 }));
 const activeSelectionMock = vi.hoisted(() => ({
   value: undefined as ActiveSelection | undefined,
-}));
-const userEditsMocks = vi.hoisted(() => ({
-  userEdits: [] as Array<{
-    filepath: string;
-    diff: string;
-    added: number;
-    removed: number;
-  }>,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -146,7 +137,6 @@ describe("useChatSubmit", () => {
         })),
     );
     vscodeMocks.showWarningMessage.mockClear();
-    userEditsMocks.userEdits = [];
     activeSelectionMock.value = undefined;
   });
 
@@ -606,7 +596,6 @@ describe("useChatSubmit", () => {
         "/find-skills 这个干啥的",
         [],
         [],
-        [],
         undefined,
         [],
         [],
@@ -654,7 +643,6 @@ describe("useChatSubmit", () => {
       expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
         expect.any(Function),
         "/changing",
-        [],
         [],
         [],
         undefined,
@@ -706,7 +694,6 @@ describe("useChatSubmit", () => {
       expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
         expect.any(Function),
         prompt,
-        [],
         [],
         [],
         undefined,
@@ -1261,116 +1248,7 @@ describe("useChatSubmit", () => {
       "follow up",
       [],
       [],
-      [],
       sendTimeActiveSelection,
-      [],
-      [],
-      [],
-      [],
-    );
-  });
-
-  it("excludes user edits after they are removed from the input", async () => {
-    userEditsMocks.userEdits = [
-      {
-        filepath: "src/example.ts",
-        diff: "+const value = 1;",
-        added: 1,
-        removed: 0,
-      },
-    ];
-    const context = setup({
-      isLoading: false,
-      includeUserEdits: false,
-    });
-
-    await act(async () => {
-      await context.result.current.handleSubmit();
-    });
-
-    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
-      expect.any(Function),
-      "follow up",
-      [],
-      [],
-      [],
-      undefined,
-      [],
-      [],
-      [],
-      [],
-    );
-  });
-
-  it("preserves excluded user edits when creating a queued message", async () => {
-    userEditsMocks.userEdits = [
-      {
-        filepath: "src/example.ts",
-        diff: "+const value = 1;",
-        added: 1,
-        removed: 0,
-      },
-    ];
-    const context = setup({
-      isLoading: true,
-      includeUserEdits: false,
-    });
-
-    await act(async () => {
-      await context.result.current.handleSubmit();
-    });
-
-    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
-      expect.any(Function),
-      "follow up",
-      [],
-      [],
-      [],
-      undefined,
-      [],
-      [],
-      [],
-      [],
-    );
-
-    expect(context.queuedMessages).toEqual([
-      draftMessage({ text: "follow up", userEditsCount: 0 }),
-    ]);
-  });
-
-  it("preserves included user edits when creating a queued message", async () => {
-    const queuedUserEdits = [
-      {
-        filepath: "src/example.ts",
-        diff: "+const value = 1;",
-        added: 1,
-        removed: 0,
-      },
-    ];
-    userEditsMocks.userEdits = queuedUserEdits;
-    const context = setup({
-      isLoading: true,
-      includeUserEdits: true,
-    });
-
-    await act(async () => {
-      await context.result.current.handleSubmit();
-    });
-
-    expect(context.queuedMessages).toEqual([
-      draftMessage({
-        text: "follow up",
-        userEditsCount: queuedUserEdits.length,
-      }),
-    ]);
-
-    expect(messageUtilsMocks.prepareMessageParts).toHaveBeenCalledWith(
-      expect.any(Function),
-      "follow up",
-      [],
-      [],
-      queuedUserEdits,
-      undefined,
       [],
       [],
       [],
@@ -1416,7 +1294,6 @@ describe("useChatSubmit", () => {
       "follow up",
       [],
       [],
-      [],
       undefined,
       terminalContextSelections,
       [],
@@ -1449,7 +1326,6 @@ function setup({
   reviews = [],
   skills = [],
   customAgents = [],
-  includeUserEdits: initialIncludeUserEdits = true,
   terminalContextSelections = [],
   isTodoMode = false,
   onTodoModeSubmitted,
@@ -1468,7 +1344,6 @@ function setup({
   reviews?: Review[];
   skills?: ValidSkillFile[];
   customAgents?: ValidCustomAgentFile[];
-  includeUserEdits?: boolean;
   terminalContextSelections?: TerminalTextSelection[];
   isTodoMode?: boolean;
   onTodoModeSubmitted?: () => void;
@@ -1527,7 +1402,7 @@ function setup({
   };
 
   const hook = renderHook(
-    (props: { isLoading: boolean; includeUserEdits: boolean }) => {
+    (props: { isLoading: boolean }) => {
       busy = props.isLoading;
       const {
         isRunning,
@@ -1573,7 +1448,6 @@ function setup({
         pendingApproval,
         pendingInputController,
         reviews,
-        userEdits: props.includeUserEdits ? userEditsMocks.userEdits : [],
         skills,
         customAgents,
         terminalContextSelections,
@@ -1586,10 +1460,7 @@ function setup({
       return { ...result, isRunning, allowSendMessage };
     },
     {
-      initialProps: {
-        isLoading: initialIsLoading,
-        includeUserEdits: initialIncludeUserEdits,
-      },
+      initialProps: { isLoading: initialIsLoading },
     },
   );
 
@@ -1598,12 +1469,10 @@ function setup({
     rerender: (
       props: Partial<{
         isLoading: boolean;
-        includeUserEdits: boolean;
       }>,
     ) =>
       hook.rerender({
         isLoading: props.isLoading ?? initialIsLoading,
-        includeUserEdits: props.includeUserEdits ?? initialIncludeUserEdits,
       }),
     get queuedMessages() {
       return userInputs.map(toDraftMessage);
@@ -1632,7 +1501,6 @@ function draftMessage({
   attachments = [],
   filesCount = 0,
   reviewsCount = 0,
-  userEditsCount = 0,
   terminalContextCount = 0,
   isTodoMode = false,
   activeSelection,
@@ -1642,7 +1510,6 @@ function draftMessage({
   attachments?: FileUIPart[];
   filesCount?: number;
   reviewsCount?: number;
-  userEditsCount?: number;
   terminalContextCount?: number;
   isTodoMode?: boolean;
   activeSelection?: ActiveSelection;
@@ -1653,7 +1520,6 @@ function draftMessage({
       text,
       filesCount,
       reviewsCount,
-      userEditsCount,
       terminalContextCount,
       isTodoMode,
       activeSelection,

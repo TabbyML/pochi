@@ -78,14 +78,12 @@ function queuedMessage({
   isTodoMode = false,
   filesCount = 0,
   reviewsCount = 0,
-  userEditsCount = 0,
   activeSelection,
 }: {
   text: string;
   isTodoMode?: boolean;
   filesCount?: number;
   reviewsCount?: number;
-  userEditsCount?: number;
   activeSelection?: ActiveSelection;
 }): DraftMessage {
   return {
@@ -94,7 +92,6 @@ function queuedMessage({
       text,
       filesCount,
       reviewsCount,
-      userEditsCount,
       isTodoMode,
       activeSelection,
     },

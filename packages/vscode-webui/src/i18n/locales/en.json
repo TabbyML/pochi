@@ -39,7 +39,6 @@
     "noMessage": "No message",
     "fileCount": "{{count}} files",
     "reviewCount": "{{count}} reviews",
-    "userEditCount": "{{count}} edits",
     "terminalContextCount": "{{count}} terminal selections",
     "pastedTextCount": "{{count}} pasted texts",
     "steer": "Steer",
@@ -428,7 +427,6 @@
     "problemsDetectedTooltip": "Problems detected after change"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Modified by Pochi)",
     "backgroundJobOutput": "{{displayId}} output",
     "terminalOutput": "terminal output"
   },
@@ -546,10 +544,8 @@
     "title": "Dev Mode",
     "copyMessages": "Copy Messages",
     "copyCoreMessages": "Copy Core Messages",
-    "copyCheckpointCommand": "Copy Checkpoint Command",
     "copyTodos": "Copy TODOs",
     "copySystemPrompt": "Copy System Prompt",
-    "noCheckpointAvailable": "No checkpoint available",
     "openStore": "Open Store",
     "reviewChanges": "Review Changes"
   },
@@ -582,22 +578,11 @@
     "morePages": "More Pages",
     "pageOf": "{{current}} of {{total}}"
   },
-  "diffSummary": {
-    "filesChanged_one": "{{count}} file changed",
-    "filesChanged_other": "{{count}} files changed",
-    "keep": "Keep",
-    "undo": "Undo",
-    "viewChanges": "View Changes",
-    "openFile": "Open File"
-  },
   "userEdits": {
     "title": "Edits",
     "filesEdited_one": "{{count}} file edited",
     "filesEdited_other": "{{count}} files edited",
-    "tooltip": "Your edits are tracked and will be included in the context",
-    "remove": "Remove user edits from context",
-    "showDiff": "Show Diff",
-    "diffTitle": "User Edits"
+    "openFile": "Open File"
   },
   "backgroundJobNotifications": {
     "title": "Notifications",

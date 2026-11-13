@@ -37,7 +37,6 @@
     "noMessage": "메시지 없음",
     "fileCount": "파일 {{count}}개",
     "reviewCount": "리뷰 {{count}}개",
-    "userEditCount": "편집 {{count}}개",
     "terminalContextCount": "터미널 선택 {{count}}개",
     "pastedTextCount": "붙여넣은 텍스트 {{count}}개",
     "steer": "개입",
@@ -420,7 +419,6 @@
     "problemsDetectedTooltip": "변경 후 문제가 감지됨"
   },
   "fileBadge": {
-    "modifiedByPochi": "(Pochi에 의해 수정됨)",
     "backgroundJobOutput": "{{displayId}} 출력",
     "terminalOutput": "터미널 출력"
   },
@@ -538,10 +536,8 @@
     "title": "개발 모드",
     "copyMessages": "메시지 복사",
     "copyCoreMessages": "핵심 메시지 복사",
-    "copyCheckpointCommand": "체크포인트 명령 복사",
     "copyTodos": "할 일 복사",
     "copySystemPrompt": "시스템 프롬프트 복사",
-    "noCheckpointAvailable": "사용 가능한 체크포인트가 없습니다",
     "openStore": "스토어 열기",
     "reviewChanges": "변경 사항 검토"
   },
@@ -574,22 +570,11 @@
     "morePages": "더 많은 페이지",
     "pageOf": "{{current}} / {{total}}"
   },
-  "diffSummary": {
-    "filesChanged_one": "{{count}}개 파일 변경됨",
-    "filesChanged_other": "{{count}}개 파일 변경됨",
-    "keep": "유지",
-    "undo": "실행 취소",
-    "viewChanges": "변경 사항 보기",
-    "openFile": "파일 열기"
-  },
   "userEdits": {
     "title": "편집",
     "filesEdited_one": "{{count}}개 파일 편집됨",
     "filesEdited_other": "{{count}}개 파일 편집됨",
-    "tooltip": "편집 내용이 추적되어 컨텍스트에 포함됩니다",
-    "remove": "컨텍스트에서 사용자 편집 제거",
-    "showDiff": "차이 보기",
-    "diffTitle": "사용자 편집"
+    "openFile": "파일 열기"
   },
   "backgroundJobNotifications": {
     "title": "알림",

@@ -37,7 +37,6 @@
     "noMessage": "メッセージなし",
     "fileCount": "{{count}} 件のファイル",
     "reviewCount": "{{count}} 件のレビュー",
-    "userEditCount": "{{count}} 件の編集",
     "terminalContextCount": "{{count}} 件のターミナル選択",
     "pastedTextCount": "{{count}} 件の貼り付けテキスト",
     "steer": "介入",
@@ -420,7 +419,6 @@
     "problemsDetectedTooltip": "変更後に問題が検出されました"
   },
   "fileBadge": {
-    "modifiedByPochi": "（Pochi により変更）",
     "backgroundJobOutput": "{{displayId}} の出力",
     "terminalOutput": "ターミナル出力"
   },
@@ -543,10 +541,8 @@
     "title": "開発モード",
     "copyMessages": "メッセージをコピー",
     "copyCoreMessages": "コアメッセージをコピー",
-    "copyCheckpointCommand": "チェックポイントコマンドをコピー",
     "copyTodos": "TODOをコピー",
     "copySystemPrompt": "システムプロンプトをコピー",
-    "noCheckpointAvailable": "利用可能なチェックポイントがありません",
     "openStore": "ストアを開く",
     "reviewChanges": "変更をレビュー"
   },
@@ -579,22 +575,11 @@
     "morePages": "その他のページ",
     "pageOf": "{{current}} / {{total}}"
   },
-  "diffSummary": {
-    "filesChanged_one": "{{count}} ファイル変更",
-    "filesChanged_other": "{{count}} ファイル変更",
-    "keep": "保持",
-    "undo": "元に戻す",
-    "viewChanges": "変更を表示",
-    "openFile": "ファイルを開く"
-  },
   "userEdits": {
     "title": "編集",
     "filesEdited_one": "{{count}} ファイルを編集",
     "filesEdited_other": "{{count}} ファイルを編集",
-    "tooltip": "編集内容が追跡され、コンテキストに含まれます",
-    "remove": "コンテキストからユーザー編集を削除",
-    "showDiff": "差分を表示",
-    "diffTitle": "ユーザー編集"
+    "openFile": "ファイルを開く"
   },
   "backgroundJobNotifications": {
     "title": "通知",

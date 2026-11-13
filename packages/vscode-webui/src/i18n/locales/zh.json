@@ -37,7 +37,6 @@
     "noMessage": "无消息",
     "fileCount": "{{count}} 个文件",
     "reviewCount": "{{count}} 条评审",
-    "userEditCount": "{{count}} 处编辑",
     "terminalContextCount": "{{count}} 个终端选区",
     "pastedTextCount": "{{count}} 段粘贴文本",
     "steer": "介入",
@@ -419,7 +418,6 @@
     "problemsDetectedTooltip": "更改后检测到问题"
   },
   "fileBadge": {
-    "modifiedByPochi": "（由 Pochi 修改）",
     "backgroundJobOutput": "{{displayId}} 输出",
     "terminalOutput": "终端输出"
   },
@@ -542,10 +540,8 @@
     "title": "开发模式",
     "copyMessages": "复制消息",
     "copyCoreMessages": "复制核心消息",
-    "copyCheckpointCommand": "复制检查点命令",
     "copyTodos": "复制待办事项",
     "copySystemPrompt": "复制系统提示词",
-    "noCheckpointAvailable": "没有可用的检查点",
     "openStore": "打开存储",
     "reviewChanges": "审查变更"
   },
@@ -578,22 +574,11 @@
     "morePages": "更多页面",
     "pageOf": "{{current}} / {{total}}"
   },
-  "diffSummary": {
-    "filesChanged_one": "{{count}} 个文件已更改",
-    "filesChanged_other": "{{count}} 个文件已更改",
-    "keep": "保留",
-    "undo": "撤销",
-    "viewChanges": "查看更改",
-    "openFile": "打开文件"
-  },
   "userEdits": {
     "title": "编辑",
     "filesEdited_one": "已编辑 {{count}} 个文件",
     "filesEdited_other": "已编辑 {{count}} 个文件",
-    "tooltip": "您的编辑已被跟踪，并将包含在上下文中",
-    "remove": "从上下文中移除用户编辑",
-    "showDiff": "显示差异",
-    "diffTitle": "用户编辑"
+    "openFile": "打开文件"
   },
   "backgroundJobNotifications": {
     "title": "通知",

@@ -10,7 +10,6 @@ import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import { useLatest } from "@/lib/hooks/use-latest";
 import type {
   ActiveSelection,
-  FileDiff,
   Review,
   TerminalTextSelection,
   ValidCustomAgentFile,
@@ -44,7 +43,6 @@ export interface DraftMessage {
     text?: string;
     filesCount?: number;
     reviewsCount?: number;
-    userEditsCount?: number;
     terminalContextCount?: number;
     pastedTextCount?: number;
     isTodoMode?: boolean;
@@ -73,7 +71,6 @@ interface UseChatSubmitProps {
   /** The chat kit, which owns the input waiting for delivery. */
   pendingInputController: PendingInputController;
   reviews: Review[];
-  userEdits: FileDiff[];
   skills: ValidSkillFile[];
   customAgents: ValidCustomAgentFile[];
   terminalContextSelections: TerminalTextSelection[];
@@ -105,7 +102,6 @@ export function useChatSubmit({
   pendingApproval,
   pendingInputController,
   reviews,
-  userEdits,
   skills,
   customAgents,
   terminalContextSelections,
@@ -229,7 +225,6 @@ export function useChatSubmit({
       }
 
       // Capture the user's selection context (editor) right now.
-      const currentUserEdits = [...userEdits];
       const currentSelection = activeSelection;
 
       let uploadedAttachments: FileUIPart[] = [];
@@ -273,7 +268,6 @@ export function useChatSubmit({
         text,
         filesCount: currentFiles.length,
         reviewsCount: currentReviews.length,
-        userEditsCount: currentUserEdits.length,
         terminalContextCount: currentTerminalContextSelections.length,
         ...(currentPastedTexts.length > 0
           ? { pastedTextCount: currentPastedTexts.length }
@@ -286,7 +280,6 @@ export function useChatSubmit({
         text,
         uploadedAttachments,
         currentReviews,
-        currentUserEdits,
         currentSelection,
         currentTerminalContextSelections,
         resolvedInput.invokedSkills,
@@ -314,7 +307,6 @@ export function useChatSubmit({
       input.pastedTexts,
       files,
       reviews,
-      userEdits,
       terminalContextSelections,
       clearTerminalContextSelections,
       activeSelection,

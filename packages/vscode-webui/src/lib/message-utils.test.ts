@@ -28,7 +28,6 @@ describe("prepareMessageParts", () => {
       prompt,
       [],
       [],
-      undefined,
       activeSelection,
       undefined,
       undefined,
@@ -57,7 +56,6 @@ describe("prepareMessageParts", () => {
       [],
       undefined,
       undefined,
-      undefined,
       [skill],
       undefined,
     );
@@ -78,7 +76,6 @@ describe("prepareMessageParts", () => {
       "Analyze these logs",
       [],
       [],
-      undefined,
       undefined,
       undefined,
       undefined,

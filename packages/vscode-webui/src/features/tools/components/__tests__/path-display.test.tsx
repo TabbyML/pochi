@@ -14,7 +14,6 @@ vi.mock("@/components/theme-provider", () => ({
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     openFile: vi.fn(),
-    showCheckpointDiff: vi.fn(),
   },
 }));
 

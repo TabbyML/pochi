@@ -89,7 +89,7 @@ describe("QueuedMessages", () => {
     expect(getByText("chat.fileCount:2 · chat.reviewCount:1")).toBeTruthy();
   });
 
-  it("shows the user edit count alongside file/review counts", () => {
+  it("shows file and review counts", () => {
     const { getByText } = render(
       <QueuedMessages
         messages={[
@@ -97,16 +97,13 @@ describe("QueuedMessages", () => {
             text: "  ",
             filesCount: 2,
             reviewsCount: 1,
-            userEditsCount: 3,
           }),
         ]}
         onRemove={vi.fn()}
       />,
     );
 
-    expect(
-      getByText("chat.fileCount:2 · chat.reviewCount:1 · chat.userEditCount:3"),
-    ).toBeTruthy();
+    expect(getByText("chat.fileCount:2 · chat.reviewCount:1")).toBeTruthy();
   });
 
   it("shows the terminal context count alongside other counts", () => {
@@ -311,7 +308,6 @@ function queuedMessage({
   isTodoMode = false,
   filesCount = 0,
   reviewsCount = 0,
-  userEditsCount = 0,
   terminalContextCount = 0,
   pastedTextCount = 0,
   activeSelection,
@@ -322,7 +318,6 @@ function queuedMessage({
   isTodoMode?: boolean;
   filesCount?: number;
   reviewsCount?: number;
-  userEditsCount?: number;
   terminalContextCount?: number;
   pastedTextCount?: number;
   activeSelection?: ActiveSelection;
@@ -335,7 +330,6 @@ function queuedMessage({
       text,
       filesCount,
       reviewsCount,
-      userEditsCount,
       terminalContextCount,
       pastedTextCount,
       isTodoMode,
