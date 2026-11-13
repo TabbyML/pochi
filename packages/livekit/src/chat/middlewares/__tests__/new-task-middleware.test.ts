@@ -13,25 +13,6 @@ const customAgents: CustomAgent[] = [
   },
   { name: "explore", description: "Explores", systemPrompt: "Explore." },
   {
-    name: "reader",
-    description: "Reads",
-    systemPrompt: "Read.",
-    tools: ["readFile", "executeCommand(git status)"],
-  },
-  {
-    name: "isolated-reader",
-    description: "Reads in a worktree",
-    systemPrompt: "Read.",
-    tools: ["readFile"],
-    isolation: "worktree",
-  },
-  {
-    name: "writer",
-    description: "Writes",
-    systemPrompt: "Write.",
-    tools: ["readFile", "applyDiff"],
-  },
-  {
     name: "audit",
     description: "Internal audit",
     systemPrompt: "Audit.",
@@ -134,32 +115,25 @@ describe("createNewTaskMiddleware isolation", () => {
     expect(args.isolation).toBe("worktree");
   });
 
-  it("keeps an explicit isolation for agents that can write files", async () => {
-    const { args } = await callNewTask({
-      ...base,
-      agentType: "writer",
-      isolation: "worktree",
-    });
-    expect(args.isolation).toBe("worktree");
-  });
-
-  it("drops an explicit isolation for read-only agents", async () => {
+  it('runs in the current checkout with isolation "none"', async () => {
     const getSubagentWorktreePath = vi.fn(async () => "/unused");
     const { args, taskCwd } = await callNewTask(
-      { ...base, agentType: "reader", isolation: "worktree" },
+      { ...base, agentType: "explore", isolation: "none" },
       getSubagentWorktreePath,
     );
-    expect(args.isolation).toBeUndefined();
+    expect(args.isolation).toBe("none");
     expect(taskCwd).toBe("/repo");
     expect(getSubagentWorktreePath).not.toHaveBeenCalled();
   });
 
-  it("applies the configured isolation of a read-only agent", async () => {
-    const { args } = await callNewTask({
+  it('applies the configured isolation over an explicit "none"', async () => {
+    const { args, taskCwd } = await callNewTask({
       ...base,
-      agentType: "isolated-reader",
+      agentType: "fixer",
+      isolation: "none",
     });
     expect(args.isolation).toBe("worktree");
+    expect(taskCwd).toBe(`/repo.worktree/subagent-${args._meta.uid}`);
   });
 
   it("leaves isolation unset by default", async () => {
