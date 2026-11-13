@@ -508,6 +508,8 @@
     "reachedCreditLimit": "You have reached your spending limit.",
     "seeMore": "See More",
     "teamReachedCreditLimit": "Your team has reached the spending limit.",
+    "teamMemberReachedSuperModelLimit": "You have reached your team's per-member Super model budget for this month.",
+    "teamMemberReachedSwiftModelLimit": "You have reached your team's per-member Swift model budget for this month.",
     "insufficientCredits": "Your credits are exhausted. Top up to continue using Pochi.",
     "topUp": "Top up",
     "insufficientOrgCredits": "Your team's credits are exhausted. Ask an owner or admin to top up.",

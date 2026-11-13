@@ -74,6 +74,10 @@ export const PochiApiErrors = {
   RequireOrgSubscription: "REQUIRE_ORG_SUBSCRIPTION",
   ReachedCreditLimit: "REACHED_CREDIT_LIMIT",
   ReachedOrgCreditLimit: "REACHED_ORG_CREDIT_LIMIT",
+  // Set on the team's monthlyOrganizationCreditLimit row (per-member budgets),
+  // so they are team-billing codes, not personal ones.
+  ReachedTeamMemberSuperModelLimit: "REACHED_TEAM_MEMBER_SUPER_MODEL_LIMIT",
+  ReachedTeamMemberSwiftModelLimit: "REACHED_TEAM_MEMBER_SWIFT_MODEL_LIMIT",
   RequirePayment: "REQUIRE_PAYMENT",
   RequireOrgPayment: "REQUIRE_ORG_PAYMENT",
   RequireGithubIntegration: "REQUIRE_GITHUB_INTEGRATION",

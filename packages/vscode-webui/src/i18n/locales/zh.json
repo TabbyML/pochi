@@ -499,6 +499,8 @@
     "reachedCreditLimit": "您已达到消费限额。",
     "seeMore": "查看更多",
     "teamReachedCreditLimit": "您的团队已达到消费限额。",
+    "teamMemberReachedSuperModelLimit": "您已达到团队为本月设置的每位成员 Super 模型预算。",
+    "teamMemberReachedSwiftModelLimit": "您已达到团队为本月设置的每位成员 Swift 模型预算。",
     "insufficientCredits": "账户余额不足，请充值后继续使用 Pochi。",
     "topUp": "充值",
     "insufficientOrgCredits": "团队余额不足，请联系团队所有者或管理员充值。",

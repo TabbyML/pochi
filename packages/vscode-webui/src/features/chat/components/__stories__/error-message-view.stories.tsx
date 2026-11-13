@@ -52,6 +52,24 @@ export const ReachedOrgCreditLimit: Story = {
   },
 };
 
+export const ReachedTeamMemberSuperModelLimit: Story = {
+  args: {
+    error: new TaskError(
+      "TeamMemberSuperModelLimitError",
+      PochiApiErrors.ReachedTeamMemberSuperModelLimit,
+    ),
+  },
+};
+
+export const ReachedTeamMemberSwiftModelLimit: Story = {
+  args: {
+    error: new TaskError(
+      "TeamMemberSwiftModelLimitError",
+      PochiApiErrors.ReachedTeamMemberSwiftModelLimit,
+    ),
+  },
+};
+
 export const RequireSubscription: Story = {
   args: {
     error: new TaskError(
