@@ -22,7 +22,6 @@ export const prepareForkTaskData = ({
   messages,
   files,
   oldTaskId,
-  commitId,
   messageId,
   newTaskId,
   newTaskTitle,
@@ -31,8 +30,7 @@ export const prepareForkTaskData = ({
   messages: typeof tables.messages.ResultType;
   files: typeof tables.files.ResultType;
   oldTaskId: string;
-  commitId: string;
-  messageId: string | undefined;
+  messageId: string;
   newTaskId: string;
   newTaskTitle: string | undefined;
 }) => {
@@ -125,11 +123,7 @@ export const prepareForkTaskData = ({
       subTaskMessages.push(message as DBMessageShape);
     }
   }
-  const forkMainTaskMessages = truncateMessages(
-    mainTaskMessages,
-    commitId,
-    messageId,
-  );
+  const forkMainTaskMessages = truncateMessages(mainTaskMessages, messageId);
 
   const newMessages = [...forkMainTaskMessages, ...subTaskMessages].map(
     (message) => ({
@@ -153,47 +147,17 @@ export const prepareForkTaskData = ({
 
 const truncateMessages = (
   messages: readonly DBMessageShape[],
-  commitId: string,
-  messageId?: string | undefined,
+  messageId: string,
 ) => {
-  const resultMessages = [];
-  if (messageId) {
-    const messageIndex = messages.findIndex(
-      (message) => message.id === messageId,
+  const messageIndex = messages.findIndex(
+    (message) => message.id === messageId,
+  );
+  if (messageIndex < 0) {
+    throw new Error(
+      `Failed to fork task due to missing messageId ${messageId}`,
     );
-    if (messageIndex < 0) {
-      throw new Error(
-        `Failed to fork task due to missing messageId ${messageId}`,
-      );
-    }
-    resultMessages.push(...messages.slice(0, messageIndex + 1));
-  } else {
-    const messageIndex = messages.findIndex((message) =>
-      message.data.parts.find(
-        (part) =>
-          part.type === "data-checkpoint" && part.data.commit === commitId,
-      ),
-    );
-    if (messageIndex < 0) {
-      throw new Error(
-        `Failed to fork task due to missing checkpoint for commitId ${commitId}`,
-      );
-    }
-    resultMessages.push(...messages.slice(0, messageIndex));
-    const message = messages[messageIndex];
-    const partIndex = message.data.parts.findIndex(
-      (part) =>
-        part.type === "data-checkpoint" && part.data.commit === commitId,
-    );
-    resultMessages.push({
-      ...message,
-      data: {
-        ...message.data,
-        parts: message.data.parts.slice(0, partIndex),
-      },
-    });
   }
-  return resultMessages;
+  return messages.slice(0, messageIndex + 1);
 };
 
 const replaceTaskIdInMessages = (

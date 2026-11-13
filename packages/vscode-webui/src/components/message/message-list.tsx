@@ -14,7 +14,6 @@ import {
 } from "@/features/chat";
 import { ToolInvocationPart } from "@/features/tools";
 import { useDebounceState } from "@/lib/hooks/use-debounce-state";
-import { useLatestCheckpoint } from "@/lib/hooks/use-latest-checkpoint";
 import { cn, formatExecutionDuration } from "@/lib/utils";
 import { isVSCodeEnvironment, vscodeHost } from "@/lib/vscode";
 import { prompts } from "@getpochi/common";
@@ -25,7 +24,10 @@ import type {
 import type { Message, Task } from "@getpochi/livekit";
 import { type FileUIPart, type TextUIPart, isStaticToolUIPart } from "ai";
 import { memo, useEffect, useMemo } from "react";
-import { CheckpointUI, CompactCheckpointUI } from "../checkpoint-ui";
+import {
+  CompactSummarySeparator,
+  MessageSeparator,
+} from "../message-separator";
 import { ActiveSelectionPart, TerminalSelectionPart } from "./active-selection";
 import { MessageAttachments } from "./attachments";
 import { MessageNotifications } from "./background-job-notifications";
@@ -70,7 +72,8 @@ export const MessageList: React.FC<{
   className?: string;
   viewportClassname?: string;
   showLoader?: boolean;
-  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  /** Forks the task, keeping the conversation up to `messageId`. */
+  forkTask?: (messageId: string) => Promise<void>;
   isSubTask?: boolean;
   hideUserEditsActions?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
@@ -122,10 +125,9 @@ export const MessageList: React.FC<{
     taskStatus === "pending-tool" &&
     autoApproveGuard.current === "auto" &&
     completeToolCalls.length === 0;
-  const shouldCheckpointUseLoading =
+  const shouldSeparatorUseLoading =
     isLoading || isExecuting || isAboutToExecuteWithAutoApprove;
   const assistantName = assistant?.name ?? "Pochi";
-  const latestCheckpoint = useLatestCheckpoint();
   const toolCallCheckpoints = useMemo(
     () => buildToolCallCheckpoints(messages),
     [messages],
@@ -134,11 +136,6 @@ export const MessageList: React.FC<{
     () => buildUserEditsCheckpoints(messages),
     [messages],
   );
-  const lastCheckpointInMessage = useMemo(() => {
-    return messages
-      .flatMap((msg) => msg.parts)
-      .findLast((part) => part.type === "data-checkpoint")?.data.commit;
-  }, [messages]);
 
   const mermaidContextValue = useMemo(
     () =>
@@ -244,12 +241,8 @@ export const MessageList: React.FC<{
                         partIndex={index}
                         part={part}
                         isLoading={isLoading}
-                        shouldCheckpointUseLoading={shouldCheckpointUseLoading}
-                        forkTask={forkTask}
                         isSubTask={isSubTask}
                         hideUserEditsActions={hideUserEditsActions}
-                        latestCheckpoint={latestCheckpoint}
-                        lastCheckpointInMessage={lastCheckpointInMessage}
                         userEditsCheckpoint={userEditsCheckpoints.get(m.id)}
                         toolCallCheckpoint={
                           isStaticToolUIPart(part)
@@ -265,19 +258,17 @@ export const MessageList: React.FC<{
                   <MessageNotifications parts={m.parts} />
                 </div>
                 {messageIndex < renderMessages.length - 1 ? (
-                  <SeparatorWithCheckpoint
+                  <SeparatorBetweenMessages
                     isFirstMessageInHistory={start === 0 && messageIndex === 0}
                     message={m}
                     nextMessage={renderMessages[messageIndex + 1]}
-                    isLoading={shouldCheckpointUseLoading}
+                    isLoading={shouldSeparatorUseLoading}
                     forkTask={forkTask}
                     isSubTask={isSubTask}
-                    latestCheckpoint={latestCheckpoint}
-                    lastCheckpointInMessage={lastCheckpointInMessage}
                   />
                 ) : (
                   showLastStepDuration &&
-                  !shouldCheckpointUseLoading && (
+                  !shouldSeparatorUseLoading && (
                     <OptionalSeparatorWithExecutionDuration
                       duration={computeExecutionDuration(m)}
                     />
@@ -405,11 +396,7 @@ function Part({
   isLastPartInMessages,
   isInLatestAssistantMessage,
   isLoading,
-  shouldCheckpointUseLoading,
-  forkTask,
   isSubTask,
-  latestCheckpoint,
-  lastCheckpointInMessage,
   hideUserEditsActions,
   userEditsCheckpoint,
   toolCallCheckpoint,
@@ -421,12 +408,8 @@ function Part({
   isLastPartInMessages: boolean;
   isInLatestAssistantMessage: boolean;
   isLoading: boolean;
-  shouldCheckpointUseLoading: boolean;
-  forkTask?: (commitId: string) => Promise<void>;
   isSubTask?: boolean;
   hideUserEditsActions?: boolean;
-  latestCheckpoint: string | null;
-  lastCheckpointInMessage: string | undefined;
   userEditsCheckpoint?: {
     origin: string | undefined;
     modified: string | undefined;
@@ -464,19 +447,6 @@ function Part({
   }
 
   if (part.type === "data-checkpoint") {
-    if (role === "assistant" && isVSCodeEnvironment() && !isSubTask) {
-      return (
-        <CheckpointUI
-          checkpoint={part.data}
-          isLoading={shouldCheckpointUseLoading}
-          forkTask={forkTask}
-          isRestored={
-            lastCheckpointInMessage !== part.data.commit &&
-            latestCheckpoint === part.data.commit
-          }
-        />
-      );
-    }
     return null;
   }
 
@@ -539,12 +509,14 @@ function TextPartUI({
   }
 
   if (prompts.isCompact(part.text)) {
-    // Only render the compact checkpoint inline for assistant messages
+    // Only render the compact separator inline for assistant messages
     // (the compact-only user message was merged into the assistant message
-    // by the formatter). For user messages, the compact checkpoint is
-    // rendered by SeparatorWithCheckpoint.
+    // by the formatter). For user messages, the compact separator is
+    // rendered by SeparatorBetweenMessages.
     if (role === "assistant") {
-      return <CompactCheckpointUI compactPart={part} messageId={messageId} />;
+      return (
+        <CompactSummarySeparator compactPart={part} messageId={messageId} />
+      );
     }
     return null;
   }
@@ -570,15 +542,13 @@ const MemoReasoningPartUI = memo(ReasoningPartRenderer, (prev, next) => {
 });
 MemoReasoningPartUI.displayName = "MemoReasoningPartUI";
 
-const SeparatorWithCheckpoint: React.FC<{
+const SeparatorBetweenMessages: React.FC<{
   isFirstMessageInHistory: boolean;
   message: Message;
   nextMessage: Message;
   isLoading: boolean;
-  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  forkTask?: (messageId: string) => Promise<void>;
   isSubTask?: boolean;
-  latestCheckpoint: string | null;
-  lastCheckpointInMessage: string | undefined;
 }> = ({
   isFirstMessageInHistory,
   message,
@@ -586,57 +556,45 @@ const SeparatorWithCheckpoint: React.FC<{
   isLoading,
   forkTask,
   isSubTask,
-  latestCheckpoint,
-  lastCheckpointInMessage,
 }) => {
   const sep = <Separator className="mt-1 mb-2" />;
   if (isSubTask) return sep;
 
-  let checkpointMessage: Message | null = null;
-  let restoreMessageId: string | undefined = undefined;
+  // The user message that starts after this separator, and the last message
+  // a fork from here keeps.
+  let boundaryMessage: Message | null = null;
+  let forkMessageId: string | undefined = undefined;
   if (isFirstMessageInHistory && message.role === "user") {
-    checkpointMessage = message;
+    boundaryMessage = message;
+    forkMessageId = message.id;
   }
 
   if (
-    !checkpointMessage &&
+    !boundaryMessage &&
     message.role === "assistant" &&
     nextMessage.role === "user"
   ) {
-    checkpointMessage = nextMessage;
-    restoreMessageId = message.id;
+    boundaryMessage = nextMessage;
+    forkMessageId = message.id;
   }
 
   // When a compact-only user message was merged into an adjacent assistant
   // message by the formatter, the compact part lives on the assistant message.
-  // The compact checkpoint is then rendered inline by TextPartUI.
-  if (!checkpointMessage) return sep;
+  // The compact separator is then rendered inline by TextPartUI.
+  if (!boundaryMessage) return sep;
 
-  const compactPart = findCompactPart(checkpointMessage);
-  const lastPart = checkpointMessage.parts.at(-1);
+  const compactPart = findCompactPart(boundaryMessage);
   const executionDuration = computeExecutionDuration(message);
 
-  if (
-    lastPart &&
-    lastPart.type === "data-checkpoint" &&
-    isVSCodeEnvironment()
-  ) {
+  if (forkTask && forkMessageId && isVSCodeEnvironment()) {
+    const messageId = forkMessageId;
     return (
       <div className="mt-1 mb-2">
-        <CheckpointUI
-          checkpoint={lastPart.data}
+        <MessageSeparator
           isLoading={isLoading}
-          hideBorderOnHover={false}
-          showSeparatorLine={true}
-          className="max-w-full"
-          forkTask={forkTask}
-          restoreMessageId={restoreMessageId}
-          isRestored={
-            lastCheckpointInMessage !== lastPart.data.commit &&
-            latestCheckpoint === lastPart.data.commit
-          }
+          onFork={() => forkTask(messageId)}
           compactPart={compactPart}
-          compactMessageId={checkpointMessage.id}
+          compactMessageId={boundaryMessage.id}
           executionDuration={executionDuration}
         />
       </div>
@@ -646,9 +604,9 @@ const SeparatorWithCheckpoint: React.FC<{
   if (compactPart) {
     return (
       <div className="mt-1 mb-2">
-        <CompactCheckpointUI
+        <CompactSummarySeparator
           compactPart={compactPart}
-          messageId={checkpointMessage.id}
+          messageId={boundaryMessage.id}
         />
       </div>
     );

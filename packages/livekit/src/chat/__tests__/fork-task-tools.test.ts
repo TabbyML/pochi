@@ -4,7 +4,6 @@ import { prepareForkTaskData } from "../fork-task-tools";
 describe("prepareForkTaskData", () => {
   const oldTaskId = "old-task-id";
   const newTaskId = "new-task-id";
-  const commitId = "commit-1";
 
   const mockTask = {
     id: oldTaskId,
@@ -34,7 +33,7 @@ describe("prepareForkTaskData", () => {
         role: "assistant",
         parts: [
           { type: "text", text: "world" },
-          { type: "data-checkpoint", data: { commit: commitId } },
+          { type: "data-checkpoint", data: { commit: "commit-1" } },
         ],
       },
     },
@@ -56,14 +55,13 @@ describe("prepareForkTaskData", () => {
     },
   ] as any;
 
-  it("should fork a task by commitId (truncating messages)", () => {
+  it("should fork a task by messageId, keeping messages up to and including it", () => {
     const result = prepareForkTaskData({
       tasks: [mockTask],
       messages: mockMessages,
       files: mockFiles,
       oldTaskId,
-      commitId,
-      messageId: undefined,
+      messageId: "msg-2",
       newTaskId,
       newTaskTitle: "New Task",
     });
@@ -72,39 +70,13 @@ describe("prepareForkTaskData", () => {
     expect(result.tasks[0].id).toBe(newTaskId);
     expect(result.tasks[0].title).toBe("New Task");
     expect(result.tasks[0].status).toBe("pending-model");
-
-    // Message 1 is included fully
-    // Message 2 is truncated at the checkpoint (checkpoint part removed)
-    // Message 3 is removed
     expect(result.messages).toHaveLength(2);
     expect(result.messages[0].id).toBe("msg-1");
     expect(result.messages[0].taskId).toBe(newTaskId);
     expect(result.messages[1].id).toBe("msg-2");
     expect(result.messages[1].taskId).toBe(newTaskId);
-    expect(result.messages[1].data.parts).toHaveLength(1);
-    expect(result.messages[1].data.parts[0]).toEqual({ type: "text", text: "world" });
-
-    expect(result.files).toHaveLength(1);
-    expect(result.files[0].filePath).toBe("file.txt");
-  });
-
-  it("should fork a task by messageId", () => {
-    const result = prepareForkTaskData({
-      tasks: [mockTask],
-      messages: mockMessages,
-      files: mockFiles,
-      oldTaskId,
-      commitId: "some-other-commit",
-      messageId: "msg-2",
-      newTaskId,
-      newTaskTitle: "New Task",
-    });
-
-    expect(result.messages).toHaveLength(2);
-    expect(result.messages[0].id).toBe("msg-1");
-    expect(result.messages[1].id).toBe("msg-2");
-    // Message 2 should be full because we forked by messageId
     expect(result.messages[1].data.parts).toHaveLength(2);
+    expect(result.files).toEqual([{ filePath: "file.txt", content: "content" }]);
   });
 
   it("should handle subtasks and update their IDs and parentIds", () => {
@@ -136,8 +108,7 @@ describe("prepareForkTaskData", () => {
       messages,
       files: [],
       oldTaskId,
-      commitId,
-      messageId: undefined,
+      messageId: "msg-2",
       newTaskId,
       newTaskTitle: "New Task",
     });
@@ -199,8 +170,7 @@ describe("prepareForkTaskData", () => {
       messages,
       files: [],
       oldTaskId,
-      commitId,
-      messageId: undefined,
+      messageId: "msg-2",
       newTaskId,
       newTaskTitle: "New Task",
     });
@@ -258,8 +228,7 @@ describe("prepareForkTaskData", () => {
       messages,
       files: [],
       oldTaskId,
-      commitId,
-      messageId: undefined,
+      messageId: "msg-2",
       newTaskId,
       newTaskTitle: "New Task",
     });
@@ -338,7 +307,6 @@ describe("prepareForkTaskData", () => {
       ] as any,
       files: [],
       oldTaskId,
-      commitId: "none",
       messageId: "msg-tool",
       newTaskId,
       newTaskTitle: "New Task",
@@ -384,7 +352,6 @@ describe("prepareForkTaskData", () => {
       messages: [messageWithTool],
       files: [],
       oldTaskId,
-      commitId: "none",
       messageId: "msg-tool",
       newTaskId,
       newTaskTitle: "New Task",
@@ -410,8 +377,7 @@ describe("prepareForkTaskData", () => {
       messages: mockMessages,
       files: mockFiles,
       oldTaskId,
-      commitId,
-      messageId: undefined,
+      messageId: "msg-2",
       newTaskId,
       newTaskTitle: "New Task",
     });
@@ -433,23 +399,9 @@ describe("prepareForkTaskData", () => {
       messages: mockMessages,
       files: [],
       oldTaskId,
-      commitId: "none",
       messageId: "non-existent",
       newTaskId,
       newTaskTitle: "New Task",
     })).toThrow("Failed to fork task due to missing messageId non-existent");
-  });
-
-  it("should throw error if commitId is not found", () => {
-    expect(() => prepareForkTaskData({
-      tasks: [mockTask],
-      messages: mockMessages,
-      files: [],
-      oldTaskId,
-      commitId: "non-existent-commit",
-      messageId: undefined,
-      newTaskId,
-      newTaskTitle: "New Task",
-    })).toThrow("Failed to fork task due to missing checkpoint for commitId non-existent-commit");
   });
 });

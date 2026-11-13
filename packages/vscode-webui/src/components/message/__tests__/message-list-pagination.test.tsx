@@ -31,13 +31,15 @@ vi.mock("@/lib/vscode", () => ({
   },
 }));
 
-vi.mock("../../checkpoint-ui", () => ({
-  CheckpointUI: () => <div data-testid="checkpoint" />,
-  CompactCheckpointUI: () => <div data-testid="compact-checkpoint" />,
-}));
-
-vi.mock("@/lib/hooks/use-latest-checkpoint", () => ({
-  useLatestCheckpoint: () => null,
+vi.mock("../../message-separator", () => ({
+  MessageSeparator: ({ onFork }: { onFork: () => Promise<void> }) => (
+    <button
+      type="button"
+      data-testid="message-separator"
+      onClick={() => onFork()}
+    />
+  ),
+  CompactSummarySeparator: () => <div data-testid="compact-checkpoint" />,
 }));
 
 vi.mock("@/features/chat", async () => ({
@@ -237,12 +239,16 @@ function MessageListProbe({
   formatMessages,
   emptyPlaceholder,
   showLastStepDuration = false,
+  forkTask,
+  isSubTask,
 }: {
   messages: Message[];
   renderAllMessages?: boolean;
   formatMessages?: (messages: Message[]) => Message[];
   emptyPlaceholder?: ReactNode;
   showLastStepDuration?: boolean;
+  forkTask?: (messageId: string) => Promise<void>;
+  isSubTask?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -255,6 +261,8 @@ function MessageListProbe({
       formatMessages={formatMessages}
       emptyPlaceholder={emptyPlaceholder}
       showLastStepDuration={showLastStepDuration}
+      forkTask={forkTask}
+      isSubTask={isSubTask}
     />
   );
 }
@@ -605,11 +613,13 @@ describe("MessageList pagination", () => {
       ],
     } as Message;
 
-    const { container } = render(<MessageListProbe messages={messages} />);
+    const { container } = render(
+      <MessageListProbe messages={messages} forkTask={vi.fn()} />,
+    );
 
     const firstMessage = container.querySelector(".message-list-item");
     expect(
-      firstMessage?.querySelector('[data-testid="checkpoint"]'),
+      firstMessage?.querySelector('[data-testid="message-separator"]'),
     ).toBeNull();
   });
 
@@ -851,6 +861,86 @@ describe("MessageList pagination", () => {
     expect(mountedCount(container)).toBe(2);
     expect(screen.getByText("partial answer")).toBe(partialNode);
     expect(screen.getByText("continued")).toBeTruthy();
+  });
+});
+
+describe("MessageList fork separators", () => {
+  const conversation = (): Message[] => [
+    {
+      id: "user-1",
+      role: "user",
+      parts: [{ type: "text", text: "first question" }],
+    } as Message,
+    {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "first answer" }],
+    } as Message,
+    {
+      id: "user-2",
+      role: "user",
+      parts: [{ type: "text", text: "second question" }],
+    } as Message,
+    {
+      id: "assistant-2",
+      role: "assistant",
+      parts: [{ type: "text", text: "second answer" }],
+    } as Message,
+  ];
+
+  it("forks after the first user message and after each assistant reply", () => {
+    vscodeMock.isVSCodeEnvironment = true;
+    const forkTask = vi.fn(async () => {});
+
+    render(
+      <MessageListProbe
+        messages={conversation()}
+        renderAllMessages
+        forkTask={forkTask}
+      />,
+    );
+
+    const separators = screen.getAllByTestId("message-separator");
+    expect(separators).toHaveLength(2);
+    for (const separator of separators) fireEvent.click(separator);
+    expect(forkTask.mock.calls).toEqual([["user-1"], ["assistant-1"]]);
+  });
+
+  it("does not need a checkpoint to fork", () => {
+    vscodeMock.isVSCodeEnvironment = true;
+    const messages = conversation();
+    messages[2].parts.push({
+      type: "data-checkpoint",
+      data: { commit: "commit-1" },
+    });
+
+    render(
+      <MessageListProbe
+        messages={messages}
+        renderAllMessages
+        forkTask={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByTestId("message-separator")).toHaveLength(2);
+  });
+
+  it.each([
+    ["outside VS Code", { vscode: false, isSubTask: false }],
+    ["in a subtask", { vscode: true, isSubTask: true }],
+  ])("shows no fork separator %s", (_, { vscode, isSubTask }) => {
+    vscodeMock.isVSCodeEnvironment = vscode;
+
+    render(
+      <MessageListProbe
+        messages={conversation()}
+        renderAllMessages
+        forkTask={vi.fn()}
+        isSubTask={isSubTask}
+      />,
+    );
+
+    expect(screen.queryByTestId("message-separator")).toBeNull();
   });
 });
 

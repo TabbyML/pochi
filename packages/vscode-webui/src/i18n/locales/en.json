@@ -401,16 +401,10 @@
     "label": "Pasted text",
     "remove": "Remove pasted text"
   },
-  "checkpointUI": {
-    "restoring": "Restoring...",
-    "success": "Success",
-    "restore": "Restore",
-    "restored": "Restored",
-    "opening": "Opening...",
-    "noChangesDetected": "No changes detected",
-    "compare": "Compare",
+  "messageSeparator": {
     "fork": "Fork",
     "forking": "Forking",
+    "success": "Success",
     "summary": "Summary"
   },
   "reviewUI": {
