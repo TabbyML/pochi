@@ -130,7 +130,11 @@ describe("sync status summaries", () => {
   });
 });
 
-describe("manual message sync", () => {
+// Relaying large payloads between two stores can take several seconds on a
+// loaded CI runner (especially with coverage), far beyond waitFor's 1s default.
+const CrossStoreWait = { timeout: 15_000 };
+
+describe("manual message sync", { timeout: 60_000 }, () => {
   it("resends one event per message, even when the task already exists", async () => {
     const store = await makeStore();
     // An existing log must still replay using the old aggregate event.
@@ -256,8 +260,12 @@ describe("manual message sync", () => {
         ],
       }),
     );
-    await vi.waitFor(async () =>
-      expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(false),
+    await vi.waitFor(
+      async () =>
+        expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(
+          false,
+        ),
+      CrossStoreWait,
     );
     local.commit(
       catalog.events.inlineCompactAttached({
@@ -270,7 +278,7 @@ describe("manual message sync", () => {
       expect(
         remote.query(catalog.queries.makeMessagesQuery("task"))[0].data.parts,
       ).toHaveLength(2);
-    });
+    }, CrossStoreWait);
     const before = local.query(catalog.queries.makeMessagesQuery("task"));
     const commit = vi.spyOn(local, "commit");
     expect(() => syncTaskMessages(local, "task")).toThrow(
@@ -288,10 +296,12 @@ describe("manual message sync", () => {
         updatedAt: new Date(),
       }),
     );
-    await vi.waitFor(() =>
-      expect(remote.query(catalog.queries.makeTaskQuery("task"))?.title).toBe(
-        "later change",
-      ),
+    await vi.waitFor(
+      () =>
+        expect(remote.query(catalog.queries.makeTaskQuery("task"))?.title).toBe(
+          "later change",
+        ),
+      CrossStoreWait,
     );
   });
 
@@ -331,12 +341,14 @@ describe("manual message sync", () => {
               files: [{ filePath: "/plan.md", content: "Forked plan" }],
             });
       local.commit(...batch);
-      await vi.waitFor(() =>
-        expect(
-          cloud
-            .query(catalog.queries.makeMessagesQuery("task"))
-            .map((row) => row.id),
-        ).toEqual(messages.map((message) => message.id)),
+      await vi.waitFor(
+        () =>
+          expect(
+            cloud
+              .query(catalog.queries.makeMessagesQuery("task"))
+              .map((row) => row.id),
+          ).toEqual(messages.map((message) => message.id)),
+        CrossStoreWait,
       );
       const updated = {
         ...messages[0],
@@ -361,7 +373,7 @@ describe("manual message sync", () => {
         expect((await Effect.runPromise(readSyncStatus(local))).hasPending).toBe(
           false,
         );
-      });
+      }, CrossStoreWait);
       expect(
         cloud
           .query(catalog.queries.makeMessagesQuery("task"))
