@@ -76,6 +76,12 @@ S=.agents/skills/ship-pr/scripts
      clean; use a worktree instead.
 4. `EV=/tmp/ship-pr/<branch>`, `mkdir -p $EV`. Pick a free CDP port:
    `PORT=9233`, or the next free one if it's taken (`lsof -iTCP:$PORT -sTCP:LISTEN`).
+   For L1/L2, make a disposable real project for VS Code to open, so the
+   evidence shows real use (`references/evidence.md`, "Make it look like
+   real use"):
+   `WS=$EV/workspace; git clone -q --depth 1 --no-local "file://$PWD" $WS && git -C $WS checkout -q -B main`
+   (~1 s). Use a project closer to the requirement instead if it needs one
+   (e.g. a Python repo for a Python-specific bug).
 5. Start `$EV/context.md` with the requirement (quoted or summarized with a
    link), type, level, and branch. You'll add to it as you go; it's the source
    for the PR body.
@@ -86,19 +92,21 @@ S=.agents/skills/ship-pr/scripts
 2. Write the plan into `context.md`: the approach, files to change, risks.
    For a bug, write your root-cause hypothesis.
 3. If the change has user-checkable behavior (most L1/L2), write the test
-   cases now (format in `references/evidence.md`). They drive the verification,
-   the recording's checks, and the PR's test plan. For L0, the unit tests you
-   plan to write are the test cases.
+   cases now (format in `references/evidence.md`) as real user scenarios: the
+   project, prompt, and commands a user would plausibly use. They drive the
+   verification, the recording's checks, and the PR's test plan. For L0, the
+   unit tests you plan to write are the test cases.
 
 ## 3. Reproduce (bugs only) / capture the baseline
 
 Do this **before changing any code**, so the build still has the old behavior.
 
 - **Bug, L0**: write the test that exposes it and watch it fail. Keep it.
-- **Bug, L1/L2**: `$E up --port $PORT`, then drive the UI to the broken
-  state. For L2, record it (`r start "Before: ..."`, then steps and `check`s
-  that show the wrong behavior, then `r stop --verdict fail`). For L1, take the
-  screenshots `$EV/<name>-before.png`.
+- **Bug, L1/L2**: `$E up --port $PORT --workspace $WS`, then drive the UI to
+  the broken state with the reporter's (or a realistic) scenario. For L2,
+  record it (`r start "Before: ..."`, then steps and `check`s that show the
+  wrong behavior, then `r stop --verdict fail`). For L1, take the screenshots
+  `$EV/<name>-before.png`.
 - **Non-bug L1 change to an existing view**: take the `-before.png` screenshots
   the same way, for the visual diff later.
 - Otherwise skip this step.
@@ -132,7 +140,7 @@ Update the root cause in `context.md` with what you actually found.
 
 ## 5. Verify in a real VS Code (L1/L2)
 
-1. `$E up --port $PORT` (or `$E reload --port $PORT` if it's
+1. `$E up --port $PORT --workspace $WS` (or `$E reload --port $PORT` if it's
    already up; this rebuilds the extension and the prod webview, then reloads
    the window). Use `--dev` only for quick UI iteration with Vite HMR; capture
    the final evidence in prod mode.
@@ -141,7 +149,8 @@ Update the root cause in `context.md` with what you actually found.
 3. Capture the final evidence per level (details in `references/evidence.md`):
    - **L1**: `$EV/<name>-after.png`, plus
      `node $S/visual-diff.mjs $EV/<name>-before.png $EV/<name>-after.png`
-     when there's a before. Open the images and check them.
+     when there's a before. Open the images and check them, including that
+     they look like real use.
    - **L2**: one clean Jam run of the TCs: `r start "<TC/feature title>"`, a
      `r mark` per step, a `r check` per expected result. Write
      `$EV/jam-summary.md` (bullets: what is being shown, the build and
