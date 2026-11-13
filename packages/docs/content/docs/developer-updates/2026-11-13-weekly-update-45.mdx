@@ -1,0 +1,34 @@
+---
+title: 'Weekly Update #45'
+---
+# Weekly Update #45
+
+### TL;DR
+
+[Pochi 0.82](https://github.com/TabbyML/pochi/releases/tag/vscode%400.82.0) shipped on November 10, bringing last week's previews to the stable release: background browser work, context from earlier tasks, and independent tasks that don't interrupt your current conversation. Follow-up messages now reach a running agent more naturally, and failed file saves no longer look like successful edits. Next, Pochi 0.84 is planned for November 18, with easier access to task transcripts and a simpler workflow without a separate Plan mode.
+
+More below!
+
+### 🚀 Features
+
+- **Keep working while the Browser Agent runs:** Browser tasks can run in the background while the main conversation continues. You can inspect their progress and review the recording afterward, rather than waiting for the browser work before moving on. [**#2039**](https://github.com/TabbyML/pochi/pull/2039)
+
+- **Let Pochi find relevant earlier work:** Pochi can consult your project's task-history index and read saved conversations when it needs context from previous work. Task history is available independently of the Project Memory setting, helping you build on earlier investigations without pasting the whole conversation into a new task. [**#2041**](https://github.com/TabbyML/pochi/pull/2041)
+
+- **Start a separate task without losing your place:** When you explicitly ask for a new or separate task, Pochi can open an independent task in its own tab without taking focus away from your current work. It appears in the sidebar and runs separately, rather than returning its result as a subagent response. [**#2044**](https://github.com/TabbyML/pochi/pull/2044)
+
+### ✨ Enhancements
+
+- **Get follow-up instructions to a running agent sooner:** Queued messages are included in the agent's next request, such as when it continues after a tool call. If you want to interrupt instead, one **Steer** sends the whole queue together. Pending messages also survive switching tasks or reloading the chat, so you don't have to retype them. [**#2054**](https://github.com/TabbyML/pochi/pull/2054)
+
+### 🐛 Bug Fixes
+
+- **Know when an edit could not be saved:** Pochi reports a failure if it cannot apply or save a file edit, instead of reporting success while the file on disk remains unchanged. This matters when working with read-only files or other save restrictions. [**#2057**](https://github.com/TabbyML/pochi/pull/2057)
+
+### 👀 Coming Up
+
+Pochi 0.84 is planned for **November 18 at 13:00 UTC+8**. The following changes have merged into the development branch but are **not in the stable 0.82 release**:
+
+- **Open the conversation Pochi is reading:** Clicking a **Reading** task badge will open that task's Markdown transcript in the editor, making it easier to inspect the earlier context Pochi is using. [**#2073**](https://github.com/TabbyML/pochi/pull/2073)
+
+- **A simpler workflow without a separate Plan mode:** The dedicated Plan toggle, built-in planner agent, and Review/Execute Plan interface are being removed. Existing plan files remain readable; this change does not remove checkpoints. [**#2074**](https://github.com/TabbyML/pochi/pull/2074)
