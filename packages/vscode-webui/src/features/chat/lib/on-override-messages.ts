@@ -1,5 +1,5 @@
 import { vscodeHost } from "@/lib/vscode";
-import { type LiveKitStore, type Message, catalog } from "@getpochi/livekit";
+import type { LiveKitStore, Message } from "@getpochi/livekit";
 import { unique } from "remeda";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
@@ -8,7 +8,6 @@ import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
  * This ensures that each request has a checkpoint for potential rollbacks.
  */
 export async function onOverrideMessages({
-  store,
   taskId,
   messages,
 }: {
@@ -29,12 +28,6 @@ export async function onOverrideMessages({
       ? messages.at(-2)
       : lastMessage;
     const ckpt = await appendCheckpoint(lastMessage);
-
-    const firstCheckpoint = checkpoints.at(0);
-    if (firstCheckpoint) {
-      // side bar diff edits
-      await updateTaskLineChanges(store, taskId, firstCheckpoint);
-    }
 
     const lastCheckpoint = checkpoints.at(-1);
     if (ckpt && summaryMessage?.role === "assistant" && lastCheckpoint) {
@@ -127,34 +120,6 @@ async function appendCheckpoint(message: Message) {
     },
   });
   return ckpt;
-}
-
-async function updateTaskLineChanges(
-  store: LiveKitStore,
-  taskId: string,
-  firstCheckpoint: string,
-) {
-  const fileDiffResult = await vscodeHost.diffWithCheckpoint(firstCheckpoint);
-  const totalAdditions =
-    fileDiffResult?.reduce((sum, file) => sum + file.added, 0) ?? 0;
-  const totalDeletions =
-    fileDiffResult?.reduce((sum, file) => sum + file.removed, 0) ?? 0;
-
-  const task = store.query(catalog.queries.makeTaskQuery(taskId));
-
-  if (task) {
-    const updatedAt = new Date();
-    store.commit(
-      catalog.events.updateLineChanges({
-        id: taskId,
-        lineChanges: {
-          added: totalAdditions,
-          removed: totalDeletions,
-        },
-        updatedAt,
-      }),
-    );
-  }
 }
 
 async function updateChangedFiles(
