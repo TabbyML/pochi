@@ -115,6 +115,27 @@ describe("createNewTaskMiddleware isolation", () => {
     expect(args.isolation).toBe("worktree");
   });
 
+  it('runs in the current checkout with isolation "none"', async () => {
+    const getSubagentWorktreePath = vi.fn(async () => "/unused");
+    const { args, taskCwd } = await callNewTask(
+      { ...base, agentType: "explore", isolation: "none" },
+      getSubagentWorktreePath,
+    );
+    expect(args.isolation).toBe("none");
+    expect(taskCwd).toBe("/repo");
+    expect(getSubagentWorktreePath).not.toHaveBeenCalled();
+  });
+
+  it('applies the configured isolation over an explicit "none"', async () => {
+    const { args, taskCwd } = await callNewTask({
+      ...base,
+      agentType: "fixer",
+      isolation: "none",
+    });
+    expect(args.isolation).toBe("worktree");
+    expect(taskCwd).toBe(`/repo.worktree/subagent-${args._meta.uid}`);
+  });
+
   it("leaves isolation unset by default", async () => {
     const { args, taskCwd } = await callNewTask({
       ...base,

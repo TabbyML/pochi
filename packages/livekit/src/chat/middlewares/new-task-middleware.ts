@@ -118,7 +118,11 @@ export function createNewTaskMiddleware(
                 });
               }
 
-              const isolation = args.isolation ?? agent?.isolation;
+              // "none" is the default, so it does not override an agent's
+              // configured isolation.
+              const isolation =
+                (args.isolation === "none" ? undefined : args.isolation) ??
+                agent?.isolation;
               if (isolation) {
                 args.isolation = isolation;
               }
