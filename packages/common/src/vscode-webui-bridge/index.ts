@@ -8,19 +8,13 @@ export { createVscodeHostStub } from "./webview-stub";
 export type { PochiCredentials } from "./types/pochi";
 
 export type { McpStatus } from "../mcp-utils";
-export type {
-  FileDiff,
-  ExecuteCommandResult,
-  SaveCheckpointOptions,
-} from "./types/execution";
+export type { ExecuteCommandResult } from "./types/execution";
 export type { ResourceURI } from "./types/common";
 export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   PochiTaskInfo,
   PochiTaskParams,
   TaskData,
-  TaskChangedFile,
-  ChangedFileContent,
   TaskState,
   TaskStates,
   McpConfigOverride,
@@ -51,7 +45,6 @@ export { GitWorktreeInfo } from "./types/git";
 export type {
   GitWorktree,
   GithubIssue,
-  DiffCheckpointOptions,
   CreateWorktreeOptions,
 } from "./types/git";
 export type {

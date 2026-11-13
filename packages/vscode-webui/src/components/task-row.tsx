@@ -48,19 +48,14 @@ export function TaskRow({
 
   const openTaskInPanel = useCallback(async () => {
     if (task.cwd) {
-      vscodeHost.openTaskInPanel(
-        {
-          type: "open-task",
-          cwd: task.cwd,
-          uid: task.id,
-          storeId,
-        },
-        {
-          showFileChanges: !archived,
-        },
-      );
+      vscodeHost.openTaskInPanel({
+        type: "open-task",
+        cwd: task.cwd,
+        uid: task.id,
+        storeId,
+      });
     }
-  }, [task.cwd, task.id, storeId, archived]);
+  }, [task.cwd, task.id, storeId]);
 
   const handleArchiveClick = useCallback(
     (e: React.MouseEvent) => {

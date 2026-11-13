@@ -16,7 +16,6 @@ import type {
 import type {
   McpConfigOverride,
   QueuedUserInputRecord,
-  TaskChangedFile,
 } from "@getpochi/common/vscode-webui-bridge";
 import { computed, signal } from "@preact/signals-core";
 import * as runExclusive from "run-exclusive";
@@ -27,7 +26,6 @@ type TaskStateData = {
   mcpConfigOverride?: McpConfigOverride;
   archived?: boolean;
   pinned?: boolean;
-  changedFiles?: TaskChangedFile[];
   contextWindowUsage?: ContextWindowUsage;
   taskMemoryState?: TaskMemoryState;
   autoMemoryState?: AutoMemoryTaskState;
@@ -73,7 +71,14 @@ export class TaskDataStore {
     const validState: Record<string, TaskStateData> = {};
     let hasStaleData = false;
 
-    for (const [taskId, taskData] of Object.entries(storedState)) {
+    for (const [taskId, storedTaskData] of Object.entries(storedState)) {
+      // Drop the changed files that checkpoints used to track.
+      const { changedFiles, ...taskData } = storedTaskData as TaskStateData & {
+        changedFiles?: unknown;
+      };
+      if (changedFiles !== undefined) {
+        hasStaleData = true;
+      }
       // Handle legacy data without updatedAt by treating it as current
       const updatedAt = taskData.updatedAt ?? now;
       if (updatedAt > cutoff) {
@@ -280,28 +285,6 @@ export class TaskDataStore {
       }
       return result;
     });
-  }
-
-  getChangedFiles(taskId: string): TaskChangedFile[] {
-    return this.getTaskState(taskId)?.changedFiles ?? [];
-  }
-
-  async setChangedFiles(
-    taskId: string,
-    changedFiles: TaskChangedFile[],
-  ): Promise<void> {
-    logger.debug(
-      `setChangedFiles for task ${taskId}: ${changedFiles.length} files`,
-    );
-    await this.saveTaskState(taskId, { changedFiles });
-  }
-
-  /**
-   * Get a computed signal for a specific task's changedFiles.
-   * Used for ThreadSignal serialization.
-   */
-  getChangedFilesSignal(taskId: string) {
-    return computed(() => this.state.value[taskId]?.changedFiles ?? []);
   }
 
   async setContextWindowUsage(

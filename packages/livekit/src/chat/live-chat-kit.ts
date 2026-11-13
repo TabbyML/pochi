@@ -19,9 +19,7 @@ import {
 import type { RecentFileState } from "@getpochi/common/tool-utils";
 import {
   type CustomAgent,
-  ToolsByPermission,
   getToolCallCancelErrorMessage,
-  isReadonlyToolCall,
   isUserInputToolPart,
 } from "@getpochi/tools";
 import { Duration } from "@livestore/utils/effect";
@@ -31,7 +29,6 @@ import {
   type ChatOnFinishCallback,
   type ChatRequestOptions,
   type ChatStatus,
-  getToolName,
   isToolUIPart,
 } from "ai";
 import type z from "zod";
@@ -1524,7 +1521,6 @@ export class LiveChatKit<
         totalTokens: message.metadata.totalTokens,
         updatedAt: new Date(),
         duration,
-        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
 
@@ -1720,7 +1716,6 @@ export class LiveChatKit<
         data: lastMessage,
         updatedAt: new Date(),
         duration,
-        lastCheckpointHash: getCleanCheckpoint(this.chat.messages),
       }),
     );
     // A request that fails or is stopped before it started still persists
@@ -1741,38 +1736,6 @@ export class LiveChatKit<
     });
   };
 }
-
-// clean checkpoint means after this checkpoint there are no write or execute toolcalls that may cause file edits
-/**
- * Whether a message part is a tool call that may have modified files, i.e. a
- * write tool or a non-read-only execute tool. A read-only command (e.g. `echo`
- * or `ls`) does not dirty the working tree relative to the last checkpoint, so
- * it must not invalidate it.
- */
-const isDirtyingToolPart = (part: Message["parts"][number]): boolean => {
-  if (!isToolUIPart(part)) {
-    return false;
-  }
-  const toolName = getToolName(part);
-  if (
-    !ToolsByPermission.write.includes(toolName) &&
-    !ToolsByPermission.execute.includes(toolName)
-  ) {
-    return false;
-  }
-  return !isReadonlyToolCall(toolName, part.input);
-};
-
-export const getCleanCheckpoint = (messages: Message[]) => {
-  const lastPart = messages
-    .flatMap((m) => m.parts)
-    .filter((p) => p.type === "data-checkpoint" || isDirtyingToolPart(p))
-    .at(-1);
-
-  if (lastPart?.type === "data-checkpoint") {
-    return lastPart.data.commit;
-  }
-};
 
 function prepareAttemptTodoCompletionSubtask({
   message,

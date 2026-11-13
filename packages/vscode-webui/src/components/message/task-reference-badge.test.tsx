@@ -52,7 +52,6 @@ describe("TaskReferenceBadge", () => {
         cwd: "/repo",
         uid: "task-1",
       }),
-      { showFileChanges: false },
     );
   });
 

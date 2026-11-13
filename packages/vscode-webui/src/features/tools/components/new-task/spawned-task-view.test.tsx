@@ -75,14 +75,11 @@ describe("SpawnedTaskView", () => {
 
     fireEvent.click(screen.getByText("Audit keyword matching"));
 
-    expect(state.openTaskInPanel).toHaveBeenCalledWith(
-      {
-        type: "open-task",
-        cwd: "/repo",
-        uid: "task-1",
-        storeId: "store-task-1",
-      },
-      { showFileChanges: false },
-    );
+    expect(state.openTaskInPanel).toHaveBeenCalledWith({
+      type: "open-task",
+      cwd: "/repo",
+      uid: "task-1",
+      storeId: "store-task-1",
+    });
   });
 });

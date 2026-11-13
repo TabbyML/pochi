@@ -30,8 +30,6 @@ import { computePreviewEdit } from "@/lib/preview-edit";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { TaskChangedFilesManager } from "@/lib/task-changed-files-manager";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { TaskDataStore } from "@/lib/task-data-store";
 import {
   taskPendingApproval,
@@ -99,12 +97,9 @@ import type { BrowserAgentSettingsUpdate } from "@getpochi/common/vscode-webui-b
 import {
   type BuiltinSubAgentInfo,
   type CaptureEvent,
-  type ChangedFileContent,
   type CreateWorktreeOptions,
   type CustomAgentFile,
-  type DiffCheckpointOptions,
   type DisplayModel,
-  type FileDiff,
   type GitWorktree,
   type GithubIssue,
   type McpConfigOverride,
@@ -114,11 +109,9 @@ import {
   type ResourceURI,
   type Review,
   type RuleFile,
-  type SaveCheckpointOptions,
   type SessionState,
   type SkillFile,
   type TaskArchivedParams,
-  type TaskChangedFile,
   type TaskPinnedParams,
   type TaskStates,
   type VSCodeHostApi,
@@ -141,16 +134,10 @@ import {
 } from "@quilted/threads/signals";
 import type { Tool } from "ai";
 import { keys } from "remeda";
-import * as runExclusive from "run-exclusive";
 import { Lifecycle, inject, injectable, scoped } from "tsyringe";
 import * as vscode from "vscode";
 // biome-ignore lint/style/useImportType: needed for dependency injection
-import { CheckpointService } from "../checkpoint/checkpoint-service";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { UserEditState } from "../checkpoint/user-edit-state";
-// biome-ignore lint/style/useImportType: needed for dependency injection
 import { PochiConfiguration } from "../configuration";
-import { showDiffChanges } from "../editor/diff-changes-editor";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import {
   EditorContextState,
@@ -169,8 +156,6 @@ import { GithubIssueState } from "../github/github-issue-state";
 import { GithubPullRequestState } from "../github/github-pull-request-state";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { GlobalStateSignals } from "../global-state";
-// biome-ignore lint/style/useImportType: needed for dependency injection
-import { LayoutManager } from "../layout/layout-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { ThirdMcpImporter } from "../mcp/third-party-mcp";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -194,7 +179,6 @@ const logger = getLogger("VSCodeHostImpl");
 @scoped(Lifecycle.ContainerScoped)
 @injectable()
 export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
-  private checkpointGroup = runExclusive.createGroupRef();
   private disposables: vscode.Disposable[] = [];
 
   constructor(
@@ -210,7 +194,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly modelList: ModelList,
     private readonly userStorage: UserStorage,
     private readonly workspaceScope: WorkspaceScope,
-    private readonly checkpointService: CheckpointService,
     private readonly customAgentManager: CustomAgentManager,
     private readonly skillManager: SkillManager,
     private readonly worktreeManager: WorktreeManager,
@@ -219,15 +202,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     private readonly githubIssueState: GithubIssueState,
     private readonly gitState: GitState,
     private readonly reviewController: ReviewController,
-    private readonly userEditState: UserEditState,
     private readonly globalStateSignals: GlobalStateSignals,
     private readonly taskHistoryStore: TaskHistoryStore,
     private readonly taskStateStore: TaskDataStore,
-    private readonly taskChangedFilesManager: TaskChangedFilesManager,
     private readonly fileStateCacheRegistry: FileStateCacheRegistry,
     private readonly lang: PochiLanguage,
     private readonly browserSessionStore: BrowserSessionStore,
-    private readonly layoutManager: LayoutManager,
     private readonly autoMemoryManager: AutoMemoryManager,
   ) {}
 
@@ -904,111 +884,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     await vscode.env.openExternal(parsedUri);
   };
 
-  saveCheckpoint = runExclusive.build(
-    this.checkpointGroup,
-    async (
-      message: string,
-      options?: SaveCheckpointOptions,
-    ): Promise<string | null> => {
-      return await this.checkpointService.saveCheckpoint(message, options);
-    },
-  );
-
-  restoreCheckpoint = runExclusive.build(
-    this.checkpointGroup,
-    async (commitHash: string, files?: string[]): Promise<void> => {
-      await this.checkpointService.restoreCheckpoint(commitHash, files);
-    },
-  );
-
-  restoreChangedFiles = runExclusive.build(
-    this.checkpointGroup,
-    async (files: TaskChangedFile[]): Promise<void> => {
-      await this.checkpointService.restoreChangedFiles(files);
-    },
-  );
-
-  readLatestCheckpoint = runExclusive.build(
-    this.checkpointGroup,
-    async (): Promise<ThreadSignalSerialization<string | null>> => {
-      await this.checkpointService.ensureInitialized();
-      return ThreadSignal.serialize(this.checkpointService.latestCheckpoint);
-    },
-  );
-
-  readCheckpointPath = async (): Promise<string | undefined> => {
-    return this.checkpointService.getShadowGitPath();
-  };
-
-  diffWithCheckpoint = runExclusive.build(
-    this.checkpointGroup,
-    async (
-      fromCheckpoint: string,
-      files?: string[],
-      options?: DiffCheckpointOptions,
-    ) => {
-      try {
-        // Get changes using existing method
-        const changes = await this.checkpointService.getCheckpointFileEdits(
-          fromCheckpoint,
-          files,
-          options,
-        );
-        if (!changes || changes.length === 0) {
-          return null;
-        }
-        return changes;
-      } catch (error) {
-        logger.error(
-          `Failed to get user edits since last checkpoint: ${error}`,
-        );
-        return null;
-      }
-    },
-  );
-
-  showCheckpointDiff = runExclusive.build(
-    this.checkpointGroup,
-    async (
-      title: string,
-      checkpoint: { origin: string; modified?: string },
-      displayPaths?: string[],
-    ) => {
-      logger.debug(
-        `Showing checkpoint diff: from ${checkpoint.origin} to ${
-          checkpoint.modified ?? "HEAD"
-        }`,
-      );
-      const changedFiles = await this.checkpointService.getCheckpointChanges(
-        checkpoint.origin,
-        checkpoint.modified,
-      );
-      if (!changedFiles || changedFiles.length === 0) {
-        logger.info(
-          `No changes found in the checkpoint from ${checkpoint.origin} to ${checkpoint.modified}`,
-        );
-        return false;
-      }
-
-      if (!this.cwd) {
-        return false;
-      }
-
-      const displayFiles = displayPaths
-        ? changedFiles.filter(
-            (file) => file.filepath && displayPaths.includes(file.filepath),
-          )
-        : changedFiles;
-
-      return await showDiffChanges(
-        displayFiles,
-        title,
-        this.cwd,
-        checkpoint.modified === undefined,
-      );
-    },
-  );
-
   readExtensionVersion = async () => {
     return this.context.extension.packageJSON.version;
   };
@@ -1134,7 +1009,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       preserveFocus?: boolean;
       preview?: boolean;
       background?: boolean;
-      showFileChanges?: boolean;
     },
   ): Promise<void> => {
     const isPochiLayoutEnabled =
@@ -1143,22 +1017,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
       ...options,
       preview: isPochiLayoutEnabled ? options?.preview : false,
     });
-
-    if (options?.showFileChanges && params.type === "open-task" && params.uid) {
-      const taskId = params.uid;
-      if (isPochiLayoutEnabled) {
-        // Wait for the layout to be fully applied before showing file changes
-        await this.layoutManager.waitForPochiLayout();
-      }
-      if (this.cwd) {
-        await this.taskChangedFilesManager.showChangedFiles(
-          taskId,
-          this.cwd,
-          undefined,
-          this.checkpointService,
-        );
-      }
-    }
   };
 
   openBrowserAgentSettingsPanel: VSCodeHostApi["openBrowserAgentSettingsPanel"] =
@@ -1389,14 +1247,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     this.reviewController.expandThread(review.id);
   };
 
-  readUserEdits = async (
-    uid: string,
-  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
-    return ThreadSignal.serialize(
-      computed(() => this.userEditState.edits.value[uid] ?? []),
-    );
-  };
-
   readMcpConfigOverride = async (
     taskId: string,
   ): Promise<{
@@ -1610,54 +1460,6 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     value: ThreadSignal.serialize(this.lang.currentLang),
     updateLang: this.lang.updateLang,
   });
-
-  readTaskChangedFiles = async (taskId: string) => {
-    return {
-      changedFiles: ThreadSignal.serialize(
-        this.taskChangedFilesManager.getChangedFilesSignal(taskId),
-      ),
-      visibleChangedFiles: ThreadSignal.serialize(
-        this.taskChangedFilesManager.getVisibleChangedFilesSignal(taskId),
-      ),
-      updateChangedFiles: async (files: string[], checkpoint: string) => {
-        await this.taskChangedFilesManager.updateChangedFiles(
-          taskId,
-          files,
-          checkpoint,
-          this.checkpointService,
-          this.cwd,
-        );
-      },
-      acceptChangedFile: async (
-        content: ChangedFileContent,
-        filepath?: string,
-      ) => {
-        await this.taskChangedFilesManager.acceptChangedFile(
-          taskId,
-          content,
-          filepath,
-        );
-      },
-      revertChangedFile: async (filepath?: string) => {
-        await this.taskChangedFilesManager.revertChangedFile(
-          taskId,
-          filepath,
-          this.checkpointService,
-        );
-      },
-      showChangedFiles: async (filepath?: string) => {
-        if (!this.cwd) {
-          return false;
-        }
-        return await this.taskChangedFilesManager.showChangedFiles(
-          taskId,
-          this.cwd,
-          filepath,
-          this.checkpointService,
-        );
-      },
-    };
-  };
 
   dispose() {
     for (const disposable of this.disposables) {

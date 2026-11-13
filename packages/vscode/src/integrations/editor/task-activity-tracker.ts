@@ -131,7 +131,6 @@ export class TaskActivityTracker implements vscode.Disposable {
       parentId?: string;
       status?: string;
       cwd: string;
-      lastCheckpointHash?: string;
     };
     const uid = taskData.id;
     const rootTaskId = taskData.parentId || taskData.id;
@@ -158,7 +157,6 @@ export class TaskActivityTracker implements vscode.Disposable {
     if (taskData.cwd) {
       current.cwd = taskData.cwd;
     }
-    current.lastCheckpointHash = taskData.lastCheckpointHash;
     newState[rootTaskId] = current;
     this.saveState(newState);
   };

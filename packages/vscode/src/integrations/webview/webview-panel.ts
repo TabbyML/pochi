@@ -80,7 +80,6 @@ export class PochiWebviewPanel
       },
     );
     this.setupAuthEventListeners();
-    this.setupFileWatcher(info.cwd, info.uid);
 
     // Listen to panel events
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);

@@ -19,10 +19,8 @@ import type {
   BackgroundCommands,
   BuiltinSubAgentInfo,
   CaptureEvent,
-  ChangedFileContent,
   CustomAgentFile,
   DisplayModel,
-  FileDiff,
   GitWorktree,
   GithubIssue,
   McpConfigOverride,
@@ -36,7 +34,6 @@ import type {
   SessionState,
   SkillFile,
   TaskArchivedParams,
-  TaskChangedFile,
   TaskPinnedParams,
   TaskStates,
   VSCodeHostApi,
@@ -250,35 +247,6 @@ const VSCodeHostStub = {
   readMinionId: async () => {
     return Promise.resolve(null);
   },
-  saveCheckpoint: async (): Promise<string | null> => {
-    return "";
-  },
-  restoreCheckpoint: async (
-    _commitHash: string,
-    _files?: string[],
-  ): Promise<void> => {
-    return Promise.resolve();
-  },
-  restoreChangedFiles: async (_files: TaskChangedFile[]): Promise<void> => {
-    return Promise.resolve();
-  },
-  readLatestCheckpoint: async (): Promise<
-    ThreadSignalSerialization<string | null>
-  > => {
-    return Promise.resolve({} as ThreadSignalSerialization<string | null>);
-  },
-  readCheckpointPath: async (): Promise<string | undefined> => {
-    return Promise.resolve(undefined);
-  },
-  diffWithCheckpoint: async (
-    _fromCheckpoint: string,
-  ): Promise<FileDiff[] | null> => {
-    return Promise.resolve(null);
-  },
-  showCheckpointDiff: async (): Promise<boolean> => {
-    return Promise.resolve(true);
-  },
-
   readExtensionVersion: () => {
     return Promise.resolve("");
   },
@@ -361,7 +329,6 @@ const VSCodeHostStub = {
       preserveFocus?: boolean;
       preview?: boolean;
       background?: boolean;
-      showFileChanges?: boolean;
     },
   ): Promise<void> => {},
 
@@ -413,12 +380,6 @@ const VSCodeHostStub = {
     _review: Review,
     _options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ) => {},
-
-  readUserEdits: async (
-    _uid: string,
-  ): Promise<ThreadSignalSerialization<FileDiff[]>> => {
-    return Promise.resolve({} as ThreadSignalSerialization<FileDiff[]>);
-  },
 
   getGlobalState: async (): Promise<unknown> => {
     return null;
@@ -554,31 +515,6 @@ const VSCodeHostStub = {
     return {
       value: {} as ThreadSignalSerialization<string>,
       updateLang: (_lang: string) => Promise.resolve(),
-    };
-  },
-
-  readTaskChangedFiles: async (
-    _taskId: string,
-  ): Promise<{
-    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
-    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
-    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
-    acceptChangedFile: (
-      content: ChangedFileContent,
-      filepath?: string,
-    ) => Promise<void>;
-    revertChangedFile: (filepath?: string) => Promise<void>;
-    showChangedFiles: (filepath?: string) => Promise<boolean>;
-  }> => {
-    return {
-      changedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
-      visibleChangedFiles: {} as ThreadSignalSerialization<TaskChangedFile[]>,
-      updateChangedFiles: (_files: string[], _checkpoint: string) =>
-        Promise.resolve(),
-      acceptChangedFile: (_content: ChangedFileContent, _filepath?: string) =>
-        Promise.resolve(),
-      revertChangedFile: (_filepath?: string) => Promise.resolve(),
-      showChangedFiles: (_filepath?: string) => Promise.resolve(true),
     };
   },
 } satisfies VSCodeHostApi;

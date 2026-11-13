@@ -68,15 +68,12 @@ export function TaskReferenceBadge({
     (e: React.MouseEvent) => {
       e.stopPropagation();
       if (!cwd) return;
-      vscodeHost.openTaskInPanel(
-        {
-          type: "open-task",
-          cwd,
-          uid: id,
-          storeId: encodeStoreId(jwt, task?.parentId || id),
-        },
-        { showFileChanges: false },
-      );
+      vscodeHost.openTaskInPanel({
+        type: "open-task",
+        cwd,
+        uid: id,
+        storeId: encodeStoreId(jwt, task?.parentId || id),
+      });
     },
     [cwd, id, task?.parentId, jwt],
   );

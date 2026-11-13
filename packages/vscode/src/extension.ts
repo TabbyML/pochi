@@ -24,7 +24,7 @@ import { McpHub } from "@getpochi/common/mcp-utils";
 import { container, instanceCachingFactory } from "tsyringe";
 import * as vscode from "vscode";
 import { PochiAuthenticationProvider } from "./integrations/auth-provider";
-import { scheduleOrphanCheckpointCleanup } from "./integrations/checkpoint/orphan-checkpoint-cleanup";
+import { scheduleLegacyCheckpointCleanup } from "./integrations/checkpoint/legacy-checkpoint-cleanup";
 import { CommandManager } from "./integrations/command";
 import { DiffChangesContentProvider } from "./integrations/editor/diff-changes-content-provider";
 import { PochiFileSystemProvider } from "./integrations/editor/pochi-file-system-provider";
@@ -68,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(createWorkspaceConfigWatcher(cwd));
   if (!process.env.POCHI_TEST) {
     context.subscriptions.push(startCorsProxy());
-    context.subscriptions.push(scheduleOrphanCheckpointCleanup(context));
+    context.subscriptions.push(scheduleLegacyCheckpointCleanup(context));
   }
 
   container.register<vscode.ExtensionContext>("vscode.ExtensionContext", {

@@ -20,12 +20,20 @@ import type { tables } from "./livestore/default-schema";
 
 export type DataParts = {
   "pasted-text": PastedTextFile;
+  /**
+   * @deprecated Checkpoints were removed. Only messages of older tasks carry
+   * this part.
+   */
   checkpoint: {
     commit: string;
   };
   reviews: {
     reviews: Review[];
   };
+  /**
+   * @deprecated User edits are no longer detected. Only messages of older
+   * tasks carry this part.
+   */
   "user-edits": {
     userEdits: UserEdits;
   };
