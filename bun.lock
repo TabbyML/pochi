@@ -160,7 +160,6 @@
         "@ai-sdk/openai": "catalog:",
         "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
-        "ai": "catalog:",
       },
     },
     "packages/vendor-gemini-cli": {
