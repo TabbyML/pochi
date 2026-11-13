@@ -807,7 +807,6 @@ describe("LiveChatKit memory lifecycle", () => {
     const store = new FakeStore([
       makeTask({
         id: "child",
-        parentId: "parent",
         status: "pending-model",
         background: true,
         title: "Find the title generator",
