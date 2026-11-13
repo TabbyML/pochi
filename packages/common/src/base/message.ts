@@ -245,6 +245,10 @@ export const TerminalTextSelection = z.object({
 
 export type TerminalTextSelection = z.infer<typeof TerminalTextSelection>;
 
+/**
+ * Only messages of older tasks carry user edits: their detection was removed
+ * together with checkpoints.
+ */
 export const UserEdits = z
   .array(
     z.object({
