@@ -3,16 +3,9 @@ import type { RequestData } from "./types";
 export { defaultCatalog as catalog } from "./livestore";
 export {
   LiveChatKit,
-  type LiveChatKitOptions,
   type LiveChatKitPendingInputOptions,
-  type LiveChatKitProjectMemoryOptions,
-  type LiveChatKitTaskMemoryOptions,
 } from "./chat/live-chat-kit";
-export type {
-  PendingInput,
-  QueuedUserInput,
-  QueuedUserInputStorage,
-} from "./chat/pending-input";
+export type { PendingInput, QueuedUserInput } from "./chat/pending-input";
 export { getAutoCompactThreshold } from "./chat/auto-compact-policy";
 export {
   type BackgroundJobNotificationPart,
@@ -22,31 +15,16 @@ export {
 export type { AutoMemoryManager } from "@getpochi/common";
 export type { RunningTaskAdaptor } from "./background-task/task-executor/task-executor";
 export type LLMRequestData = RequestData["llm"];
-export type {
-  Message,
-  Task,
-  UITools,
-  DataParts,
-  LiveKitStore,
-  File,
-} from "./types";
+export type { Message, Task, UITools, LiveKitStore, File } from "./types";
 export type { BlobStore } from "./blob-store";
 
 export { processContentOutput, fileToUri, findBlob } from "./store-blob";
 export {
-  createBackgroundSubagentNotification,
-  extractAttemptCompletionResult,
   extractTaskResult,
-  formatFollowupQuestions,
   getTaskErrorMessage,
-  isAwaitingFollowupAnswer,
-  isResultMessage,
   mapTaskStatusToBackgroundStatus,
 } from "./task-utils";
-export type {
-  BackgroundJobStatus,
-  TaskStatusLike,
-} from "./task-utils";
+export type { TaskStatusLike } from "./task-utils";
 export { toTaskStatus } from "./task";
 
 export {

@@ -569,7 +569,7 @@ describe("PochiConfigManager", () => {
 
       // This will update vendor config - catch any errors
       try {
-        await updateVendorConfig("test-vendor", null, "user");
+        await updateVendorConfig("test-vendor", null);
         expect(true).toBe(true);
       } catch (error) {
         // Expected to fail if config file doesn't exist

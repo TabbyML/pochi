@@ -26,8 +26,6 @@ export class BrowserSessionStore implements Disposable {
   >();
   private disposed = false;
 
-  constructor(private readonly options: { proxyStreams?: boolean } = {}) {}
-
   dispose() {
     this.disposed = true;
     this.pending.clear();
@@ -37,11 +35,7 @@ export class BrowserSessionStore implements Disposable {
     logger.trace("BrowserSessionStore disposed");
   }
 
-  async registerBrowserSession(
-    taskId: string,
-    parentId?: string,
-    stream?: boolean,
-  ) {
+  async registerBrowserSession(taskId: string, parentId?: string) {
     if (this.disposed) throw new Error("Browser session store is disposed.");
     const existing = this.browserSessions.value[taskId];
     if (existing) {
@@ -61,7 +55,6 @@ export class BrowserSessionStore implements Disposable {
       this.createBrowserSession(
         taskId,
         parentId,
-        stream,
         () => this.pending.get(taskId)?.promise === registration,
       ),
     );
@@ -79,33 +72,23 @@ export class BrowserSessionStore implements Disposable {
   private async createBrowserSession(
     taskId: string,
     parentId: string | undefined,
-    stream: boolean | undefined,
     isCurrent: () => boolean,
   ) {
     if (!isCurrent())
       throw new Error("Browser session registration was cancelled.");
-    const browserSession: BrowserSession = {
-      parentId,
-    };
-
-    const enableStream = this.options.proxyStreams || stream;
-    if (enableStream) {
-      const port = await getAvailablePort();
-      if (!isCurrent())
-        throw new Error("Browser session registration was cancelled.");
-      browserSession.port = port;
-      browserSession.streamUrl = `ws://localhost:${port}`;
-      if (this.options.proxyStreams) {
-        // The extension owns the shared proxy. A browser session only owns its
-        // upstream daemon and viewer connection, never the proxy server itself.
-        browserSession.streamUrl = getCorsProxyUrl(
-          `ws://127.0.0.1:${port}/?pacing=ack`,
-        ).replace(/^http:/, "ws:");
-      }
-    }
-
+    const port = await getAvailablePort();
     if (!isCurrent())
       throw new Error("Browser session registration was cancelled.");
+    const browserSession: BrowserSession = {
+      parentId,
+      port,
+      // The extension owns the shared proxy. A browser session only owns its
+      // upstream daemon and viewer connection, never the proxy server itself.
+      streamUrl: getCorsProxyUrl(`ws://127.0.0.1:${port}/?pacing=ack`).replace(
+        /^http:/,
+        "ws:",
+      ),
+    };
 
     this.browserSessions.value = {
       ...this.browserSessions.value,
@@ -181,7 +164,6 @@ export class BrowserSessionStore implements Disposable {
     envs.AGENT_BROWSER_IDLE_TIMEOUT_MS =
       process.env.AGENT_BROWSER_IDLE_TIMEOUT_MS ?? "0";
 
-    // If we are in VSCode environment, we need to enable the websocket
     if (browserSession.port) {
       envs.AGENT_BROWSER_STREAM_PORT = String(browserSession.port);
     }

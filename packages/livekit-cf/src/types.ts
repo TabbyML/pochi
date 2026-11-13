@@ -6,7 +6,6 @@ export type Env = {
   CLIENT_DO: CfTypes.DurableObjectNamespace<ClientDoCallback>;
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackend.SyncBackendRpcInterface>;
   ADMIN_SECRET: string;
-  POCHI_API_KEY: string;
   ENVIRONMENT: "dev" | "prod" | undefined;
   ASSETS: CfTypes.Fetcher;
   WEBHOOK_URL?: string;

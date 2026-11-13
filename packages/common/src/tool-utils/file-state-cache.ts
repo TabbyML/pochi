@@ -282,8 +282,7 @@ export function isVirtualPath(path: string): boolean {
 
 /**
  * Wraps a readFile implementation with cache deduplication (before) and cache
- * population (after).  This eliminates the duplicate read-dedup + cache-populate
- * boilerplate from both CLI and VSCode readFile tools.
+ * population (after).
  *
  * Path resolution and virtual-path detection are handled automatically:
  * `pochi://` URIs are passed through as-is and skip all cache operations,

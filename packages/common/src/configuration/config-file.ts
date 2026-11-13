@@ -132,12 +132,6 @@ export class PochiConfigFile {
     return true;
   };
 
-  getVendorConfig = (id: string) => {
-    const cfg =
-      this.cfg.value.vendors?.[id as keyof NonNullable<PochiConfig["vendors"]>];
-    return cfg as VendorConfig;
-  };
-
   updateVendorConfig = async (name: string, vendor: VendorConfig | null) => {
     this.cfg.value = {
       ...this.cfg.value,

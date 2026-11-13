@@ -38,7 +38,6 @@ import { PochiFocusTracker, PochiWebviewSidebar } from "./integrations/webview";
 import { PochiTaskEditorProvider } from "./integrations/webview/webview-panel";
 import { type AuthClient, createAuthClient } from "./lib/auth-client";
 import "./lib/file-logger";
-import { createBrowserSessionStore } from "./integrations/browser";
 import {
   EditorPredictionsAvailable,
   EditorPredictionsAvailableContextKey,
@@ -88,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
   });
   container.register<BrowserSessionStore>(BrowserSessionStore, {
     // BrowserSessionStore is also a singleton
-    useFactory: instanceCachingFactory(createBrowserSessionStore),
+    useFactory: instanceCachingFactory(() => new BrowserSessionStore()),
   });
   container.resolve(PochiWebviewSidebar);
   if (EditorPredictionsAvailable) {

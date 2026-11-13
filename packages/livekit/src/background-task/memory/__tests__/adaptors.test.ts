@@ -1220,7 +1220,7 @@ function createTestBackgroundTask({
 }
 
 class FakeStore {
-  readonly storeId = "cli-test-store";
+  readonly storeId = "adaptors-test-store";
   private readonly tasks = new Map<string, Task>();
   private readonly messages = new Map<string, Message[]>();
 

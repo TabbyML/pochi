@@ -3,28 +3,18 @@ import { z } from "zod";
 
 export { attachTransport, getLogger } from "./logger";
 
-export {
-  formatters,
-  getUIUserMessageKind,
-  type LLMFormatterOptions,
-  type UIUserMessageKind,
-} from "./formatters";
+export { formatters, getUIUserMessageKind } from "./formatters";
 export {
   assertBackgroundJobReadInterval,
   prompts,
   parseEnvironmentInfo,
-  parseEnvironmentInfoResult,
 } from "./prompts";
 
 export {
   assertMonitorCommandAllowed,
   MonitorWatcher,
-  type MonitorWatcherOptions,
   type MonitorJobOptions,
-  MonitorBatchIntervalMs,
   MonitorDefaultTimeoutMs,
-  MonitorMaxLinesPerBatch,
-  MonitorMaxBatchCharacters,
 } from "./monitor";
 export {
   type BackgroundJobNotificationQueueEntry,
@@ -64,7 +54,6 @@ export type {
   AutoMemoryContext,
   AutoMemoryDreamSession,
   AutoMemoryManifestEntry,
-  AutoMemoryType,
 } from "./prompts/auto-memory";
 export {
   AutoMemoryIndexName,
@@ -80,7 +69,6 @@ export {
   renderTaskIndex,
   TaskIndexName,
   type TaskHistoryContext,
-  type TaskIndexEntry,
 } from "./prompts/task-history";
 
 export { serializeTaskTranscript } from "./task-transcript";
@@ -100,7 +88,6 @@ export type {
   AutoMemoryReadContextOptions,
   AutoMemoryTaskState,
   AutoMemoryTranscriptEntry,
-  AutoMemoryTranscriptInfo,
   TaskMemoryState,
 } from "./memory";
 export { TaskMemoryFileUri } from "./prompts/task-memory";
@@ -169,6 +156,4 @@ export interface BackgroundTaskState {
 export {
   createBackgroundJobId,
   parseBackgroundJobId,
-  type BackgroundJobId,
-  type BackgroundJobIdType,
 } from "./background-job-id";

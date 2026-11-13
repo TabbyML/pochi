@@ -4,9 +4,9 @@ import {
   isAutoSuccessToolName,
   isUserInputToolName,
   isUserInputToolPart,
-  isReadonlyToolCall,
   selectAgentTools,
 } from "../index";
+import { isReadonlyToolCall } from "../utils/readonly-validation";
 import {
   renderWidgetInputSchema,
   renderWidgetOutputSchema,

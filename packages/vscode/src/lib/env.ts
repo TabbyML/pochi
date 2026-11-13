@@ -45,7 +45,7 @@ export function getWorkspaceRulesFileUris(cwd: string) {
 }
 
 export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
-  return (await commonCollectAllRuleFiles(cwd, readFileContent)).map((x) => ({
+  return (await commonCollectAllRuleFiles(cwd)).map((x) => ({
     filepath: x.filePath,
     label: x.label,
   }));
@@ -53,7 +53,6 @@ export async function collectRuleFiles(cwd: string): Promise<RuleFile[]> {
 
 /**
  * Collects custom rules from README.pochi.md and specified custom rule files.
- * Uses VSCode APIs instead of Node.js fs functions for better reliability.
  *
  * @param customRuleFiles Array of paths to custom rule files
  * @returns A string containing all collected rules, or empty string if no rules found
@@ -64,12 +63,7 @@ export async function collectCustomRules(
 ): Promise<string> {
   // Use the shared implementation with default rules enabled
   // The common function will handle adding README.pochi.md from cwd
-  return await commonCollectCustomRules(
-    cwd,
-    readFileContent,
-    customRuleFiles,
-    true,
-  );
+  return await commonCollectCustomRules(cwd, customRuleFiles, true);
 }
 
 /**

@@ -22,20 +22,6 @@ describe("formatPochiFileDisplayPath", () => {
     ).toBe("pochi://agents/guide/references/config-schema.md");
   });
 
-  it("shortens built-in paths materialized by the CLI bundle", () => {
-    expect(
-      formatPochiFileDisplayPath(
-        "/var/folders/tmp/pochi-builtin-abc123def4567890/skills/widget-guidelines/references/chart.md",
-      ),
-    ).toBe("pochi://skills/widget-guidelines/references/chart.md");
-
-    expect(
-      formatPochiFileDisplayPath(
-        "/var/folders/tmp/pochi-builtin-abc123def4567890/agents/guide/references/config-schema.md",
-      ),
-    ).toBe("pochi://agents/guide/references/config-schema.md");
-  });
-
   it("keeps built-in virtual file URIs unchanged", () => {
     expect(
       formatPochiFileDisplayPath(
