@@ -34,6 +34,27 @@ describe("TaskDataStore queued user inputs", () => {
   });
 });
 
+describe("TaskDataStore legacy data", () => {
+  it("drops the changed files that checkpoints used to track", async () => {
+    const updatedAt = Date.now();
+    let persisted: Record<string, unknown> = {
+      task: { pinned: true, changedFiles: [{ filepath: "a.ts" }], updatedAt },
+    };
+    const context = { globalState: {
+      get: () => persisted,
+      update: async (_key: string, value: Record<string, unknown>) => {
+        persisted = value;
+      },
+    } } as unknown as vscode.ExtensionContext;
+
+    const store = new TaskDataStore(context);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    assert.deepStrictEqual(store.state.value, { task: { pinned: true, updatedAt } });
+    assert.deepStrictEqual(persisted, { task: { pinned: true, updatedAt } });
+  });
+});
+
 describe("TaskDataStore background job notifications", () => {
   it("atomically snapshots accumulated output, persists retry snapshots, and isolates output arriving afterward", async () => {
     let persisted: Record<string, unknown> = {};

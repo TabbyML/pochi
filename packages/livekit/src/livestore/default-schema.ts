@@ -184,6 +184,7 @@ const baseEvents = {
       status: TaskStatus,
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      /** @deprecated Checkpoints were removed; only old events set it. */
       lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),
@@ -195,6 +196,7 @@ const baseEvents = {
       data: Schema.NullOr(DBMessage),
       updatedAt: Schema.Date,
       duration: Schema.optional(Schema.DurationFromMillis),
+      /** @deprecated Checkpoints were removed; only old events set it. */
       lastCheckpointHash: Schema.optional(Schema.String),
     }),
   }),

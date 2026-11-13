@@ -21,10 +21,8 @@ import type { RecentFileState } from "../tool-utils";
 import type {
   BuiltinSubAgentInfo,
   CaptureEvent,
-  ChangedFileContent,
   CustomAgentFile,
   ExecuteCommandResult,
-  FileDiff,
   GitWorktree,
   McpConfigOverride,
   McpStatus,
@@ -32,11 +30,9 @@ import type {
   ResourceURI,
   Review,
   RuleFile,
-  SaveCheckpointOptions,
   SessionState,
   SkillFile,
   TaskArchivedParams,
-  TaskChangedFile,
   TaskPinnedParams,
   TaskStates,
   WorkspaceState,
@@ -45,11 +41,7 @@ import type {
   BrowserAgentSettings,
   BrowserAgentSettingsUpdate,
 } from "./types/browser-agent-settings";
-import type {
-  CreateWorktreeOptions,
-  DiffCheckpointOptions,
-  GithubIssue,
-} from "./types/git";
+import type { CreateWorktreeOptions, GithubIssue } from "./types/git";
 import type { DisplayModel } from "./types/model";
 import type { PochiCredentials } from "./types/pochi";
 import type { QueuedUserInputRecord } from "./types/task";
@@ -384,58 +376,6 @@ export interface VSCodeHostApi {
    */
   openExternal(uri: string): Promise<void>;
 
-  /**
-   * Saves a checkpoint with the given message.
-   * @param message - The message to save as a checkpoint.
-   * @returns A promise that resolves to a commit hash representing the saved checkpoint. If the repository is clean, it returns undefined.
-   */
-  saveCheckpoint(
-    message: string,
-    options?: SaveCheckpointOptions,
-  ): Promise<string | null>;
-
-  /**
-   * Restores the checkpoint to the latest commit or a specific commit hash.
-   * @param commitHash - The commit hash to restore to.
-   * @param files - Optional list of files to restore. If provided, only these files will be restored.
-   */
-  restoreCheckpoint(commitHash: string, files?: string[]): Promise<void>;
-
-  restoreChangedFiles(files: TaskChangedFile[]): Promise<void>;
-
-  readLatestCheckpoint(): Promise<ThreadSignalSerialization<string | null>>;
-
-  readCheckpointPath(): Promise<string | undefined>;
-
-  /**
-   * Reads user edits since the last checkpoint as diff stats.
-   * @param fromCheckpoint - checkpoint hash to compare from.
-   * @param files - Optional list of files to compare. If provided, only these files will be compared.
-   * @returns A promise that resolves to an array of file diff stats, or null if no edits.
-   */
-  diffWithCheckpoint(
-    fromCheckpoint: string,
-    files?: string[],
-    options?: DiffCheckpointOptions,
-  ): Promise<FileDiff[] | null>;
-
-  /**
-   * Shows the code diff between two checkpoints.
-   * @param title - The title of the diff view.
-   * @param checkpoint - An object containing the origin and modified checkpoint commits.
-   * @param displayPaths - The file path to display in the diff view. If not provided, the diff will be shown for all files.
-   * @return A promise that resolves to a boolean indicating whether the diff was shown successfully.
-   * If there is no diff, it resolves to false.
-   */
-  showCheckpointDiff(
-    title: string,
-    checkpoint: {
-      origin: string;
-      modified?: string;
-    },
-    displayPaths?: string[],
-  ): Promise<boolean>;
-
   readExtensionVersion(): Promise<string>;
 
   readVSCodeSettings(): Promise<ThreadSignalSerialization<VSCodeSettings>>;
@@ -495,11 +435,6 @@ export interface VSCodeHostApi {
        * active tab of that editor group is restored.
        */
       background?: boolean;
-      /**
-       * If true, show the file changes diff view after opening the task panel.
-       * When pochi layout is enabled, waits for the layout to be applied first.
-       */
-      showFileChanges?: boolean;
     },
   ): Promise<void>;
 
@@ -545,8 +480,6 @@ export interface VSCodeHostApi {
     review: Review,
     options?: { focusCommentsPanel?: boolean; revealRange?: boolean },
   ): Promise<void>;
-
-  readUserEdits(uid: string): Promise<ThreadSignalSerialization<FileDiff[]>>;
 
   readTasks(): Promise<ThreadSignalSerialization<Record<string, unknown>>>;
 
@@ -649,30 +582,6 @@ export interface VSCodeHostApi {
   readLang(): Promise<{
     value: ThreadSignalSerialization<string>;
     updateLang: (lang: string) => Promise<void>;
-  }>;
-
-  /**
-   * Read and manage changed files for a task.
-   * Returns serialized signals for changed files and visible changed files,
-   * plus action functions to manipulate them.
-   * Also performs migration from global state to task data store if needed.
-   */
-  readTaskChangedFiles(taskId: string): Promise<{
-    /** Signal for all changed files */
-    changedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
-    /** Signal for visible (pending) changed files only */
-    visibleChangedFiles: ThreadSignalSerialization<TaskChangedFile[]>;
-    /** Update changed files with new file paths from a tool call */
-    updateChangedFiles: (files: string[], checkpoint: string) => Promise<void>;
-    /** Accept changed files (mark as accepted) */
-    acceptChangedFile: (
-      content: ChangedFileContent,
-      filepath?: string,
-    ) => Promise<void>;
-    /** Revert changed files (restore from checkpoint and mark as reverted) */
-    revertChangedFile: (filepath?: string) => Promise<void>;
-    /** Show changed files in a diff view */
-    showChangedFiles: (filepath?: string) => Promise<boolean>;
   }>;
 }
 
