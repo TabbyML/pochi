@@ -1,6 +1,5 @@
 import { AttachmentPreviewList } from "@/components/attachment-preview-list";
 import { DevModeButton } from "@/components/dev-mode-button";
-import { DiffSummary } from "@/components/diff-summary";
 import { ModelSelect } from "@/components/model-select";
 import { TodoModeBadge } from "@/components/prompt-form/todo-mode-badge";
 import { PublicShareButton } from "@/components/public-share-button";
@@ -24,8 +23,6 @@ import type { useAttachmentUpload } from "@/lib/hooks/use-attachment-upload";
 import { useCustomAgents } from "@/lib/hooks/use-custom-agents";
 import { useReviews } from "@/lib/hooks/use-reviews";
 import { useSkills } from "@/lib/hooks/use-skills";
-import { useTaskChangedFiles } from "@/lib/hooks/use-task-changed-files";
-import { useUserEdits } from "@/lib/hooks/use-user-edits";
 import { cn, tw } from "@/lib/utils";
 import type { UseChatHelpers } from "@ai-sdk/react";
 import { constants } from "@getpochi/common";
@@ -159,34 +156,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
   const queuedUserInputs = pendingInput.userInputs;
   const pendingNotifications = pendingInput.notifications;
 
-  const [excludedUserEditsContext, setExcludedUserEditsContext] =
-    useState<string>();
-  const lastCheckpointHash = task?.lastCheckpointHash ?? undefined;
-  const userEdits = useUserEdits(taskId);
-  const userEditsContext = useMemo(() => {
-    if (!lastCheckpointHash || userEdits.length === 0) return undefined;
-
-    return JSON.stringify([
-      taskId,
-      lastCheckpointHash,
-      userEdits.map(({ filepath, diff }) => [filepath, diff]),
-    ]);
-  }, [lastCheckpointHash, taskId, userEdits]);
-  const includedUserEdits =
-    userEditsContext !== undefined &&
-    excludedUserEditsContext !== userEditsContext
-      ? userEdits
-      : [];
-
-  useEffect(() => {
-    if (
-      excludedUserEditsContext &&
-      excludedUserEditsContext !== userEditsContext
-    ) {
-      setExcludedUserEditsContext(undefined);
-    }
-  }, [excludedUserEditsContext, userEditsContext]);
-
   const [todoModeSelected, setTodoModeSelected] = useState(false);
   // Disable todo mode (rather than hide it) while active todos exist so it stays discoverable.
   const showTodoMode = !isSubTask;
@@ -310,7 +279,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     pendingApproval,
     pendingInputController,
     reviews,
-    userEdits: includedUserEdits,
     skills,
     customAgents,
     terminalContextSelections,
@@ -432,11 +400,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     [messages],
   );
 
-  const useTaskChangedFilesHelpers = useTaskChangedFiles(
-    task?.id as string,
-    messages,
-  );
-
   const showRenderWidgetFixButton =
     !!shouldShowRenderWidgetFixButton &&
     allowInteractiveToolAction &&
@@ -457,9 +420,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
     useShowCompleteSubtaskButton(subtask, messages) && !showSubmitReviewButton;
   const visibleTodos = isSubTask ? [] : todos;
   const hasVisibleTodos = visibleTodos.length > 0;
-  const hasVisibleChangedFiles =
-    useTaskChangedFilesHelpers.visibleChangedFiles.length > 0;
-  const hasVisibleContextPanel = hasVisibleTodos || hasVisibleChangedFiles;
 
   return (
     <BackgroundJobContextProvider messages={messages}>
@@ -494,26 +454,18 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           />
         </div>
       </div>
-      {hasVisibleContextPanel && (
+      {hasVisibleTodos && (
         <div className="mt-1.5 rounded-sm rounded-b-none border border-border border-b-0">
-          {hasVisibleTodos && (
-            <TodoList
-              todos={visibleTodos}
-              editable
-              onSaveTodos={updateTodos}
-              todoPaused={todoPaused}
-              onTodoPausedChange={onTodoPausedChange}
-            >
-              <TodoList.Header />
-              <TodoList.Items viewportClassname="max-h-48" />
-            </TodoList>
-          )}
-          <DiffSummary
-            {...useTaskChangedFilesHelpers}
-            className={cn({
-              "rounded-t-none border-border border-t": hasVisibleTodos,
-            })}
-          />
+          <TodoList
+            todos={visibleTodos}
+            editable
+            onSaveTodos={updateTodos}
+            todoPaused={todoPaused}
+            onTodoPausedChange={onTodoPausedChange}
+          >
+            <TodoList.Header />
+            <TodoList.Items viewportClassname="max-h-48" />
+          </TodoList>
         </div>
       )}
       <div className="relative z-10">
@@ -532,11 +484,6 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           isSubTask={isSubTask}
           currentTaskId={taskId}
           reviews={reviews}
-          userEdits={includedUserEdits}
-          lastCheckpointHash={lastCheckpointHash}
-          onRemoveUserEdits={() =>
-            setExcludedUserEditsContext(userEditsContext)
-          }
           terminalContextSelections={terminalContextSelections}
           onRemoveTerminalContextSelection={removeTerminalContextSelection}
           queuedMessages={displayedQueuedMessages}
@@ -552,7 +499,7 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           todoModeDisabled={todoModeDisabled}
           contextMenuSide="top"
           className={cn({
-            "rounded-t-none": hasVisibleContextPanel,
+            "rounded-t-none": hasVisibleTodos,
           })}
         >
           {files.length > 0 && (

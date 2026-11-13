@@ -1,4 +1,3 @@
-import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { useToolCallLifeCycle } from "@/features/chat";
 import { cn } from "@/lib/utils";
 import { getStaticToolName } from "ai";
@@ -27,7 +26,6 @@ import { writeToFileTool } from "./write-to-file";
 type ToolInvocationPartBaseProps = {
   tool: UIToolPart;
   isLoading: boolean;
-  changes?: ToolCallCheckpoint;
   isSubTask?: boolean;
   isLastPart?: boolean;
   isInLatestAssistantMessage?: boolean;
@@ -47,7 +45,6 @@ function ToolInvocationRenderer({
   tool,
   isExecuting,
   isLoading,
-  changes,
   isSubTask,
   isLastPart,
   isInLatestAssistantMessage,
@@ -57,7 +54,6 @@ function ToolInvocationRenderer({
       tool={tool}
       isExecuting={isExecuting}
       isLoading={isLoading}
-      changes={changes}
       isSubTask={isSubTask}
       isLastPart={isLastPart}
       isInLatestAssistantMessage={isInLatestAssistantMessage}
@@ -71,7 +67,6 @@ export function ToolInvocationPart({
   tool,
   isLoading,
   className,
-  changes,
   isSubTask,
   isLastPart,
   isInLatestAssistantMessage,
@@ -91,7 +86,6 @@ export function ToolInvocationPart({
         tool={tool}
         isExecuting={isExecuting}
         isLoading={isLoading}
-        changes={changes}
         isSubTask={isSubTask}
         isLastPart={isLastPart}
         isInLatestAssistantMessage={isInLatestAssistantMessage}

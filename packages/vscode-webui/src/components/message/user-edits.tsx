@@ -12,25 +12,21 @@ import { cn } from "@/lib/utils";
 import { type DiffStats, getDiffStats } from "@/lib/utils/diff-stats";
 import { vscodeHost } from "@/lib/vscode";
 import type { UserEdits } from "@getpochi/common/vscode-webui-bridge";
-import { ChevronRight, FileDiff, FilePenLine } from "lucide-react";
+import { ChevronRight, FilePenLine } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { VscDiffMultiple, VscGoToFile } from "react-icons/vsc";
+import { VscGoToFile } from "react-icons/vsc";
 
 interface Props {
   userEdits: UserEdits;
-  checkpoints?: {
-    origin: string | undefined;
-    modified: string | undefined;
-  };
   hideActions?: boolean;
 }
 
-export const UserEditsPart: React.FC<Props> = ({
-  userEdits,
-  checkpoints,
-  hideActions,
-}) => {
+/**
+ * Lists the files the user edited between two requests. Read-only: new tasks
+ * no longer record user edits, this only renders them in older tasks.
+ */
+export const UserEditsPart: React.FC<Props> = ({ userEdits, hideActions }) => {
   const { t } = useTranslation();
   const visibleUserEdits = userEdits ?? [];
   const editStats = useMemo(
@@ -39,17 +35,6 @@ export const UserEditsPart: React.FC<Props> = ({
   );
 
   if (visibleUserEdits.length === 0) return null;
-
-  const onShowDiff = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (checkpoints?.origin) {
-      await vscodeHost.showCheckpointDiff(
-        t("userEdits.diffTitle", { defaultValue: "User Edits" }),
-        { origin: checkpoints.origin, modified: checkpoints.modified },
-        visibleUserEdits.map((e) => e.filepath),
-      );
-    }
-  };
 
   const totalAdded = editStats.reduce((sum, stats) => sum + stats.added, 0);
   const totalRemoved = editStats.reduce((sum, stats) => sum + stats.removed, 0);
@@ -74,28 +59,6 @@ export const UserEditsPart: React.FC<Props> = ({
             editSummary={{ added: totalAdded, removed: totalRemoved }}
             className="text-xs"
           />
-          {!hideActions && checkpoints?.origin && (
-            <div
-              className="hidden items-center group-hover:flex"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={onShowDiff}
-                  >
-                    <VscDiffMultiple className="size-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
         </>
       }
       contentClassName="gap-1"
@@ -105,7 +68,6 @@ export const UserEditsPart: React.FC<Props> = ({
           key={edit.filepath}
           edit={edit}
           stats={editStats[index] ?? { added: 0, removed: 0 }}
-          checkpoints={checkpoints}
           hideActions={hideActions}
         />
       ))}
@@ -115,37 +77,17 @@ export const UserEditsPart: React.FC<Props> = ({
 
 interface UserEditItemProps {
   edit: NonNullable<UserEdits>[number];
-  checkpoints?: {
-    origin: string | undefined;
-    modified: string | undefined;
-  };
   hideActions?: boolean;
   stats: DiffStats;
 }
 
-function UserEditItem({
-  edit,
-  checkpoints,
-  hideActions,
-  stats,
-}: UserEditItemProps) {
+function UserEditItem({ edit, hideActions, stats }: UserEditItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
 
   const onOpenFile = async (e: React.MouseEvent) => {
     e.stopPropagation();
     vscodeHost.openFile(edit.filepath);
-  };
-
-  const onShowDiff = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (checkpoints?.origin) {
-      await vscodeHost.showCheckpointDiff(
-        t("userEdits.diffTitle", { defaultValue: "User Edits" }),
-        { origin: checkpoints.origin, modified: checkpoints.modified },
-        [edit.filepath],
-      );
-    }
   };
 
   return (
@@ -170,23 +112,6 @@ function UserEditItem({
           <EditSummary editSummary={stats} className="text-xs" />
           {!hideActions && (
             <div className="hidden items-center gap-1 group-hover:flex">
-              {checkpoints?.origin && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={onShowDiff}
-                      className="h-5 w-5"
-                    >
-                      <FileDiff className="size-3.5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {t("userEdits.showDiff", { defaultValue: "Show Diff" })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -194,11 +119,12 @@ function UserEditItem({
                     size="icon"
                     onClick={onOpenFile}
                     className="h-5 w-5"
+                    aria-label={t("userEdits.openFile")}
                   >
                     <VscGoToFile className="size-3.5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{t("diffSummary.openFile")}</TooltipContent>
+                <TooltipContent>{t("userEdits.openFile")}</TooltipContent>
               </Tooltip>
             </div>
           )}

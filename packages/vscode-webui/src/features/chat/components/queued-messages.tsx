@@ -66,7 +66,6 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
         text = "",
         filesCount = 0,
         reviewsCount = 0,
-        userEditsCount = 0,
         terminalContextCount = 0,
         pastedTextCount = 0,
         isTodoMode,
@@ -87,9 +86,6 @@ export const QueuedMessages: React.FC<QueuedMessagesProps> = ({
             filesCount > 0 ? t("chat.fileCount", { count: filesCount }) : "",
             reviewsCount > 0
               ? t("chat.reviewCount", { count: reviewsCount })
-              : "",
-            userEditsCount > 0
-              ? t("chat.userEditCount", { count: userEditsCount })
               : "",
             terminalContextCount > 0
               ? t("chat.terminalContextCount", { count: terminalContextCount })

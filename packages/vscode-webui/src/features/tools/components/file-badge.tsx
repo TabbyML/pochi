@@ -1,10 +1,8 @@
-import type { ToolCallCheckpoint } from "@/components/message/message-list";
 import { cn } from "@/lib/utils";
 import { addLineBreak } from "@/lib/utils/file";
 import { vscodeHost } from "@/lib/vscode";
 import { formatPochiFileDisplayPath } from "@getpochi/common/pochi-file-system";
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import { EditSummary } from "./edit-summary";
 import { FileIcon } from "./file-icon";
 
@@ -23,7 +21,6 @@ interface FileBadgeProps {
     added: number;
     removed: number;
   };
-  changes?: ToolCallCheckpoint;
   fallbackGlobPattern?: string;
   children?: ReactNode;
 }
@@ -39,29 +36,13 @@ export const FileBadge: React.FC<FileBadgeProps> = ({
   labelClassName,
   isDirectory = false,
   editSummary,
-  changes,
   fallbackGlobPattern,
   children,
 }) => {
-  const { t } = useTranslation();
-
   const lineRange = formatLineRange(startLine, endLine);
   const displayLabel = label || getFileBadgeDisplayLabel(path);
 
   const defaultOnClick = async () => {
-    if (changes?.origin && changes?.modified) {
-      const showDiffSuccess = await vscodeHost.showCheckpointDiff(
-        `${path} ${t("fileBadge.modifiedByPochi")}`,
-        {
-          origin: changes.origin,
-          modified: changes.modified,
-        },
-        [path],
-      );
-      if (showDiffSuccess) {
-        return;
-      }
-    }
     const options: {
       start?: number;
       end?: number;

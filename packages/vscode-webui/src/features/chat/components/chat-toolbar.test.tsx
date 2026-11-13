@@ -58,14 +58,6 @@ const chatInputFormMocks = vi.hoisted(() => ({
     | undefined,
   focusInput: vi.fn(),
 }));
-const userEditsMocks = vi.hoisted(() => ({
-  userEdits: [] as Array<{
-    filepath: string;
-    diff: string;
-    added: number;
-    removed: number;
-  }>,
-}));
 const chatInputStateMocks = vi.hoisted(() => ({
   setInput: vi.fn(),
   clearInput: vi.fn(),
@@ -99,9 +91,6 @@ vi.mock("@/components/attachment-preview-list", () => ({
 }));
 vi.mock("@/components/dev-mode-button", () => ({
   DevModeButton: () => null,
-}));
-vi.mock("@/components/diff-summary", () => ({
-  DiffSummary: () => null,
 }));
 vi.mock("@/components/model-select", () => ({
   ModelSelect: () => null,
@@ -187,14 +176,6 @@ vi.mock("@/lib/hooks/use-reviews", () => ({
 }));
 vi.mock("@/lib/hooks/use-skills", () => ({
   useSkills: () => ({ skills: [], isLoading: false }),
-}));
-vi.mock("@/lib/hooks/use-user-edits", () => ({
-  useUserEdits: () => userEditsMocks.userEdits,
-}));
-vi.mock("@/lib/hooks/use-task-changed-files", () => ({
-  useTaskChangedFiles: () => ({
-    visibleChangedFiles: [],
-  }),
 }));
 vi.mock("@/lib/use-default-store", () => ({
   useDefaultStore: () => ({
@@ -349,7 +330,6 @@ function createPendingInput(notifications: BackgroundJobNotificationPart[]) {
 
 function renderToolbar(
   isSubTask: boolean,
-  lastCheckpointHash?: string,
   {
     messages = [],
     todos = [auditTodo],
@@ -390,7 +370,6 @@ function renderToolbar(
             id: "task-1",
             todos: undefined,
             totalTokens: 0,
-            lastCheckpointHash,
           } as unknown as Task
         }
         displayError={undefined}
@@ -462,7 +441,6 @@ describe("ChatToolbar", () => {
     chatSubmitMocks.sendPendingInput.mockClear();
     chatInputFormMocks.props = undefined;
     chatInputFormMocks.focusInput.mockReset();
-    userEditsMocks.userEdits = [];
     chatInputStateMocks.setInput.mockReset();
     attachmentUploadMocks.restoreFiles.mockReset();
   });
@@ -470,7 +448,7 @@ describe("ChatToolbar", () => {
     const backgroundJobId = "bgjob-cmd-pending";
     const consoleError = vi.spyOn(console, "error");
     try {
-      renderToolbar(false, undefined, {
+      renderToolbar(false, {
         messages: [
           {
             id: "assistant-1",
@@ -545,7 +523,7 @@ describe("ChatToolbar", () => {
   it.each([true, false, undefined])(
     "restores queued Todo mode (%s) for the next submission",
     async (isTodoMode) => {
-      const pendingInput = renderToolbar(false, undefined, { todos: [] });
+      const pendingInput = renderToolbar(false, { todos: [] });
       act(() => chatInputFormMocks.props?.onSelectTodoMode?.());
 
       if (isTodoMode) {
@@ -645,31 +623,6 @@ describe("ChatToolbar", () => {
     renderToolbar(true);
     expect(screen.queryByTestId("todo-list")).toBeNull();
   });
-  it("submits no user edits after they disappear from the input", () => {
-    renderToolbar(false, "checkpoint-1");
-    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userEdits: [],
-      }),
-    );
-  });
-  it("submits the user edits shown in the input", () => {
-    const userEdits = [
-      {
-        filepath: "src/example.ts",
-        diff: "+const value = 1;",
-        added: 1,
-        removed: 0,
-      },
-    ];
-    userEditsMocks.userEdits = userEdits;
-    renderToolbar(false, "checkpoint-1");
-    expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userEdits,
-      }),
-    );
-  });
   it("passes the accumulated terminal context selections (empty by default) to useChatSubmit", () => {
     renderToolbar(false);
     expect(chatSubmitMocks.useChatSubmit).toHaveBeenCalledWith(
@@ -682,7 +635,7 @@ describe("ChatToolbar", () => {
   describe("pending input delivery", () => {
     it("asks the chat kit to deliver pending input once idle", async () => {
       await act(async () => {
-        renderToolbar(false, undefined, {
+        renderToolbar(false, {
           pendingNotifications: [
             {
               type: "data-background-job-notification",
@@ -706,7 +659,7 @@ describe("ChatToolbar", () => {
       });
     });
     it("asks again when a message is queued while idle", async () => {
-      const pendingInput = renderToolbar(false, undefined, {
+      const pendingInput = renderToolbar(false, {
         messages: pendingFollowupQuestionMessages("input-available"),
       });
       chatSubmitMocks.sendPendingInput.mockClear();
@@ -719,7 +672,7 @@ describe("ChatToolbar", () => {
       });
     });
     it("shows the pending notifications after the queued user messages", async () => {
-      const pendingInput = renderToolbar(false, undefined, {
+      const pendingInput = renderToolbar(false, {
         pendingNotifications: [notificationPart("bgjob-cmd-1")],
       });
       pendingInput.queue({
@@ -737,7 +690,7 @@ describe("ChatToolbar", () => {
       expect(queuedMessages[1].raw.nonRemovable).toBe(true);
     });
     it("removes a queued message through the chat kit", () => {
-      const pendingInput = renderToolbar(false, undefined, {
+      const pendingInput = renderToolbar(false, {
         pendingNotifications: [notificationPart("bgjob-cmd-1")],
       });
       pendingInput.queue({
@@ -755,7 +708,7 @@ describe("ChatToolbar", () => {
     });
     it("steers all pending input at once", async () => {
       await act(async () => {
-        renderToolbar(false, undefined, {
+        renderToolbar(false, {
           pendingNotifications: [notificationPart("bgjob-cmd-1")],
         });
       });

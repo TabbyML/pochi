@@ -19,7 +19,7 @@ vi.mock("react-i18next", () => ({
 
 const openFile = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/vscode", () => ({
-  vscodeHost: { openFile, showCheckpointDiff: vi.fn() },
+  vscodeHost: { openFile },
 }));
 
 vi.mock("@/components/theme-provider", () => ({

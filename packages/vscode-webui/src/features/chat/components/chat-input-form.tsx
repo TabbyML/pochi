@@ -12,10 +12,8 @@ import type { Message } from "@getpochi/livekit";
 import { PastedTextCard } from "@/components/pasted-text-card";
 import { ReviewBadges } from "@/components/prompt-form/review-badges";
 import { TerminalContextBadges } from "@/components/prompt-form/terminal-context-badges";
-import { UserEdits } from "@/components/prompt-form/user-edits";
 import { useActiveSelection } from "@/lib/hooks/use-active-selection";
 import type {
-  FileDiff,
   Review,
   TerminalTextSelection,
 } from "@getpochi/common/vscode-webui-bridge";
@@ -47,9 +45,6 @@ interface ChatInputFormProps {
   currentTaskId?: string;
   children?: ReactNode;
   reviews: Review[];
-  userEdits?: FileDiff[];
-  lastCheckpointHash?: string;
-  onRemoveUserEdits?: () => void;
   terminalContextSelections?: TerminalTextSelection[];
   onRemoveTerminalContextSelection?: (index: number) => void;
   onSelectTodoMode?: () => void;
@@ -93,9 +88,6 @@ export const ChatInputForm = forwardRef<
     isSubTask,
     currentTaskId,
     reviews,
-    userEdits = [],
-    lastCheckpointHash,
-    onRemoveUserEdits,
     terminalContextSelections = [],
     onRemoveTerminalContextSelection,
     children,
@@ -211,13 +203,6 @@ export const ChatInputForm = forwardRef<
           selections={terminalContextSelections}
           onRemove={onRemoveTerminalContextSelection}
         />
-        {userEdits.length > 0 && lastCheckpointHash && (
-          <UserEdits
-            userEdits={userEdits}
-            originCheckpoint={lastCheckpointHash}
-            onRemove={onRemoveUserEdits}
-          />
-        )}
         <ReviewBadges reviews={reviews} />
       </div>
       <DevRetryCountdown pendingApproval={pendingApproval} status={status} />

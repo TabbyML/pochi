@@ -75,7 +75,6 @@ export function useChatInitialization({
             info.prompt || "",
             files || [],
             [],
-            undefined,
             activeSelection,
             terminalContextSelections,
             info.invokedSkills,

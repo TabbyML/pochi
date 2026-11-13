@@ -13,7 +13,6 @@ vi.mock("react-i18next", () => ({
 vi.mock("@/lib/vscode", () => ({
   vscodeHost: {
     openFile: vi.fn(),
-    showCheckpointDiff: vi.fn(),
   },
 }));
 

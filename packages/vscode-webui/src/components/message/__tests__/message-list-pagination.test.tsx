@@ -55,7 +55,6 @@ vi.mock("@/features/chat", async () => ({
 vi.mock("@/features/tools", () => ({
   ToolInvocationPart: (props: {
     tool: { toolCallId: string };
-    changes?: { origin?: string; modified?: string };
     messages?: Message[];
     isLastPart?: boolean;
     isInLatestAssistantMessage?: boolean;
@@ -63,10 +62,7 @@ vi.mock("@/features/tools", () => ({
     <div
       data-testid="tool-part"
       data-tool-call-id={props.tool.toolCallId}
-      data-has-changes={String("changes" in props)}
       data-has-messages={String("messages" in props)}
-      data-changes-origin={props.changes?.origin ?? ""}
-      data-changes-modified={props.changes?.modified ?? ""}
       data-is-last-part={String(!!props.isLastPart)}
       data-is-in-latest-assistant-message={String(
         !!props.isInLatestAssistantMessage,
@@ -102,20 +98,6 @@ vi.mock("../markdown", async () => {
     },
   };
 });
-
-vi.mock("../user-edits", () => ({
-  UserEditsPart: ({
-    checkpoints,
-  }: {
-    checkpoints?: { origin?: string; modified?: string };
-  }) => (
-    <div
-      data-testid="user-edits"
-      data-origin={checkpoints?.origin ?? ""}
-      data-modified={checkpoints?.modified ?? ""}
-    />
-  ),
-}));
 
 // Import after installing mocks.
 const { MessageList } = await import("../message-list");
@@ -569,38 +551,6 @@ describe("MessageList pagination", () => {
     expect(screen.getByTestId("empty-placeholder")).toBeTruthy();
   });
 
-  it("looks up user-edit checkpoints by message id after formatting", () => {
-    const messages: Message[] = [
-      {
-        id: "checkpoint-1",
-        role: "assistant",
-        parts: [{ type: "data-checkpoint", data: { commit: "commit-1" } }],
-      } as Message,
-      {
-        id: "checkpoint-2",
-        role: "assistant",
-        parts: [{ type: "data-checkpoint", data: { commit: "commit-2" } }],
-      } as Message,
-      {
-        id: "user-edits",
-        role: "user",
-        parts: [{ type: "data-user-edits", data: { userEdits: [] } }],
-      } as unknown as Message,
-    ];
-
-    render(
-      <MessageListProbe
-        messages={messages}
-        renderAllMessages
-        formatMessages={(visible) => visible.slice(1)}
-      />,
-    );
-
-    const userEdits = screen.getByTestId("user-edits");
-    expect(userEdits.dataset.origin).toBe("commit-1");
-    expect(userEdits.dataset.modified).toBe("commit-2");
-  });
-
   it("does not treat the first formatted user message as the start of history", () => {
     vscodeMock.isVSCodeEnvironment = true;
     const messages = makeMessages(14);
@@ -807,15 +757,9 @@ describe("MessageList pagination", () => {
     expect(tools).toHaveLength(2);
     expect(tools[0]?.dataset.isInLatestAssistantMessage).toBe("false");
     expect(tools[1]?.dataset.isInLatestAssistantMessage).toBe("true");
-    expect(tools[1]?.dataset.changesOrigin).toBe("commit-1");
-    expect(tools[1]?.dataset.changesModified).toBe("commit-3");
-    expect(
-      tools.every(
-        (tool) =>
-          tool.dataset.hasMessages === "false" &&
-          tool.dataset.hasChanges === "true",
-      ),
-    ).toBe(true);
+    expect(tools.every((tool) => tool.dataset.hasMessages === "false")).toBe(
+      true,
+    );
   });
 
   it("keeps the assistant row mounted when a retry reminder starts a new assistant message", () => {

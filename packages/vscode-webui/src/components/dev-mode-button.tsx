@@ -80,15 +80,6 @@ export function DevModeButton({
     return JSON.stringify(todos, null, 2);
   };
 
-  const getCheckpintCommand = useCallback(async () => {
-    const checkpointPath = await vscodeHost.readCheckpointPath();
-    if (!checkpointPath) {
-      return t("devModeButton.noCheckpointAvailable");
-    }
-    const workspaceInfo = await vscodeHost.readCurrentWorkspace();
-    return `alias pgit="git --git-dir=\\"${checkpointPath}\\" --work-tree=\\"${workspaceInfo.cwd}\\""`;
-  }, [t]);
-
   const getSystemPromptContent = useCallback(() => {
     return getSystemPrompt?.() ?? "";
   }, [getSystemPrompt]);
@@ -120,10 +111,6 @@ export function DevModeButton({
           <CopyMenuItem
             fetchContent={getCoreMessagesContent}
             text={t("devModeButton.copyCoreMessages")}
-          />
-          <CopyMenuItem
-            fetchContent={getCheckpintCommand}
-            text={t("devModeButton.copyCheckpointCommand")}
           />
           <CopyMenuItem
             fetchContent={getTodosContent}

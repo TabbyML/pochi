@@ -1,50 +1,12 @@
-import { vscodeHost } from "@/lib/vscode";
-import type { LiveKitStore, Message } from "@getpochi/livekit";
-import { unique } from "remeda";
+import type { Message } from "@getpochi/livekit";
 import { useRenderWidgetStore } from "../hooks/use-render-widget-store";
 
 /**
- * Handles the onOverrideMessages event by appending a checkpoint to the last message.
- * This ensures that each request has a checkpoint for potential rollbacks.
+ * Handles the onOverrideMessages event before each request: commits the
+ * latest renderWidget UI state into the tool outputs the model will see.
  */
-export async function onOverrideMessages({
-  taskId,
-  messages,
-}: {
-  store: LiveKitStore;
-  taskId: string;
-  messages: Message[];
-  abortSignal: AbortSignal;
-}) {
+export function onOverrideMessages({ messages }: { messages: Message[] }) {
   writeRenderWidgetOutput(messages);
-
-  const checkpoints = messages
-    .flatMap((m) => m.parts.filter((p) => p.type === "data-checkpoint"))
-    .map((p) => p.data.commit);
-  const lastMessage = messages.at(-1);
-  if (lastMessage) {
-    // Select before appendCheckpoint adds a part to a notification message.
-    const summaryMessage = isBackgroundJobNotificationMessage(lastMessage)
-      ? messages.at(-2)
-      : lastMessage;
-    const ckpt = await appendCheckpoint(lastMessage);
-
-    const lastCheckpoint = checkpoints.at(-1);
-    if (ckpt && summaryMessage?.role === "assistant" && lastCheckpoint) {
-      // diff summary in chat view
-      await updateChangedFiles(taskId, lastCheckpoint, summaryMessage);
-    }
-  }
-}
-
-function isBackgroundJobNotificationMessage(message: Message): boolean {
-  return (
-    message.role === "user" &&
-    message.parts.length > 0 &&
-    message.parts.every(
-      (part) => part.type === "data-background-job-notification",
-    )
-  );
 }
 
 export function writeRenderWidgetOutput(messages: Message[]) {
@@ -87,65 +49,4 @@ function getExistingRenderWidgetState(output: unknown) {
   if (typeof output !== "object" || output === null) return undefined;
   if (!Object.hasOwn(output, "state")) return undefined;
   return (output as { state?: unknown }).state;
-}
-
-/**
- * Appends a checkpoint to a message if one doesn't already exist in the current step.
- * A checkpoint is created to save the current state before making changes.
- */
-async function appendCheckpoint(message: Message) {
-  const lastStepStartIndex =
-    message.parts.reduce((lastIndex, part, index) => {
-      return part.type === "step-start" ? index : lastIndex;
-    }, -1) ?? -1;
-
-  if (
-    message.parts
-      .slice(lastStepStartIndex + 1)
-      .some((x) => x.type === "data-checkpoint")
-  ) {
-    return;
-  }
-
-  const { id } = message;
-  const ckpt = await vscodeHost.saveCheckpoint(`ckpt-msg-${id}`, {
-    force: message.role === "user",
-  });
-  if (!ckpt) return;
-
-  message.parts.push({
-    type: "data-checkpoint",
-    data: {
-      commit: ckpt,
-    },
-  });
-  return ckpt;
-}
-
-async function updateChangedFiles(
-  taskId: string,
-  lastCheckpoint: string,
-  lastMessage: Message,
-) {
-  // recent changed file since last checkpoint
-  const recentChangedFiles = unique(
-    lastMessage.parts
-      .slice(
-        lastMessage.parts.findIndex(
-          (p) =>
-            p.type === "data-checkpoint" && p.data.commit === lastCheckpoint,
-        ) + 1,
-      )
-      .filter(
-        (p) =>
-          (p.type === "tool-applyDiff" ||
-            p.type === "tool-multiApplyDiff" ||
-            p.type === "tool-writeToFile") &&
-          p.state === "output-available",
-      )
-      .map((p) => p.input.path),
-  );
-
-  const taskChangedFiles = await vscodeHost.readTaskChangedFiles(taskId);
-  await taskChangedFiles.updateChangedFiles(recentChangedFiles, lastCheckpoint);
 }
