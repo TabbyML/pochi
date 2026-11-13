@@ -16,7 +16,7 @@ interface ChatAreaProps {
   messagesContainerRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   hideEmptyPlaceholder?: boolean;
-  forkTask?: (commitId: string, messageId?: string) => Promise<void>;
+  forkTask?: (messageId: string) => Promise<void>;
   isSubTask?: boolean;
   repairMermaid?: MermaidContext["repairMermaid"];
   repairingChart?: string | null;

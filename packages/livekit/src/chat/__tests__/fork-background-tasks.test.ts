@@ -101,7 +101,6 @@ function makeFork(
     oldTaskId: parent.id,
     newTaskId: "fork",
     newTaskTitle: "Fork",
-    commitId: "unused",
     messageId: parentMessages.at(-1)!.id,
   });
   // Exercise the persisted event schema: unrecognized fields are stripped

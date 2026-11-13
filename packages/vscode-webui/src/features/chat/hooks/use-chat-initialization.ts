@@ -119,7 +119,6 @@ export function useChatInitialization({
                 chatKit.fork(sourceStore, {
                   taskId: forkParams.sourceTaskId,
                   title: forkParams.title,
-                  commitId: forkParams.commitId,
                   messageId: forkParams.messageId,
                 });
               }

@@ -29,7 +29,6 @@ function createForkOptions() {
       forkParams: {
         sourceStoreId: "source-store",
         sourceTaskId: "source-task",
-        commitId: "checkpoint",
         messageId: "message",
         title: "Forked task",
       },
@@ -64,7 +63,6 @@ describe("useChatInitialization", () => {
     await waitFor(() => expect(result.current.isInitializing).toBe(false));
     expect(options.chatKit.fork).toHaveBeenCalledExactlyOnceWith(sourceStore, {
       taskId: "source-task",
-      commitId: "checkpoint",
       messageId: "message",
       title: "Forked task",
     });

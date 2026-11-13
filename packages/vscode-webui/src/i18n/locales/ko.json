@@ -393,16 +393,10 @@
     "label": "붙여넣은 텍스트",
     "remove": "붙여넣은 텍스트 제거"
   },
-  "checkpointUI": {
-    "restoring": "복원 중...",
-    "success": "성공",
-    "restore": "복원",
-    "restored": "복원됨",
-    "opening": "열고 있습니다...",
-    "noChangesDetected": "변경 사항이 감지되지 않았습니다",
-    "compare": "비교",
+  "messageSeparator": {
     "fork": "포크하기",
     "forking": "포크 중...",
+    "success": "성공",
     "summary": "요약"
   },
   "reviewUI": {

@@ -1312,8 +1312,7 @@ export class LiveChatKit<
     forkTaskParams: {
       taskId: string;
       title: string | undefined;
-      commitId: string;
-      messageId?: string;
+      messageId: string;
     },
   ) => {
     const {
@@ -1330,7 +1329,6 @@ export class LiveChatKit<
       messages,
       files,
       oldTaskId: forkTaskParams.taskId,
-      commitId: forkTaskParams.commitId,
       messageId: forkTaskParams.messageId,
       newTaskId: this.taskId,
       newTaskTitle: forkTaskParams.title,
