@@ -106,6 +106,7 @@ export const taskFullFields = {
   totalTokens: Schema.optional(Schema.Number),
   lineChanges: Schema.optional(LineChanges),
   lastStepDuration: Schema.optional(Schema.DurationFromMillis),
+  /** @deprecated Checkpoints were removed; only older tasks carry it. */
   lastCheckpointHash: Schema.optional(Schema.String),
   error: Schema.optional(TaskError),
   updatedAt: Schema.Date,

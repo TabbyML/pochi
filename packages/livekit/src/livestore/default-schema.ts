@@ -459,7 +459,8 @@ const baseMaterializers = State.SQLite.materializers(baseEvents, {
         updatedAt,
         modelId,
         displayId,
-        lastCheckpointHash: null, // set as null to disable user edit when streaming
+        // Deprecated column, still cleared so old events materialize as before.
+        lastCheckpointHash: null,
       })
       .where({ id }),
     tables.messages

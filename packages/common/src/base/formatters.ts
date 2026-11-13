@@ -196,9 +196,9 @@ function combineConsecutiveAssistantMessages(
     const message = messages[i];
     const prev = result[result.length - 1];
 
-    // Fold a compact-only user message's checkpoint parts into an adjacent
+    // Fold a compact-only user message's compact parts into an adjacent
     // assistant message so the surrounding assistant messages combine and the
-    // compact checkpoint renders as a separator without a visible user row.
+    // compaction renders as a separator without a visible user row.
     if (isCompactOnlyUserMessage(message)) {
       const compactParts = message.parts.filter(
         (part) => part.type === "text" && prompts.isCompact(part.text),

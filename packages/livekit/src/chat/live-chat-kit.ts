@@ -673,7 +673,7 @@ export class LiveChatKit<
         }
       }
       try {
-        // Attach after compaction, but before checkpoint hooks so they update
+        // Attach after compaction, but before onOverrideMessages so it updates
         // the final message that this request will send and persist.
         await this.attachPendingInput(abortSignal);
 
