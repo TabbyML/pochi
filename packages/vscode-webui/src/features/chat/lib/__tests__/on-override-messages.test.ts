@@ -5,7 +5,6 @@ import { onOverrideMessages } from "../on-override-messages";
 
 const vscodeHostMock = vi.hoisted(() => ({
   saveCheckpoint: vi.fn<() => Promise<string | undefined>>(),
-  diffWithCheckpoint: vi.fn(),
   readTaskChangedFiles: vi.fn(),
 }));
 
@@ -16,7 +15,6 @@ vi.mock("@/lib/vscode", () => ({
 describe("onOverrideMessages", () => {
   beforeEach(() => {
     vscodeHostMock.saveCheckpoint.mockReset();
-    vscodeHostMock.diffWithCheckpoint.mockReset();
     vscodeHostMock.readTaskChangedFiles.mockReset();
     useRenderWidgetStore.getState().clearAllWidgetStates();
   });
@@ -273,7 +271,6 @@ describe("onOverrideMessages", () => {
     beforeEach(() => {
       updateChangedFiles.mockReset();
       vscodeHostMock.saveCheckpoint.mockResolvedValue("after-edit");
-      vscodeHostMock.diffWithCheckpoint.mockResolvedValue([]);
       vscodeHostMock.readTaskChangedFiles.mockResolvedValue({
         updateChangedFiles,
       });
@@ -281,7 +278,7 @@ describe("onOverrideMessages", () => {
 
     async function override(messages: Message[]) {
       await onOverrideMessages({
-        store: { query: () => undefined } as never,
+        store: {} as never,
         taskId: "task-1",
         messages,
         abortSignal: new AbortController().signal,

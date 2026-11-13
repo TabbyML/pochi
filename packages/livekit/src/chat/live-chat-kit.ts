@@ -77,6 +77,7 @@ import {
   type PrepareRequestGetters,
 } from "./flexible-chat-transport";
 import { prepareForkTaskData } from "./fork-task-tools";
+import { computeLineChanges } from "./line-changes";
 import { compactTask, repairMermaid } from "./llm";
 import { createModel } from "./models";
 import {
@@ -695,6 +696,10 @@ export class LiveChatKit<
         this.restoreInFlightUserInputs();
         throw err;
       }
+
+      // Tool results of the previous step are in the messages now, so the
+      // task's line changes include its latest edits.
+      this.updateLineChanges(this.chat.messages);
     };
 
     this.compact = async () => {
@@ -762,6 +767,24 @@ export class LiveChatKit<
 
   private commitTaskEvents(...batch: TaskEvent[]) {
     this.store.commit(...taskEvents(this.persistLocallyOnly, batch));
+  }
+
+  private updateLineChanges(messages: Message[]) {
+    const lineChanges = computeLineChanges(messages);
+    const current = this.task?.lineChanges;
+    const unchanged = current
+      ? current.added === lineChanges.added &&
+        current.removed === lineChanges.removed
+      : lineChanges.added === 0 && lineChanges.removed === 0;
+    if (unchanged) return;
+
+    this.commitTaskEvents(
+      events.updateLineChanges({
+        id: this.taskId,
+        lineChanges,
+        updatedAt: new Date(),
+      }),
+    );
   }
 
   init(cwd: string | undefined, options?: InitOptions | undefined) {
