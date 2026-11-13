@@ -34,7 +34,11 @@ import {
 import type { BlobStore } from "../../blob-store";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
 import { defaultCatalog as catalog } from "../../livestore";
-import { isAwaitingFollowupAnswer, isResultMessage } from "../../task-utils";
+import {
+  getTaskErrorMessage,
+  isAwaitingFollowupAnswer,
+  isResultMessage,
+} from "../../task-utils";
 import type { LiveKitStore, Message, RequestData, Task } from "../../types";
 
 const logger = getLogger("TaskExecutor");
@@ -470,8 +474,13 @@ class RunningTask {
         if (stepResult === "retry") {
           this.retryCount += 1;
           if (this.retryCount > TaskExecutorMaxRetry) {
+            const task = this.task;
+            const lastError =
+              task?.status === "failed"
+                ? getTaskErrorMessage(task.error)
+                : undefined;
             throw new Error(
-              "The task failed to complete, max retry count reached.",
+              `The task failed to complete, max retry count reached.${lastError ? ` Last error: ${lastError}` : ""}`,
             );
           }
         } else {
@@ -608,6 +617,11 @@ class RunningTask {
     if (task.status === "failed") {
       if (isAbortTaskError(task.error)) {
         throw toError(task.error);
+      }
+      // Retrying the same request fails the same way; fail now with the real
+      // reason so the parent learns why instead of a generic retry-limit error.
+      if (isNonRetryableTaskError(task.error)) {
+        throw new Error(task.error.message);
       }
       const processed = await this.prepareRetryMessage(message);
       if (processed) {
@@ -941,6 +955,12 @@ function isAbortTaskError(error: unknown) {
     "kind" in error &&
     error.kind === "AbortError"
   );
+}
+
+function isNonRetryableTaskError(
+  error: Task["error"] | undefined,
+): error is Extract<Task["error"], { kind: "APICallError" }> {
+  return error?.kind === "APICallError" && error.isRetryable === false;
 }
 
 function normalizeCwd(cwd: string | null | undefined) {

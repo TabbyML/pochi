@@ -50,8 +50,8 @@ vi.mock("@/features/retry", () => ({
       super();
     }
   },
-  isRetryableError: (error: Error & { kind?: string }) =>
-    error.kind !== "content-filter",
+  isRetryableError: (error: Error & { kind?: string; isRetryable?: boolean }) =>
+    error.kind !== "content-filter" && error.isRetryable !== false,
   useMixinReadyForRetryError: () => retryErrorMock.current,
   useRetry: () => retryImplMock,
 }));
@@ -230,13 +230,14 @@ describe("useLiveSubTask", () => {
     expect(retryImplMock).toHaveBeenCalledOnce();
   });
 
-  it("does not automatically retry a content-filtered subtask", async () => {
+  it("reports a content-filtered subtask to the parent instead of retrying", async () => {
     vi.useFakeTimers();
     retryErrorMock.current = new ReadyForRetryError("content-filter");
+    const throws = vi.fn();
     streamingResultMock.current = {
       toolName: "newTask",
       abortSignal: new AbortController().signal,
-      throws: vi.fn(),
+      throws,
     };
 
     renderHook(() =>
@@ -252,6 +253,45 @@ describe("useLiveSubTask", () => {
     });
 
     expect(retryImplMock).not.toHaveBeenCalled();
+    expect(throws).toHaveBeenCalledExactlyOnceWith(
+      "The sub-task stopped with an error: the model's response was blocked by the content filter.",
+    );
+    vi.useRealTimers();
+  });
+
+  it("reports a non-retryable API error to the parent instead of waiting forever", async () => {
+    vi.useFakeTimers();
+    retryErrorMock.current = Object.assign(
+      new Error(
+        "messages.1.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 8000 pixels",
+      ),
+      { isRetryable: false },
+    );
+    // The failed request left the chat in the error state.
+    chatMock.status = "error";
+    const throws = vi.fn();
+    streamingResultMock.current = {
+      toolName: "newTask",
+      abortSignal: new AbortController().signal,
+      throws,
+    };
+
+    renderHook(() =>
+      useLiveSubTask(
+        { tool: makeTool("planner"), isExecuting: true },
+        makeToolCallStatusRegistry(),
+      ),
+    );
+
+    retryImplMock.mockClear();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    expect(retryImplMock).not.toHaveBeenCalled();
+    expect(throws).toHaveBeenCalledExactlyOnceWith(
+      "The sub-task stopped with an error: messages.1.content.1.image.source.base64.data: At least one of the image dimensions exceed max allowed size: 8000 pixels",
+    );
     vi.useRealTimers();
   });
 
