@@ -449,6 +449,7 @@ const VSCodeHostStub = {
   listReferenceableTasks: async (): Promise<AutoMemoryTranscriptEntry[]> => [],
   readTaskHistoryContext: async (): Promise<TaskHistoryContext | undefined> =>
     undefined,
+  writeSubagentTranscript: async () => {},
   readAutoMemoryEnabled: async (): Promise<{
     value: ThreadSignalSerialization<boolean>;
     setAutoMemoryEnabled: (enabled: boolean) => Promise<void>;

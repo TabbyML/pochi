@@ -88,7 +88,10 @@ import {
   getUserInputPartsForDelivery,
   isInterruptedAssistantResponse,
 } from "./pending-input";
-import { TaskTranscriptWriter } from "./task-transcript";
+import {
+  type TaskTranscriptSink,
+  TaskTranscriptWriter,
+} from "./task-transcript";
 import { scheduleGenerateTitleJob } from "./title-generation";
 import { replaceAttemptCompletionWithTodoSubtask } from "./todo-completion-utils";
 import {
@@ -361,6 +364,12 @@ export type LiveChatKitOptions<T> = {
 
   projectMemory?: LiveChatKitProjectMemoryOptions;
 
+  /**
+   * Writes a subagent's transcript after each step, so its parent can inspect
+   * it while it runs.
+   */
+  subagentTranscript?: TaskTranscriptSink;
+
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
   systemPromptOverride?: string;
@@ -480,6 +489,7 @@ export class LiveChatKit<
     pendingInput,
     taskMemory,
     projectMemory,
+    subagentTranscript,
     systemPromptOverride,
     ...chatInit
   }: LiveChatKitOptions<T>) {
@@ -508,8 +518,14 @@ export class LiveChatKit<
       projectMemory && isTopLevelTask
         ? this.backgroundJobManager.getAutoMemory(taskId, projectMemory)
         : undefined;
-    this.transcriptWriter =
-      projectMemory && isTopLevelTask
+    this.transcriptWriter = subagentTranscript
+      ? new TaskTranscriptWriter({
+          taskId,
+          store,
+          manager: subagentTranscript,
+          everyStep: true,
+        })
+      : projectMemory && isTopLevelTask
         ? new TaskTranscriptWriter({
             taskId,
             store,

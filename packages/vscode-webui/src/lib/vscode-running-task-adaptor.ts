@@ -275,6 +275,14 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     );
   }
 
+  writeSubagentTranscript(
+    request: Parameters<
+      NonNullable<RunningTaskAdaptor["writeSubagentTranscript"]>
+    >[0],
+  ) {
+    return vscodeHost.writeSubagentTranscript(request);
+  }
+
   /**
    * Saves the recording under the parent's newTask tool call, as the
    * foreground flow does, and closes the browser session.

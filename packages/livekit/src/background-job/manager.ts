@@ -258,6 +258,11 @@ export class BackgroundJobManager {
                 ?.find((agent) => agent.name === taskState.agentType)
             : undefined;
         const resultSchema = customAgent?._internal?.resultSchema;
+        const parentTaskId = isSubagent
+          ? store.query(catalog.queries.makeTaskQuery(taskId))?.parentId
+          : undefined;
+        const writeSubagentTranscript =
+          options.adaptor.writeSubagentTranscript?.bind(options.adaptor);
         return new LiveChatKit<InMemoryChat>({
           taskId,
           store,
@@ -270,6 +275,13 @@ export class BackgroundJobManager {
           isSubTask: isSubagent,
           requestUseCase: taskState.useCase ?? "agent",
           persistLocallyOnly: isForkAgentUseCase(taskState.useCase),
+          subagentTranscript:
+            parentTaskId && writeSubagentTranscript
+              ? {
+                  writeTaskTranscript: (request) =>
+                    writeSubagentTranscript({ ...request, parentTaskId }),
+                }
+              : undefined,
           customAgent,
           attemptCompletionSchema: resultSchema
             ? parseOutputSchema(resultSchema)

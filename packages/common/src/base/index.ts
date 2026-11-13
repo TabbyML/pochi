@@ -40,6 +40,7 @@ export {
   getSubAgentBackgroundJobId,
   getSubAgentTaskId,
   getSubAgentNotificationId,
+  getSubagentTranscriptPath,
   getSubagentWorktreeId,
   isBackgroundSubAgentRequested,
   isTopLevelTaskSpawn,

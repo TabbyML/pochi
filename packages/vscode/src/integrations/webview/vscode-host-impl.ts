@@ -63,6 +63,7 @@ import {
   type TaskMemoryState,
   toErrorMessage,
 } from "@getpochi/common";
+import { writeSubagentTranscript } from "@getpochi/common/auto-memory/node";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { BrowserSessionStore } from "@getpochi/common/browser";
 import {
@@ -1320,6 +1321,12 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
 
   readTaskHistoryContext = async () => {
     return readTaskIndex(this.autoMemoryManager, this.cwd ?? undefined);
+  };
+
+  writeSubagentTranscript = async (
+    options: Parameters<VSCodeHostApi["writeSubagentTranscript"]>[0],
+  ) => {
+    await writeSubagentTranscript(options);
   };
 
   readAutoMemoryEnabled = async (): Promise<{

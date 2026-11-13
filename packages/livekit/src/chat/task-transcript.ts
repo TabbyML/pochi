@@ -15,6 +15,12 @@ const logger = getLogger("TaskTranscript");
  */
 const TurnEndStatuses = new Set(["completed", "pending-input", "failed"]);
 
+export type TaskTranscriptSink = {
+  writeTaskTranscript(
+    request: Parameters<AutoMemoryManager["writeTaskTranscript"]>[0],
+  ): Promise<unknown>;
+};
+
 /**
  * Persists the task transcript at every turn end. The transcript is the
  * task's own record, consumed by long-term memory and task references alike,
@@ -27,12 +33,18 @@ export class TaskTranscriptWriter {
     private readonly options: {
       taskId: string;
       store: LiveKitStore;
-      manager: Pick<AutoMemoryManager, "writeTaskTranscript">;
+      manager: TaskTranscriptSink;
+      /** Also write after intermediate steps, so the transcript can be followed live. */
+      everyStep?: boolean;
     },
   ) {}
 
+  private shouldWrite(status: string) {
+    return this.options.everyStep || TurnEndStatuses.has(status);
+  }
+
   refreshTitle(previousTask: Task): Promise<void> {
-    if (!TurnEndStatuses.has(previousTask.status)) return Promise.resolve();
+    if (!this.shouldWrite(previousTask.status)) return Promise.resolve();
     const { store, taskId } = this.options;
     const messages = store
       .query(makeMessagesQuery(taskId))
@@ -53,7 +65,7 @@ export class TaskTranscriptWriter {
     status: string;
     updatedAt?: number;
   }): Promise<void> {
-    if (!TurnEndStatuses.has(status)) return Promise.resolve();
+    if (!this.shouldWrite(status)) return Promise.resolve();
     // Serialize now: the caller's message array keeps changing after the turn.
     const transcript = serializeTaskTranscript(messages);
     if (!transcript) return Promise.resolve();

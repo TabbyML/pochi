@@ -8,6 +8,7 @@ import {
   formatSubagentWorktreeNote,
   getLogger,
   getSubAgentBackgroundJobId,
+  getSubagentTranscriptPath,
   isTopLevelTaskSpawn,
   shouldRunSubAgentInBackground,
   toErrorMessage,
@@ -448,6 +449,23 @@ export class ManagedToolCallLifeCycle
 
   private subagentWorktree: SubagentWorktree | undefined;
 
+  private backgroundStartedResult(taskId: string) {
+    const parentTaskId = this.store.query(
+      catalog.queries.makeTaskQuery(taskId),
+    )?.parentId;
+    const homeDir = globalThis.POCHI_HOME_DIR;
+    const transcriptPath =
+      parentTaskId && homeDir
+        ? getSubagentTranscriptPath(homeDir, parentTaskId, taskId)
+        : undefined;
+    return {
+      result: this.withWorktreeNote(
+        createBackgroundSubAgentStartedResult(taskId, transcriptPath),
+      ),
+      backgroundJobId: getSubAgentBackgroundJobId(taskId),
+    };
+  }
+
   private withWorktreeNote(result: unknown, removed?: boolean): unknown {
     if (!this.subagentWorktree) return result;
     const text = typeof result === "string" ? result : JSON.stringify(result);
@@ -491,12 +509,7 @@ export class ManagedToolCallLifeCycle
         },
         streaming.abortSignal,
       );
-      this.detach({
-        result: this.withWorktreeNote(
-          createBackgroundSubAgentStartedResult(uid),
-        ),
-        backgroundJobId: getSubAgentBackgroundJobId(uid),
-      });
+      this.detach(this.backgroundStartedResult(uid));
     };
     this.backgroundHandoff = run().catch((error) => {
       this.detach({ error: toErrorMessage(error) });
@@ -641,12 +654,7 @@ export class ManagedToolCallLifeCycle
       // subagent-results notification.
       this.transitTo("execute", {
         type: "complete",
-        result: {
-          result: this.withWorktreeNote(
-            createBackgroundSubAgentStartedResult(uid),
-          ),
-          backgroundJobId: getSubAgentBackgroundJobId(uid),
-        },
+        result: this.backgroundStartedResult(uid),
         reason: "execute-finish",
       });
       return;
