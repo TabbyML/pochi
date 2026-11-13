@@ -84,9 +84,11 @@ import {
   type PendingInput,
   type QueuedUserInput,
   type QueuedUserInputStorage,
+  type UserInputDelivery,
   attachUserInputParts,
   detachUserInputParts,
-  getQueuedUserInputParts,
+  getUserInputPartsForDelivery,
+  isInterruptedAssistantResponse,
 } from "./pending-input";
 import { TaskTranscriptWriter } from "./task-transcript";
 import { scheduleGenerateTitleJob } from "./title-generation";
@@ -1100,7 +1102,15 @@ export class LiveChatKit<
 
     let messages = this.chat.messages;
     const userInputs = this.takeQueuedUserInputs();
-    const userParts = getQueuedUserInputParts(userInputs);
+    // Input that rides along with a running request arrived while the agent
+    // was working. A conversation with no assistant turn has no work in
+    // progress to continue, so it is left unframed.
+    const delivery: UserInputDelivery | undefined = messages.some(
+      (message) => message.role === "assistant",
+    )
+      ? "while-working"
+      : undefined;
+    const userParts = getUserInputPartsForDelivery(userInputs, delivery);
     const withUserParts = attachUserInputParts(messages, userParts);
     if (withUserParts) {
       messages = withUserParts;
@@ -1108,6 +1118,8 @@ export class LiveChatKit<
         inputs: userInputs,
         // biome-ignore lint/style/noNonNullAssertion: attaching adds a message or extends the last one.
         messageId: messages.at(-1)!.id,
+        // The reminder is tracked with the input, so taking a failed request
+        // out of the conversation takes the reminder with it.
         parts: userParts,
       });
     }
@@ -1162,16 +1174,20 @@ export class LiveChatKit<
     if (!this.queuedUserInputsLoaded) return false;
 
     const userInputs = this.takeQueuedUserInputs();
+    // Input that reaches the agent as its own turn continues an interrupted
+    // response when there is one; otherwise it is an ordinary new turn.
+    const delivery: UserInputDelivery | undefined =
+      isInterruptedAssistantResponse(this.chat.messages.at(-1))
+        ? "after-interruption"
+        : undefined;
+    const userParts = getUserInputPartsForDelivery(userInputs, delivery);
     // A user turn goes out anyway, so notifications ride along with it like
     // with any other request instead of waiting for their wake-up.
     const notificationParts = this.takePendingBackgroundJobNotifications(
       [],
       automatic && userInputs.length === 0,
     );
-    const parts = [
-      ...getQueuedUserInputParts(userInputs),
-      ...notificationParts,
-    ];
+    const parts = [...userParts, ...notificationParts];
     if (parts.length === 0) return false;
 
     const undoWakeup =
@@ -1184,7 +1200,7 @@ export class LiveChatKit<
     const inFlight: InFlightUserInputs = {
       inputs: userInputs,
       messageId: message.id,
-      parts: getQueuedUserInputParts(userInputs),
+      parts: userParts,
     };
     this.trackInFlightUserInputs(inFlight);
     const startTurn = this.pendingInputOptions?.startTurn;

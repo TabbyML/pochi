@@ -1,3 +1,10 @@
+import { prompts } from "@getpochi/common";
+import {
+  isAssistantMessageWithNoToolCalls,
+  isAssistantMessageWithStreamingParts,
+} from "@getpochi/common/message-utils";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { isAwaitingFollowupAnswer } from "../task-utils";
 import type { Message } from "../types";
 import type { BackgroundJobNotificationPart } from "./background-job-notification";
 
@@ -26,11 +33,70 @@ export const EmptyPendingInput: PendingInput = {
   notifications: [],
 };
 
+/**
+ * How a user's message reached the agent, which decides the reminder that
+ * frames it:
+ *
+ * - `while-working`: it rode along with a request the agent was already
+ *   making, so the agent is still on its task.
+ * - `after-interruption`: the agent's previous response was cut short, so the
+ *   agent needs to continue from an unfinished response rather than to start
+ *   a new turn.
+ */
+export type UserInputDelivery = "while-working" | "after-interruption";
+
 /** Concatenates the parts of the inputs, in queue order. */
 export function getQueuedUserInputParts(
   inputs: readonly QueuedUserInput[],
 ): Message["parts"] {
   return inputs.flatMap((input) => input.parts);
+}
+
+/**
+ * Parts to attach for queued user input, framed by how it was delivered. The
+ * reminder comes first, so the agent reads how to take the input before the
+ * input itself.
+ *
+ * @returns no reminder for input that reached the agent as an ordinary new
+ * turn, and the input's own parts when there is nothing queued.
+ */
+export function getUserInputPartsForDelivery(
+  inputs: readonly QueuedUserInput[],
+  delivery?: UserInputDelivery,
+): Message["parts"] {
+  const parts = getQueuedUserInputParts(inputs);
+  if (parts.length === 0 || delivery === undefined) return parts;
+
+  const reminder =
+    delivery === "while-working"
+      ? prompts.userInputWhileWorking
+      : prompts.userInputAfterInterruption;
+  return [
+    { type: "text", text: prompts.createSystemReminder(reminder) },
+    ...parts,
+  ];
+}
+
+/**
+ * Whether the last assistant turn was cut short, e.g. by the user stopping it
+ * or steering: its text never finished streaming, or it left a tool call
+ * without a result. Such a response is what the model sees as unfinished work
+ * to pick up.
+ *
+ * A turn that ended on a follow-up question is not interrupted: it handed the
+ * conversation back to the user on purpose.
+ */
+export function isInterruptedAssistantResponse(message?: Message): boolean {
+  if (message?.role !== "assistant") return false;
+  if (isAwaitingFollowupAnswer(message)) return false;
+  if (isAssistantMessageWithStreamingParts(message)) return true;
+
+  // A last step without tool calls is a finished answer, even when the turn
+  // ended on plain text.
+  return (
+    !isAssistantMessageWithNoToolCalls(message) &&
+    !lastAssistantMessageIsCompleteWithToolCalls({ messages: [message] })
+  );
 }
 
 /**

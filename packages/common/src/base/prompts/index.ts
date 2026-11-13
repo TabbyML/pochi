@@ -90,6 +90,12 @@ export const prompts = {
     truncateIndex: truncateAutoMemoryIndex,
   },
   stepBudgetReminder: createStepBudgetReminder,
+  /** The user added input without interrupting the agent's current step. */
+  userInputWhileWorking:
+    "The user sent this message while you were still working, without interrupting you. Continue the task in progress and fold this message into it: finish the work you already started instead of reading the message as a new task, and do not redo work you already completed.",
+  /** The agent's previous response was cut short, e.g. by the user steering. */
+  userInputAfterInterruption:
+    "Your previous response was interrupted before it finished, so the conversation stops mid-work. Continue from where it stopped and finish that work, applying the user's message below. Do not start over or repeat the work already completed.",
   incompleteResponseReminder:
     "The previous response was not received completely. Please continue using the conversation history and tool results available here. Complete any missing content or unfinished tool calls without repeating completed work.",
   toolCallsReminder: `You should use tool calls to answer the question, for example, use attemptCompletion if the job is done, or use askFollowupQuestion to clarify the request.

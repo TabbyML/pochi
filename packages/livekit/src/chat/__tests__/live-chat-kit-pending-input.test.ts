@@ -1,11 +1,16 @@
-import { createBackgroundJobNotification } from "@getpochi/common";
+import { createBackgroundJobNotification, prompts } from "@getpochi/common";
 import type { ChatInit, ChatStatus } from "ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BlobStore, LiveKitStore, Message } from "../..";
 import type { OnStartCallback } from "../flexible-chat-transport";
 import type { LiveChatKitPendingInputOptions } from "../live-chat-kit";
 import { LiveChatKit } from "../live-chat-kit";
-import { type QueuedUserInput, detachUserInputParts } from "../pending-input";
+import {
+  type QueuedUserInput,
+  detachUserInputParts,
+  getUserInputPartsForDelivery,
+  isInterruptedAssistantResponse,
+} from "../pending-input";
 
 const kits = new Set<LiveChatKit<FakeChat>>();
 
@@ -56,6 +61,7 @@ describe("LiveChatKit pending input", () => {
     expect(kit.chat.messages).toHaveLength(3);
     expect(lastMessage?.role).toBe("user");
     expect(lastMessage?.parts).toEqual([
+      ...reminderParts(prompts.userInputWhileWorking),
       ...textParts("first"),
       ...textParts("second"),
     ]);
@@ -68,6 +74,36 @@ describe("LiveChatKit pending input", () => {
     ).toEqual([textParts("first"), textParts("second")]);
   });
 
+  it("attaches input without a reminder when there is no work in progress", async () => {
+    const kit = makeChatKit();
+    kit.chat.messages = [userMessage("run it")];
+    kit.queueUserInput({ parts: textParts("also run the tests") });
+
+    await makeRequest(kit);
+
+    expect(kit.chat.messages).toHaveLength(1);
+    expect(kit.chat.messages.at(-1)?.parts).toEqual([
+      ...textParts("run it"),
+      ...textParts("also run the tests"),
+    ]);
+  });
+
+  it("frames flushed input as continuing an interrupted response", () => {
+    const kit = makeChatKit();
+    kit.chat.messages = [
+      userMessage("run it"),
+      interruptedAssistantMessage(),
+    ];
+    kit.queueUserInput({ parts: textParts("use vitest, not jest") });
+
+    expect(kit.flushPendingInput({ automatic: false })).toBe(true);
+
+    expect(kit.chat.sentMessages[0].parts).toEqual([
+      ...reminderParts(prompts.userInputAfterInterruption),
+      ...textParts("use vitest, not jest"),
+    ]);
+  });
+
   it("puts user inputs before notifications in the same request", async () => {
     const kit = makeChatKit();
     kit.chat.messages = [userMessage("run it"), assistantMessage()];
@@ -77,6 +113,7 @@ describe("LiveChatKit pending input", () => {
     await makeRequest(kit);
 
     expect(kit.chat.messages.at(-1)?.parts.map((part) => part.type)).toEqual([
+      "text",
       "text",
       "data-background-job-notification",
     ]);
@@ -196,6 +233,7 @@ describe("LiveChatKit pending input", () => {
     await request;
 
     expect(kit.chat.messages.at(-1)?.parts).toEqual([
+      ...reminderParts(prompts.userInputWhileWorking),
       ...textParts("stored"),
       ...textParts("local"),
     ]);
@@ -286,6 +324,53 @@ describe("detachUserInputParts", () => {
   });
 });
 
+describe("getUserInputPartsForDelivery", () => {
+  const input: QueuedUserInput = {
+    id: "queued",
+    parts: textParts("run the tests"),
+  };
+
+  it("frames a delivered input with the reminder for how it arrived", () => {
+    expect(getUserInputPartsForDelivery([input], "while-working")).toEqual([
+      ...reminderParts(prompts.userInputWhileWorking),
+      ...textParts("run the tests"),
+    ]);
+    expect(
+      getUserInputPartsForDelivery([input], "after-interruption"),
+    ).toEqual([
+      ...reminderParts(prompts.userInputAfterInterruption),
+      ...textParts("run the tests"),
+    ]);
+  });
+
+  it("leaves input unframed without a delivery, and empty input alone", () => {
+    expect(getUserInputPartsForDelivery([input])).toEqual(
+      textParts("run the tests"),
+    );
+    expect(getUserInputPartsForDelivery([], "while-working")).toEqual([]);
+  });
+});
+
+describe("isInterruptedAssistantResponse", () => {
+  it("is true for a response that never finished", () => {
+    expect(isInterruptedAssistantResponse(interruptedAssistantMessage())).toBe(
+      true,
+    );
+    expect(isInterruptedAssistantResponse(unfinishedToolCallMessage())).toBe(
+      true,
+    );
+  });
+
+  it("is false for a finished turn", () => {
+    expect(isInterruptedAssistantResponse(assistantMessage())).toBe(false);
+    expect(isInterruptedAssistantResponse(followupQuestionMessage())).toBe(
+      false,
+    );
+    expect(isInterruptedAssistantResponse(userMessage("run it"))).toBe(false);
+    expect(isInterruptedAssistantResponse(undefined)).toBe(false);
+  });
+});
+
 const getters = { getLLM: () => ({ id: "test-model" }) as never };
 
 function makeChatKit(pendingInput?: LiveChatKitPendingInputOptions) {
@@ -333,6 +418,10 @@ function textParts(text: string): Message["parts"] {
   return [{ type: "text", text }];
 }
 
+function reminderParts(reminder: string): Message["parts"] {
+  return [{ type: "text", text: prompts.createSystemReminder(reminder) }];
+}
+
 function notifications(...backgroundJobIds: string[]) {
   return backgroundJobIds.map((backgroundJobId) =>
     createBackgroundJobNotification({
@@ -356,6 +445,34 @@ function assistantMessage(): Message {
     id: crypto.randomUUID(),
     role: "assistant",
     parts: [{ type: "text", text: "on it" }],
+  };
+}
+
+function interruptedAssistantMessage(): Message {
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      { type: "text", text: "on it, I will", state: "streaming" },
+    ],
+  };
+}
+
+/** A turn that stopped with a tool call that never returned a result. */
+function unfinishedToolCallMessage(): Message {
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    parts: [
+      { type: "step-start" },
+      {
+        type: "tool-readFile",
+        toolCallId: "call-1",
+        state: "input-available",
+        input: { path: "a.ts" },
+      },
+    ],
   };
 }
 
