@@ -803,6 +803,57 @@ describe("LiveChatKit memory lifecycle", () => {
     ]);
   });
 
+  it("writes a subagent transcript after every step", async () => {
+    const store = new FakeStore([
+      makeTask({
+        id: "child",
+        parentId: "parent",
+        status: "pending-model",
+        background: true,
+        title: "Find the title generator",
+      }),
+    ]);
+    const subagentTranscript = { writeTaskTranscript: vi.fn(async () => {}) };
+    const chatKit = new LiveChatKit<FakeChat>({
+      taskId: "child",
+      store: store as unknown as LiveKitStore,
+      blobStore: {} as BlobStore,
+      chatClass: FakeChat,
+      getters: {
+        getLLM: () => ({ id: "test-model" }) as never,
+      },
+      backgroundJobManager: makeBackgroundJobs(store),
+      isSubTask: true,
+      subagentTranscript,
+    });
+
+    chatKit.chat.messages = [userMessage()];
+    chatKit.chat.finish({
+      ...assistantReadFileMessage("input-available"),
+      metadata: {
+        kind: "assistant",
+        finishReason: "tool-calls",
+        totalTokens: 100,
+      },
+    } as unknown as Message);
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(1);
+    expect(subagentTranscript.writeTaskTranscript).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        taskId: "child",
+        status: "pending-tool",
+        transcript: expect.stringContaining('"toolName":"readFile"'),
+      }),
+    );
+
+    chatKit.chat.finish(assistantMessage());
+    await chatKit.drainBackgroundTasksAndSettleMemory();
+    expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(2);
+    expect(subagentTranscript.writeTaskTranscript).toHaveBeenLastCalledWith(
+      expect.objectContaining({ taskId: "child", status: "completed" }),
+    );
+  });
+
   it.each(["before", "after"] as const)(
     "persists the final title when title generation finishes %s the turn",
     async (timing) => {

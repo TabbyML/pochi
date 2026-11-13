@@ -267,6 +267,68 @@ describe("BackgroundJobManager", () => {
     }
   });
 
+  it("writes a subagent's transcript under its parent through the adaptor", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("child", {
+      id: "child",
+      parentId: "parent",
+      background: true,
+      status: "pending-model",
+      updatedAt: new Date(),
+    } as Task);
+    const writeSubagentTranscript = vi.fn(async () => {});
+    manager.initialize({
+      blobStore: {} as never,
+      adaptor: {
+        getRequestGetters: () => ({ getLLM: () => ({ id: "test" }) as never }),
+        executeToolCall: vi.fn(),
+        writeSubagentTranscript,
+      },
+    });
+    const { executor } = manager as unknown as {
+      executor: {
+        options: {
+          createChatKit: (options: Record<string, unknown>) => Promise<unknown>;
+        };
+      };
+    };
+    try {
+      const kit = (await executor.options.createChatKit({
+        taskId: "child",
+        store: (manager as unknown as { store: unknown }).store,
+        blobStore: {},
+        abortSignal: new AbortController().signal,
+        taskState: { parentTaskId: "parent" },
+        getters: { getLLM: () => ({ id: "test" }) },
+        appendMessage: vi.fn(),
+      })) as {
+        transcriptWriter: {
+          write: (data: { messages: Message[]; status: string }) => Promise<void>;
+        };
+      };
+      await kit.transcriptWriter.write({
+        messages: [
+          {
+            id: "user",
+            role: "user",
+            parts: [{ type: "text", text: "Find the title generator" }],
+          } as Message,
+        ],
+        status: "pending-tool",
+      });
+      expect(writeSubagentTranscript).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentTaskId: "parent",
+          taskId: "child",
+          status: "pending-tool",
+          transcript: expect.stringContaining("Find the title generator"),
+        }),
+      );
+    } finally {
+      await manager.dispose();
+    }
+  });
+
   it("routes job cancellation through ownership checks and delegates other tools", async () => {
     const { manager, observers, source } = setup();
     const executeToolCall = vi.fn(async () => ({ output: "platform result" }));

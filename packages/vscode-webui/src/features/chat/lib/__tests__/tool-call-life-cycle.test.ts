@@ -658,6 +658,7 @@ describe("background subagent job lifecycle", () => {
         { toolName: "newTask", toolCallId: "start" },
         new AbortController().signal,
       );
+      vi.stubGlobal("POCHI_HOME_DIR", "/home/me");
       try {
         lifecycle.execute(
           {
@@ -670,7 +671,12 @@ describe("background subagent job lifecycle", () => {
         );
         await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
         expect(lifecycle.complete.result).toEqual(
-          expect.objectContaining({ backgroundJobId: "bgjob-task-child" }),
+          expect.objectContaining({
+            backgroundJobId: "bgjob-task-child",
+            result: expect.stringContaining(
+              "/home/me/.pochi/tasks/parent/background-jobs/bgjob-task-child.md",
+            ),
+          }),
         );
         expect(manager.getJobsForTask("parent")).toEqual([
           expect.objectContaining({
@@ -681,6 +687,7 @@ describe("background subagent job lifecycle", () => {
           }),
         ]);
       } finally {
+        vi.unstubAllGlobals();
         await manager.dispose();
       }
     },
@@ -818,6 +825,23 @@ describe("foreground background handoff", () => {
     expect(lifecycle.complete.result).toEqual(
       expect.objectContaining({ backgroundJobId: "bgjob-task-subtask-1" }),
     );
+  });
+
+  it("returns the subagent's transcript path after the handoff", async () => {
+    vi.stubGlobal("POCHI_HOME_DIR", "/home/me");
+    try {
+      const { lifecycle, task } = await setup();
+      await lifecycle.moveToBackground(task.id, "explore", async () => {});
+      expect(lifecycle.complete.result).toEqual(
+        expect.objectContaining({
+          result: expect.stringContaining(
+            "/home/me/.pochi/tasks/parent/background-jobs/bgjob-task-subtask-1.md",
+          ),
+        }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("reports a stop failure without starting background execution", async () => {

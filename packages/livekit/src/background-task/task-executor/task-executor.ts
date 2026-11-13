@@ -33,6 +33,7 @@ import {
 
 import type { BlobStore } from "../../blob-store";
 import type { PrepareRequestGetters } from "../../chat/flexible-chat-transport";
+import type { TaskTranscriptSink } from "../../chat/task-transcript";
 import { defaultCatalog as catalog } from "../../livestore";
 import {
   getTaskErrorMessage,
@@ -95,6 +96,12 @@ export interface RunningTaskAdaptor {
    * isolated worktree.
    */
   onTaskFinished?(taskId: string): MaybePromise<string | undefined>;
+  /** Writes a subagent's transcript at `getSubagentTranscriptPath`. */
+  writeSubagentTranscript?(
+    request: Parameters<TaskTranscriptSink["writeTaskTranscript"]>[0] & {
+      parentTaskId: string;
+    },
+  ): Promise<void>;
 }
 
 type TaskToolOutput = {

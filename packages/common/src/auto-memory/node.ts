@@ -16,6 +16,7 @@ import {
   type AutoMemoryTranscriptEntry,
   AutoMemoryTypeValues,
   getLogger,
+  getSubagentTranscriptPath,
   renderAutoMemoryIndex,
   toErrorMessage,
   truncateAutoMemoryIndex,
@@ -442,6 +443,44 @@ export function sanitizeMemoryRepoKey(repoPath: string): string {
     .digest("hex")
     .slice(0, 10);
   return `${slug}-${hash}`;
+}
+
+/**
+ * Writes a background subagent's transcript at
+ * {@link getSubagentTranscriptPath}. It stays out of the project transcripts,
+ * so it never enters the task index or long-term memory.
+ */
+export async function writeSubagentTranscript(
+  {
+    parentTaskId,
+    taskId,
+    cwd,
+    title,
+    status,
+    updatedAt,
+    transcript,
+  }: {
+    parentTaskId: string;
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    status?: string;
+    updatedAt?: number;
+    transcript: string;
+  },
+  homeDir = os.homedir(),
+): Promise<void> {
+  const filePath = getSubagentTranscriptPath(homeDir, parentTaskId, taskId);
+  const frontmatter = serializeTranscriptFrontmatter({
+    taskId,
+    cwd,
+    updatedAt: updatedAt ?? Date.now(),
+    status,
+    title,
+  });
+  const body = transcript.endsWith("\n") ? transcript : `${transcript}\n`;
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, `${frontmatter}\n${body}`);
 }
 
 export async function removeTaskTranscripts(

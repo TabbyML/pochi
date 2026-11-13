@@ -6,7 +6,11 @@ import {
   AutoMemoryLockName,
   AutoMemoryProjectInfoName,
 } from "../../base";
-import { AutoMemoryManager, sanitizeMemoryRepoKey } from "../node";
+import {
+  AutoMemoryManager,
+  sanitizeMemoryRepoKey,
+  writeSubagentTranscript,
+} from "../node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("long-term memory helpers", () => {
@@ -531,5 +535,58 @@ describe("AutoMemoryManager.listTranscripts", () => {
   it("returns nothing without a cwd", async () => {
     const manager = new AutoMemoryManager({ projectsRoot });
     expect(await manager.listTranscripts({})).toEqual([]);
+  });
+});
+
+describe("writeSubagentTranscript", () => {
+  let homeDir: string;
+
+  beforeEach(async () => {
+    homeDir = await fs.mkdtemp(path.join(os.tmpdir(), "pochi-subagent-home-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(homeDir, { recursive: true, force: true });
+  });
+
+  it("writes the transcript with its metadata next to the parent's job output", async () => {
+    await writeSubagentTranscript(
+      {
+        parentTaskId: "parent",
+        taskId: "child",
+        cwd: "/repo",
+        title: "Find the title generator",
+        status: "pending-tool",
+        updatedAt: Date.UTC(2026, 10, 13),
+        transcript: "### 1. user\nfind it",
+      },
+      homeDir,
+    );
+
+    const content = await fs.readFile(
+      path.join(
+        homeDir,
+        ".pochi",
+        "tasks",
+        "parent",
+        "background-jobs",
+        "bgjob-task-child.md",
+      ),
+      "utf8",
+    );
+    expect(content).toBe(
+      [
+        "---",
+        "taskId: child",
+        "cwd: '/repo'",
+        "updatedAt: 2026-11-13T00:00:00.000Z",
+        "status: 'pending-tool'",
+        "title: 'Find the title generator'",
+        "---",
+        "### 1. user",
+        "find it",
+        "",
+      ].join("\n"),
+    );
   });
 });

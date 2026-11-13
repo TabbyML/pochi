@@ -98,9 +98,36 @@ export function createTopLevelTaskStartedResult(
 Its transcript is updated at the end of each of its turns at pochi://$/transcripts/${taskId}.md. Read it only when you need its progress or outcome.`;
 }
 
+/**
+ * Where a background subagent's transcript is written: next to the parent's
+ * other background job output, so it is removed together with the parent.
+ */
+export function getSubagentTranscriptPath(
+  homeDir: string,
+  parentTaskId: string,
+  taskId: string,
+): string {
+  const separator = homeDir.includes("\\") ? "\\" : "/";
+  const segment = (id: string) => id.replace(/[^A-Za-z0-9_-]+/g, "_");
+  return [
+    homeDir.replace(/[\\/]+$/, ""),
+    ".pochi",
+    "tasks",
+    segment(parentTaskId),
+    "background-jobs",
+    `${getSubAgentBackgroundJobId(segment(taskId))}.md`,
+  ].join(separator);
+}
+
 /** Tool result returned by newTask when the subagent starts in the background. */
-export function createBackgroundSubAgentStartedResult(taskId: string): string {
-  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.
+export function createBackgroundSubAgentStartedResult(
+  taskId: string,
+  transcriptPath?: string,
+): string {
+  const transcript = transcriptPath
+    ? `\nIts transcript is updated after each of its steps at ${transcriptPath}. Read it only to inspect how it works, not to wait for its result.`
+    : "";
+  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.${transcript}
 Next step: call attemptCompletion now and say the result is pending.
 Exception: you may first do work that is unrelated to this subagent's assignment and does not need its result.
 Never do any part of its assignment yourself, and do not poll, sleep, or guess its result.`;

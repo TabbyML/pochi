@@ -622,6 +622,17 @@ export interface VSCodeHostApi {
    */
   readTaskHistoryContext(): Promise<TaskHistoryContext | undefined>;
 
+  /** Writes a background subagent's transcript, see `getSubagentTranscriptPath`. */
+  writeSubagentTranscript(options: {
+    parentTaskId: string;
+    taskId: string;
+    cwd?: string;
+    title?: string;
+    status?: string;
+    updatedAt?: number;
+    transcript: string;
+  }): Promise<void>;
+
   readBackgroundTaskState(taskId: string): Promise<{
     value: ThreadSignalSerialization<BackgroundTaskState | undefined>;
     setBackgroundTaskState: (state: BackgroundTaskState) => Promise<void>;
