@@ -20,7 +20,7 @@ Examples:
 
 Script quality:
 - Every pipe stage must flush per line or matches may remain buffered: grep needs \`--line-buffered\`; awk needs \`fflush()\`. Avoid \`head\`, which can delay output until enough matches accumulate.
-- CLI monitors use stdout as the event stream; VS Code terminal monitors include stdout and stderr. Merge with \`2>&1\` when failures written to stderr should reach your filter in either host.
+- stderr also reaches the event stream, but bypasses pipe filters. Merge with \`2>&1\` when failures written to stderr should reach your filter.
 - In polling loops, tolerate transient request failures and use suitable intervals: 30s or more for remote APIs, 0.5-1s for local checks.
 - Write a specific description because it appears in every notification.
 

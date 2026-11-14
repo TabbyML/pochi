@@ -91,7 +91,7 @@ describe("env.ts", () => {
 
     // Mock the common module functions
     const commonStub = {
-      collectAllRuleFiles: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>) => {
+      collectAllRuleFiles: async (cwd: string) => {
         const files: { filePath: string, label: string }[] = [];
         const visited = new Set<string>();
 
@@ -102,7 +102,7 @@ describe("env.ts", () => {
           visited.add(filePath);
 
           try {
-            const content = await readFileContent(filePath);
+            const content = await fsStub.readFileContent(filePath);
             if (content !== null) {
               files.push({ filePath, label });
               const importRegex = /@([./\\\w-]+.md)/gm;
@@ -133,7 +133,7 @@ describe("env.ts", () => {
           homedir,
         };
       },
-      collectCustomRules: async (cwd: string, readFileContent: (filePath: string) => Promise<string | null>, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
+      collectCustomRules: async (cwd: string, customRuleFiles: string[] = [], includeDefaultRules: boolean = true) => {
         // Mock implementation that properly reads files using VSCode APIs for test compatibility
         let rules = "";
         const allRuleFiles = [...customRuleFiles];
@@ -146,7 +146,7 @@ describe("env.ts", () => {
         // Read all rule files using VSCode APIs (which work in test environment)
         for (const rulePath of allRuleFiles) {
           try {
-            const content = await readFileContent(rulePath);
+            const content = await fsStub.readFileContent(rulePath);
             if (content && content.trim().length > 0) {
               const fileName = nodePath.basename(rulePath);
               rules += `# Rules from ${fileName}\n${content}\n`;

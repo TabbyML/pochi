@@ -7,12 +7,6 @@ export interface CodexCredentials {
   lastRefresh?: number;
 }
 
-export interface IdTokenInfo {
-  email?: string;
-  chatgptPlanType?: string;
-  rawJwt: string;
-}
-
 export interface IdClaims {
   email?: string;
   "https://api.openai.com/auth"?: AuthClaims;

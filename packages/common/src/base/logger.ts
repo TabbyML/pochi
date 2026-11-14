@@ -2,14 +2,10 @@ import { minimatch } from "minimatch";
 import { type ILogObjMeta, type IMeta, Logger } from "tslog";
 import { isVSCodeEnvironment } from "../env-utils";
 
-const isConsoleLogDisabled = () => {
-  return (
-    typeof process !== "undefined" && !!process.env.POCHI_LOG_DISABLE_CONSOLE
-  );
-};
-
+// The extension host logs through attached transports; the webview and tests
+// print to the console.
 const mainLogger = new Logger({
-  type: isVSCodeEnvironment() || isConsoleLogDisabled() ? "hidden" : "pretty",
+  type: isVSCodeEnvironment() ? "hidden" : "pretty",
   // Disable tslog's value masking. Masking shallow-clones every logged
   // argument via `Object.create(Object.getPrototypeOf(source))`, which turns a
   // `DOMException` into a fake object carrying `DOMException.prototype` but that

@@ -201,10 +201,11 @@ export class TaskExecutor {
     this.resolveAllTaskDoneWaiters();
   }
 
-  async drain(abortSignal?: AbortSignal) {
+  /** Resolves once no task is runnable or running. */
+  async drain() {
     this.start();
 
-    while (!this.disposed && !abortSignal?.aborted) {
+    while (!this.disposed) {
       const runnableTasks = this.readRunnableTasks();
       this.reconcile(runnableTasks);
 
@@ -466,7 +467,7 @@ class RunningTask {
         const stepResult = await this.step();
         this.abortController.signal.throwIfAborted();
         if (stepResult === "finished") {
-          // Like the CLI, return an unanswered question without waiting or sending notices.
+          // Return an unanswered question without waiting or sending notices.
           if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return;
           await this.options.waitForBackgroundJobs?.(
             this.options.taskId,
@@ -613,7 +614,7 @@ class RunningTask {
       throw new Error("Task is not loaded.");
     }
 
-    // Use the same result-message check as the CLI for every background task.
+    // A result or a request for user input ends every background task.
     if (
       (task.status === "completed" || task.status === "pending-input") &&
       isResultMessage(message)

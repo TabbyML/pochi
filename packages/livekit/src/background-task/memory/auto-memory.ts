@@ -453,7 +453,6 @@ type AutoMemoryAdaptorOptions = {
   autoMemoryStateStore?: MemoryStateStore<AutoMemoryTaskState>;
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);
-  isSubTask?: boolean;
   manager: AutoMemoryManager;
 };
 
@@ -488,7 +487,6 @@ export class AutoMemoryAdaptor {
   }
 
   private async updateInner(data: ParentContext & { status?: string }) {
-    if (this.options.isSubTask) return false;
     if (data.status && data.status !== "completed") return false;
 
     const task = this.options.store.query(
@@ -571,7 +569,6 @@ export class AutoMemoryAdaptor {
   }
 
   private async settleCompletedTasks() {
-    if (this.options.isSubTask) return false;
     const state = this.getState();
     const manager = BackgroundJobManager.forStore(this.options.store);
     const extractionResolution =

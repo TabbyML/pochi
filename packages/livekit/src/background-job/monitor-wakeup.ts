@@ -33,7 +33,7 @@ export class MonitorWakeup {
     if (this.timerAt !== deadline) {
       clearTimeout(this.timer);
       this.timerAt = deadline;
-      // Keep CLI waiting until the deadline even if there is no more output.
+      // Wake waiters at the deadline even if there is no more output.
       this.timer = setTimeout(() => {
         this.timer = undefined;
         this.timerAt = undefined;

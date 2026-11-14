@@ -160,7 +160,6 @@
         "@ai-sdk/openai": "catalog:",
         "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
-        "ai": "catalog:",
       },
     },
     "packages/vendor-gemini-cli": {
@@ -218,12 +217,11 @@
         "@ai-sdk/provider": "catalog:",
         "@getpochi/common": "workspace:*",
         "ai": "catalog:",
-        "zod": "catalog:",
       },
     },
     "packages/vscode": {
       "name": "pochi",
-      "version": "0.79.0-dev",
+      "version": "0.83.0-dev",
       "dependencies": {
         "@ai-sdk/google-vertex": "catalog:",
         "@getpochi/common": "workspace:*",

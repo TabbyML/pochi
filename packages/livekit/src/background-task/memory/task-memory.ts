@@ -236,7 +236,6 @@ type TaskMemoryAdaptorOptions = {
   taskMemoryStateStore?: MemoryStateStore<TaskMemoryState>;
   parentTaskId: string;
   parentCwd: string | undefined | (() => string | undefined);
-  isSubTask?: boolean;
 };
 
 export class TaskMemoryAdaptor {
@@ -291,7 +290,6 @@ export class TaskMemoryAdaptor {
     compactThreshold?: number;
     systemPrompt?: string;
   }) {
-    if (this.options.isSubTask) return false;
     await this.settleInner();
 
     const state = this.getState();

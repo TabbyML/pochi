@@ -1,21 +1,18 @@
 import { ModelRegistry } from "@getpochi/common";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createCodexModel, createEdgeCodexModel, createProxyFetch } from "./model";
+import { createCodexFetch, createCodexModel } from "./model";
 
 describe("Codex default model", () => {
-  it.each([createCodexModel, createEdgeCodexModel])(
-    "%o falls back to the registry model",
-    (createModel) => {
-      const model = createModel({
-        modelId: undefined,
-        getCredentials: async () => ({}),
-      } as unknown as Parameters<typeof createModel>[0]);
-      expect(model.modelId).toBe(ModelRegistry.codex);
-    },
-  );
+  it("falls back to the registry model", () => {
+    const model = createCodexModel({
+      modelId: undefined,
+      getCredentials: async () => ({}),
+    } as unknown as Parameters<typeof createCodexModel>[0]);
+    expect(model.modelId).toBe(ModelRegistry.codex);
+  });
 });
 
-describe("Codex proxy fetch", () => {
+describe("Codex fetch", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     Reflect.deleteProperty(globalThis, "POCHI_CORS_PROXY_URL_PREFIX");
@@ -25,7 +22,7 @@ describe("Codex proxy fetch", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("ok"));
     vi.stubGlobal("fetch", fetchMock);
 
-    const proxyFetch = createProxyFetch(async () => ({
+    const proxyFetch = createCodexFetch(async () => ({
       accessToken: "token",
       mode: "chatgpt",
     }));
@@ -46,7 +43,7 @@ describe("Codex proxy fetch", () => {
     vi.stubGlobal("fetch", fetchMock);
     globalThis.POCHI_CORS_PROXY_URL_PREFIX = "https://proxy.example/?url=";
 
-    const proxyFetch = createProxyFetch(async () => ({
+    const proxyFetch = createCodexFetch(async () => ({
       accessToken: "token",
       mode: "chatgpt",
     }));

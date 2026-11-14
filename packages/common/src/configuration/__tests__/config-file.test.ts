@@ -145,38 +145,6 @@ describe("PochiConfigFile", () => {
     });
   });
 
-  describe("getVendorConfig", () => {
-    it("should get vendor config", async () => {
-      const configFile = new PochiConfigFile(testConfigPath);
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      await configFile.updateConfig({
-        vendors: {
-          pochi: {
-            credentials: { token: "test-token" },
-            user: {
-              name: "Test User",
-            },
-          },
-        },
-      });
-      
-      const vendorConfig = configFile.getVendorConfig("pochi");
-      expect(vendorConfig?.credentials).toEqual({ token: "test-token" });
-      expect(vendorConfig?.user?.name).toBe("Test User");
-    });
-
-    it("should return undefined for non-existent vendor", async () => {
-      const configFile = new PochiConfigFile(testConfigPath);
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      const vendorConfig = configFile.getVendorConfig("nonexistent");
-      expect(vendorConfig).toBeUndefined();
-    });
-  });
-
   describe("updateVendorConfig", () => {
     it("should update vendor config", async () => {
       const configFile = new PochiConfigFile(testConfigPath);
@@ -190,8 +158,9 @@ describe("PochiConfigFile", () => {
         },
       });
       
-      const vendorConfig = configFile.getVendorConfig("pochi");
-      expect(vendorConfig?.user?.name).toBe("Test User");
+      expect(configFile.config.value.vendors?.pochi?.user?.name).toBe(
+        "Test User",
+      );
     });
 
     it("should remove vendor config with null", async () => {

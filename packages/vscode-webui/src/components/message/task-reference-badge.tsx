@@ -60,7 +60,7 @@ export function TaskReferenceBadge({
   const { jwt } = usePochiCredentials();
   const { task, displayTitle } = useTaskReference(id, title);
   // A transcript can come from a client that is not in this task history
-  // (e.g. the CLI); without a history entry its working directory is
+  // (e.g. another machine); without a history entry its working directory is
   // unknown, so the badge is not clickable.
   const cwd = task?.cwd;
 

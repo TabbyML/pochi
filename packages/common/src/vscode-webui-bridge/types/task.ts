@@ -64,17 +64,6 @@ export type PochiTaskInfo = PochiTaskParams & {
   uid: string;
 };
 
-/**
- * only include fields that are used in the webview and node process
- */
-export interface TaskData {
-  id: string;
-  cwd?: string | null;
-  git?: {
-    worktree?: { gitdir?: string } | null;
-  } | null;
-}
-
 export interface TaskState {
   unread?: boolean;
   active?: boolean;
