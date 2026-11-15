@@ -4,7 +4,7 @@
  */
 export const ModelRegistry = {
   /** Pochi server fallback when a chat request doesn't specify a model. */
-  pochiServer: "google/gemini-4-argon",
+  pochiServer: "google/gemini-4-carbon",
 
   /** Worktree branch name generation, via the Pochi vendor. */
   generateBranchName: "google/gemini-3.8-flash",
