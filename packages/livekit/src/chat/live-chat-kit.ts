@@ -373,7 +373,6 @@ export type LiveChatKitOptions<T> = {
   customAgent?: CustomAgent;
   attemptCompletionSchema?: z.ZodAny;
   systemPromptOverride?: string;
-  outputSchema?: z.ZodAny;
 } & Omit<
   ChatInit<Message>,
   "id" | "messages" | "generateId" | "onFinish" | "onError" | "transport"
@@ -433,7 +432,6 @@ export class LiveChatKit<
   private queuedUserInputsLoaded = true;
   /** Serializes storage reads and writes, starting with the initial load. */
   private queuedUserInputsStorageTask: Promise<void> = Promise.resolve();
-  private readonly pendingMemoryOperations = new Set<Promise<void>>();
   private latestRequestSnapshot: FinishedRequestSnapshot | undefined;
   private currentToolsExecution:
     | { messageId: string; startedAt: Date }
@@ -454,16 +452,6 @@ export class LiveChatKit<
   readonly compact: () => Promise<string>;
   readonly repairMermaid: (chart: string, error: string) => Promise<void>;
   private consecutiveAutoCompactFailures = 0;
-
-  /**
-   * Converts an existing subtask (created by the newTask middleware) into a
-   * background subagent task: records its state and flips `background` so the
-   * TaskExecutor picks it up independently of this chat.
-   */
-  readonly backgroundSubTask: (options: {
-    taskId: string;
-    agentType?: string;
-  }) => Promise<void>;
 
   constructor({
     taskId,
@@ -504,11 +492,6 @@ export class LiveChatKit<
     this.onStreamFinish = onStreamFinish;
     this.backgroundJobManager =
       backgroundJobManager ?? BackgroundJobManager.forStore(store);
-    this.backgroundSubTask = (options) =>
-      this.backgroundJobManager.backgroundSubTask(
-        { ...options, parentTaskId: this.taskId },
-        abortSignal,
-      );
     this.taskMemoryAdaptor =
       taskMemory && !isSubTask
         ? this.backgroundJobManager.getTaskMemory(taskId, taskMemory)
@@ -1436,8 +1419,7 @@ export class LiveChatKit<
           getModel,
           onTitleUpdated:
             writer &&
-            ((previousTask) =>
-              this.trackMemoryOperation(writer.refreshTitle(previousTask))),
+            ((previousTask) => void writer.refreshTitle(previousTask)),
         });
       }
 
@@ -1554,60 +1536,6 @@ export class LiveChatKit<
     this.onStreamFinish?.(finishData);
   };
 
-  private async settleMemoryAndMaybeContinue(
-    abortSignal?: AbortSignal,
-  ): Promise<boolean> {
-    await this.waitForMemoryOperations();
-    await this.taskMemoryAdaptor?.settle();
-    // Continuing memory extraction may create a new fork. It needs a completed
-    // request from this parent instance to reuse, including when the CLI drains.
-    if (!this.latestRequestSnapshot || abortSignal?.aborted) return false;
-    return (await this.autoMemoryAdaptor?.settleAndMaybeContinue()) ?? false;
-  }
-
-  private async waitForMemoryOperations(): Promise<void> {
-    while (this.pendingMemoryOperations.size > 0) {
-      await Promise.allSettled([...this.pendingMemoryOperations]);
-    }
-  }
-
-  async drainBackgroundTasksAndSettleMemory(
-    options: { timeoutMs?: number; abortSignal?: AbortSignal } = {},
-  ): Promise<void> {
-    if (options.timeoutMs === 0 || options.abortSignal?.aborted) return;
-    const controller = new AbortController();
-    const signal = options.abortSignal
-      ? AbortSignal.any([controller.signal, options.abortSignal])
-      : controller.signal;
-    const timeout =
-      options.timeoutMs === undefined
-        ? undefined
-        : setTimeout(() => controller.abort(), options.timeoutMs);
-    let onAbort: () => void = () => {};
-    const aborted = new Promise<void>((resolve) => {
-      onAbort = resolve;
-      signal.addEventListener("abort", onAbort, { once: true });
-    });
-    const drain = async () => {
-      await this.waitForMemoryOperations();
-      if (signal.aborted) return;
-      await this.backgroundJobManager.drain(signal);
-      while (
-        !signal.aborted &&
-        (await this.settleMemoryAndMaybeContinue(signal))
-      ) {
-        await this.backgroundJobManager.drain(signal);
-      }
-      if (!signal.aborted) await this.settleMemoryAndMaybeContinue(signal);
-    };
-    try {
-      await Promise.race([drain(), aborted]);
-    } finally {
-      if (timeout) clearTimeout(timeout);
-      signal.removeEventListener("abort", onAbort);
-    }
-  }
-
   /** Subscribing a chat never starts or owns the shared executor. */
   subscribeBackgroundJobs(): () => void {
     return this.backgroundJobManager.subscribeNotifications(
@@ -1642,14 +1570,7 @@ export class LiveChatKit<
     status: string;
   }) {
     if (!this.transcriptWriter) return;
-    this.trackMemoryOperation(this.transcriptWriter.write(data));
-  }
-
-  private trackMemoryOperation(promise: Promise<void>) {
-    const tracked = promise.finally(() => {
-      this.pendingMemoryOperations.delete(tracked);
-    });
-    this.pendingMemoryOperations.add(tracked);
+    void this.transcriptWriter.write(data);
   }
 
   private scheduleMemoryUpdate(data: {
@@ -1659,7 +1580,7 @@ export class LiveChatKit<
   }) {
     if (!this.taskMemoryAdaptor && !this.autoMemoryAdaptor) return;
 
-    const promise = Promise.all([
+    void Promise.all([
       this.taskMemoryAdaptor?.update({
         messages: data.messages,
         contextWindowUsage: data.contextWindowUsage,
@@ -1671,13 +1592,9 @@ export class LiveChatKit<
         status: data.status,
         systemPrompt: this.latestRequestSnapshot?.systemPrompt,
       }),
-    ])
-      .catch((error) => {
-        logger.warn("Memory update failed", error);
-      })
-      .then(() => undefined);
-
-    this.trackMemoryOperation(promise);
+    ]).catch((error) => {
+      logger.warn("Memory update failed", error);
+    });
   }
 
   private updateTotalTokensEstimate(messages: Message[]) {

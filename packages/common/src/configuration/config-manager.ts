@@ -136,16 +136,9 @@ class PochiConfigManager {
     return cfg as VendorConfig;
   };
 
-  updateVendorConfig = async (
-    name: string,
-    vendor: VendorConfig | null,
-    target: PochiConfigTarget = "user",
-  ) => {
-    if (target === "user") {
-      await this.userConfigFile.updateVendorConfig(name, vendor);
-    } else if (target === "workspace" && this.workspaceConfigFile) {
-      await this.workspaceConfigFile.updateVendorConfig(name, vendor);
-    }
+  /** Vendor credentials are only stored in the user config. */
+  updateVendorConfig = async (name: string, vendor: VendorConfig | null) => {
+    await this.userConfigFile.updateVendorConfig(name, vendor);
   };
 
   private getConfig = (path?: string, target: PochiConfigTarget = "user") => {

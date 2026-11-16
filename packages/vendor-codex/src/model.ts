@@ -3,7 +3,6 @@ import type { LanguageModelV3 } from "@ai-sdk/provider";
 import { ModelRegistry } from "@getpochi/common";
 import { withCorsProxy } from "@getpochi/common/fetch-utils";
 import type { CreateModelOptions } from "@getpochi/common/vendor/edge";
-import { wrapLanguageModel } from "ai";
 import { transformToCodexFormat } from "./transformers";
 import type { CodexCredentials } from "./types";
 import { extractAccountId } from "./utils";
@@ -45,60 +44,10 @@ function transformRequestBody(body: string | undefined): string {
 }
 
 /**
- * Create a fetch function with Codex-specific transformations
+ * Create a fetch function with Codex-specific transformations. Requests go
+ * through the CORS proxy when the webview configures one.
  */
-function createCodexFetch(getCredentials: () => Promise<unknown>) {
-  return async (
-    url: string | URL | Request,
-    init?: RequestInit,
-  ): Promise<Response> => {
-    const credentials = await (getCredentials() as Promise<CodexCredentials>);
-
-    const transformedBody = transformRequestBody(
-      typeof init?.body === "string" ? init.body : undefined,
-    );
-
-    const headers = createCodexHeaders(credentials, init);
-
-    return fetch(url, {
-      ...init,
-      headers,
-      body: transformedBody || undefined,
-    });
-  };
-}
-
-export function createCodexModel({
-  modelId,
-  getCredentials,
-}: CreateModelOptions): LanguageModelV3 {
-  return wrapLanguageModel({
-    model: createCodexResponsesModel(modelId, getCredentials),
-    middleware: {
-      specificationVersion: "v3",
-      async transformParams({ params }) {
-        return params;
-      },
-    },
-  });
-}
-
-function createCodexResponsesModel(
-  modelId: string | undefined,
-  getCredentials: () => Promise<unknown>,
-) {
-  const customFetch = createCodexFetch(getCredentials);
-
-  const openai = createOpenAI({
-    baseURL: "https://chatgpt.com/backend-api/codex",
-    apiKey: "placeholder",
-    fetch: customFetch as typeof fetch,
-  });
-
-  return openai.responses(modelId || ModelRegistry.codex);
-}
-
-export function createProxyFetch(getCredentials: () => Promise<unknown>) {
+export function createCodexFetch(getCredentials: () => Promise<unknown>) {
   return async (
     input: string | URL | Request,
     init?: RequestInit,
@@ -118,22 +67,13 @@ export function createProxyFetch(getCredentials: () => Promise<unknown>) {
   };
 }
 
-export function createEdgeCodexModel({
+export function createCodexModel({
   modelId,
   getCredentials,
 }: CreateModelOptions): LanguageModelV3 {
-  const customFetch = createProxyFetch(getCredentials);
-  return wrapLanguageModel({
-    model: createOpenAI({
-      baseURL: "https://chatgpt.com/backend-api/codex",
-      apiKey: "placeholder",
-      fetch: customFetch as typeof fetch,
-    }).responses(modelId || ModelRegistry.codex),
-    middleware: {
-      specificationVersion: "v3",
-      async transformParams({ params }) {
-        return params;
-      },
-    },
-  });
+  return createOpenAI({
+    baseURL: "https://chatgpt.com/backend-api/codex",
+    apiKey: "placeholder",
+    fetch: createCodexFetch(getCredentials) as typeof fetch,
+  }).responses(modelId || ModelRegistry.codex);
 }

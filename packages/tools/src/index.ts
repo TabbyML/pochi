@@ -1,6 +1,6 @@
 export { McpTool } from "./mcp-tools";
 import { ToolsByPermission } from "./constants";
-export { ToolsByPermission, MaxToolCallConcurrency } from "./constants";
+export { ToolsByPermission } from "./constants";
 export {
   createBackgroundCommandResult,
   ExecuteCommandDefaultTimeoutSec,
@@ -26,10 +26,8 @@ import { type CustomAgent, createNewTaskTool } from "./new-task";
 import { renderWidget } from "./render-widget";
 import { searchFiles } from "./search-files";
 export {
-  AttemptTodoCompletionResult,
   ResolvedAttemptTodoCompletionResult,
   Todo,
-  TodoUpdate,
   isTodoListResolved,
   initTodoModeTodos,
   resolveAttemptTodoCompletionResult,
@@ -39,7 +37,6 @@ export type {
   ToolFunctionType,
   IFileStateCache,
   IFileState,
-  CompiledToolPolicy,
   CompiledToolPolicies,
 } from "./types";
 export type {
@@ -63,17 +60,13 @@ export {
   inputSchema as newTaskInputSchema,
 } from "./new-task";
 export {
-  type ParsedToolSpec,
   type ToolSpecInput,
   getAllowedToolNames,
-  getToolRules,
-  normalizeToolSpecs,
   parseToolSpec,
 } from "./utils/tool-spec";
 export {
   compileToolPolicies,
   validateAgentTypePatternPolicy,
-  validateCommandPatternPolicy,
   validateExecuteCommandRules,
   validateToolPolicy,
 } from "./utils/tool-policy";
@@ -85,18 +78,9 @@ export {
 } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
 export {
-  BatchExecutionErrorMessages,
-  BatchExecutionError,
-  executeToolCalls,
   getToolCallCancelErrorMessage,
-  isSafeToBatchToolCall,
-  partitionToolCalls,
   ToolCallQueue,
 } from "./utils/tool-batch";
-export {
-  checkReadOnlyConstraints,
-  isReadonlyToolCall,
-} from "./utils/readonly-validation";
 export type {
   BatchedToolCallCancelReason as ToolCallCancelReason,
   BatchedToolCallResult,
@@ -132,8 +116,6 @@ export function isAutoSuccessToolPart(
 
 export type ToolName = keyof ClientTools;
 
-export const ServerToolApproved = "<server-tool-approved>";
-
 export interface CreateClientToolOptions {
   customAgents?: CustomAgent[];
   skills?: Skill[];
@@ -151,7 +133,7 @@ function filterVisibleNewTaskAgents(customAgents?: CustomAgent[]) {
   );
 }
 
-const createCliTools = (options?: CreateClientToolOptions) => ({
+const createBaseTools = (options?: CreateClientToolOptions) => ({
   applyDiff,
   askFollowupQuestion,
   attemptCompletion: createAttemptCompletionTool(
@@ -170,7 +152,7 @@ const createCliTools = (options?: CreateClientToolOptions) => ({
 
 export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
-    ...createCliTools(options),
+    ...createBaseTools(options),
     killBackgroundJob,
     startMonitor,
     renderWidget,

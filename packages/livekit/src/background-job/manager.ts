@@ -180,7 +180,7 @@ export class BackgroundJobManager {
 
   private constructor(private readonly store: LiveKitStore) {}
 
-  /** Called once by the task panel or CLI root, never by a chat page. */
+  /** Called once by the task panel, never by a chat page. */
   initialize(options: BackgroundJobManagerOptions) {
     if (this.disposed) throw new Error("Background job manager is disposed.");
     if (this.adaptor === options.adaptor) return;
@@ -794,7 +794,7 @@ export class BackgroundJobManager {
       wakeup = new MonitorWakeup(() => {
         if (this.disposed) return;
         // Readiness can change without any new output. Wake both subscribed
-        // webviews and CLI / executor waiters, which recheck their own guards.
+        // webviews and executor waiters, which recheck their own guards.
         this.deliver(taskId, true);
         this.revision++;
         for (const listener of this.listeners) listener();
@@ -975,11 +975,10 @@ export class BackgroundJobManager {
   async wait(
     taskId: string,
     options: {
-      timeoutMs?: number;
       abortSignal?: AbortSignal;
       wakeOnNotifications?: boolean;
     } = {},
-  ): Promise<"completed" | "timeout" | "aborted" | "notifications"> {
+  ): Promise<"completed" | "aborted" | "notifications"> {
     if (options.abortSignal?.aborted) return "aborted";
     if (
       options.wakeOnNotifications &&
@@ -994,13 +993,8 @@ export class BackgroundJobManager {
       )
     )
       return "completed";
-    if (options.timeoutMs === 0) return "timeout";
     return new Promise((resolve) => {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      const finish = (
-        result: "completed" | "timeout" | "aborted" | "notifications",
-      ) => {
-        if (timer) clearTimeout(timer);
+      const finish = (result: "completed" | "aborted" | "notifications") => {
         this.listeners.delete(check);
         options.abortSignal?.removeEventListener("abort", check);
         resolve(result);
@@ -1023,8 +1017,6 @@ export class BackgroundJobManager {
       };
       this.listeners.add(check);
       options.abortSignal?.addEventListener("abort", check, { once: true });
-      if (options.timeoutMs !== undefined)
-        timer = setTimeout(() => finish("timeout"), options.timeoutMs);
       check();
     });
   }
@@ -1191,10 +1183,6 @@ export class BackgroundJobManager {
   }
   waitForTaskDone(taskId: string) {
     return this.executor?.waitForTaskDone(taskId) ?? Promise.resolve();
-  }
-  async drain(abortSignal?: AbortSignal) {
-    await this.backgroundTasksReady;
-    await this.executor?.drain(abortSignal);
   }
   async dispose() {
     if (this.disposed) return;

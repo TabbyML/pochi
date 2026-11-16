@@ -733,7 +733,6 @@ describe("BackgroundJobManager", () => {
       }),
     ]);
     expect(manager.hasPending("parent")).toBe(true);
-    expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
     await manager.dispose();
   });
 
@@ -805,7 +804,6 @@ describe("BackgroundJobManager", () => {
         monitor: "watch",
       });
       expect(manager.hasPending("parent")).toBe(true);
-      expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
     } finally {
       await manager.dispose();
     }
@@ -826,14 +824,14 @@ describe("BackgroundJobManager", () => {
     }
   });
 
-  it("honors a zero timeout and abort without consuming a notification", async () => {
+  it("honors abort without consuming a notification", async () => {
     const { manager, observers } = setup();
     await manager.watchTask("parent");
     observers.get("parent")!({
       running: { "bgjob-cmd-one": running("parent") },
       notifications: [],
     });
-    expect(await manager.wait("parent", { timeoutMs: 0 })).toBe("timeout");
+    expect(manager.hasPending("parent")).toBe(true);
     const controller = new AbortController();
     const wait = manager.wait("parent", { abortSignal: controller.signal });
     controller.abort();

@@ -73,14 +73,6 @@ function parseToolRules(tool: string, rawRule: string): string[] {
   return [rule];
 }
 
-export function normalizeToolSpecs(
-  tools: ToolSpecInput[] | undefined,
-): ParsedToolSpec[] | undefined {
-  const normalized = parseToolSpecs(tools);
-
-  return normalized.length > 0 ? normalized : undefined;
-}
-
 /**
  * Collect the configured rules for a tool.
  *

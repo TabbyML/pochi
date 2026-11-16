@@ -1,7 +1,7 @@
 import type { VendorBase } from "./base";
 import { createRegistry } from "./registry";
 
-export { ModelOptions } from "./types";
+export type { ModelOptions } from "./types";
 export { VendorBase } from "./base";
 
 const { register, get, getAll } = createRegistry<VendorBase>();

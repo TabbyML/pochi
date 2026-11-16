@@ -30,7 +30,7 @@ function createToolDef(isSubTask: boolean) {
   const backgroundUsageNotes = isSubTask
     ? ""
     : `- Set background to true for commands that should continue running without blocking the task. The initial result includes the job ID and output file, but only confirms that the job started; it does not report whether the command succeeded or failed.
-- In VS Code, start commands that require terminal input with background set to true. CLI background jobs are non-interactive.
+- Start commands that require terminal input with background set to true.
 - The completion notification is the authoritative job status and reports completed, failed, or stopped. Do not infer status from empty or partial file contents, and do not wait or poll with commands such as sleep.
 - Continue independent work after starting a background command. If no other work remains, use attemptCompletion to end the current turn; the completion notification will resume the task.
 - After receiving the completion notification, read the output file when you need the command output. If it is empty, the command produced no captured output; the notification status is still final.
@@ -38,7 +38,7 @@ function createToolDef(isSubTask: boolean) {
   const timeoutUsageNotes = isSubTask
     ? `- Commands do not accept terminal input. You can specify an optional timeout in seconds (up to 300s). If not specified, the timeout is ${ExecuteCommandDefaultTimeoutSec}s. A command still running when the timeout expires is stopped and a timeout error is returned.`
     : `- Foreground commands do not accept terminal input. You can specify an optional timeout in seconds (up to 300s). If not specified, the foreground wait is ${ExecuteCommandDefaultTimeoutSec}s.
-- When the foreground timeout expires, the same process continues as a background job without being stopped or restarted, and the result includes its \`backgroundJobId\` and \`outputFile\`. Promoted jobs remain non-interactive, including in VS Code. If background promotion is unavailable, including in VS Code on Windows, the command is stopped and a timeout error is returned.`;
+- When the foreground timeout expires, the same process continues as a background job without being stopped or restarted, and the result includes its \`backgroundJobId\` and \`outputFile\`. Promoted jobs remain non-interactive. If background promotion is unavailable, including on Windows, the command is stopped and a timeout error is returned.`;
 
   return {
     description:
@@ -172,7 +172,7 @@ Important:
       command: z
         .string()
         .describe(
-          "The CLI command to execute. This should be valid for the current operating system.",
+          "The shell command to execute. This should be valid for the current operating system.",
         ),
       cwd: z
         .string()

@@ -49,7 +49,7 @@ describe("collectCustomRules", () => {
       } as any;
     });
 
-    const rules = await collectCustomRules(cwd, vi.mocked(readFile) as any, [`${cwd}/custom.md`]);
+    const rules = await collectCustomRules(cwd, [`${cwd}/custom.md`]);
 
     expect(rules).toContain("# Rules from ~/.pochi/README.pochi.md\nsystem rule");
     expect(rules).toContain("# Rules from README.pochi.md\nworkspace rule");
@@ -74,7 +74,6 @@ describe("collectCustomRules", () => {
 
     const rules = await collectCustomRules(
       cwd,
-      vi.mocked(readFile) as any,
       [`${cwd}/custom.md`],
       false,
       false,
@@ -100,7 +99,7 @@ describe("collectCustomRules", () => {
       } as any;
     });
 
-    const rules = await collectCustomRules(cwd, vi.mocked(readFile) as any, [`${cwd}/custom.md`]);
+    const rules = await collectCustomRules(cwd, [`${cwd}/custom.md`]);
 
     expect(rules).toBe("# Rules from custom.md\ncustom rule\n");
   });
@@ -115,7 +114,7 @@ describe("collectCustomRules", () => {
       } as any;
     });
 
-    const rules = await collectCustomRules(cwd, vi.mocked(readFile) as any, [], false, false);
+    const rules = await collectCustomRules(cwd, [], false, false);
 
     expect(rules).toBe("");
   });
@@ -139,7 +138,7 @@ describe("collectAllRuleFiles", () => {
     const customRulePath = `${cwd}/custom.md`;
     vi.mocked(readFile).mockResolvedValue("");
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [customRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [customRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(1);
     expect(files[0].filePath).toBe(customRulePath);
@@ -159,7 +158,7 @@ describe("collectAllRuleFiles", () => {
       return "";
     });
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(2);
     expect(files.map((f) => f.filePath)).toContain(mainRulePath);
@@ -178,7 +177,7 @@ describe("collectAllRuleFiles", () => {
       return "";
     });
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(3);
     expect(files.map((f) => f.filePath)).toContain(mainRulePath);
@@ -196,7 +195,7 @@ describe("collectAllRuleFiles", () => {
       return "";
     });
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(2);
     expect(files.map((f) => f.filePath)).toContain(mainRulePath);
@@ -220,7 +219,7 @@ describe("collectAllRuleFiles", () => {
       throw error;
     });
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(1);
     expect(files[0].filePath).toBe(mainRulePath);
@@ -234,7 +233,7 @@ describe("collectAllRuleFiles", () => {
       return "";
     });
 
-    const files = await collectAllRuleFiles(cwd, vi.mocked(readFile) as any, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
+    const files = await collectAllRuleFiles(cwd, { customRuleFiles: [mainRulePath], includeDefaultRules: false, includeGlobalRules: false });
 
     expect(files).toHaveLength(1);
     expect(files[0].filePath).toBe(mainRulePath);

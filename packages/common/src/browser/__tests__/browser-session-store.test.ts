@@ -32,16 +32,15 @@ beforeEach(() => {
 });
 
 describe("browser session lifecycle", () => {
-  it("deduplicates registration and preserves direct CLI streaming", async () => {
+  it("deduplicates concurrent registration", async () => {
     const store = new BrowserSessionStore();
     const [first, second] = await Promise.all([
-      store.registerBrowserSession("task", undefined, true),
-      store.registerBrowserSession("task", undefined, true),
+      store.registerBrowserSession("task"),
+      store.registerBrowserSession("task"),
     ]);
     expect(first).toBe(second);
     expect(mocks.port).toHaveBeenCalledTimes(1);
-    expect(first.streamUrl).toBe("ws://localhost:43210");
-    expect(mocks.proxy).not.toHaveBeenCalled();
+    expect(mocks.proxy).toHaveBeenCalledTimes(1);
     expect(store.getAgentBrowserEnvs("task")).toMatchObject({
       AGENT_BROWSER_SESSION: "task",
       AGENT_BROWSER_STREAM_PORT: "43210",
@@ -63,7 +62,7 @@ describe("browser session lifecycle", () => {
   });
 
   it("uses the shared proxy with ACK pacing and only closes the requested session", async () => {
-    const store = new BrowserSessionStore({ proxyStreams: true });
+    const store = new BrowserSessionStore();
     const session = await store.registerBrowserSession("task");
     const url = new URL(session.streamUrl!);
     expect(url.protocol).toBe("ws:");
@@ -95,7 +94,7 @@ describe("browser session lifecycle", () => {
         finish = resolve;
       }),
     );
-    const store = new BrowserSessionStore({ proxyStreams: true });
+    const store = new BrowserSessionStore();
     const registered = store.registerBrowserSession("task");
     const rejected = expect(registered).rejects.toThrow("cancelled");
     await vi.waitFor(() => expect(mocks.port).toHaveBeenCalled());
@@ -114,7 +113,7 @@ describe("browser session lifecycle", () => {
         finish = resolve;
       }),
     );
-    const store = new BrowserSessionStore({ proxyStreams: true });
+    const store = new BrowserSessionStore();
     const registered = store.registerBrowserSession("task");
     const rejected = expect(registered).rejects.toThrow("cancelled");
     await vi.waitFor(() => expect(mocks.port).toHaveBeenCalled());
@@ -132,7 +131,7 @@ describe("browser session lifecycle", () => {
         finish = resolve;
       }),
     );
-    const store = new BrowserSessionStore({ proxyStreams: true });
+    const store = new BrowserSessionStore();
     // The tool can register first, followed by the preview with its parent ID.
     const tool = store.registerBrowserSession("child");
     const preview = store.registerBrowserSession("child", "parent");
@@ -149,15 +148,13 @@ describe("browser session lifecycle", () => {
   });
 });
 
-it("registers without streaming or an installed CLI and falls back to PATH for cleanup", async () => {
+it("falls back to PATH for cleanup when agent-browser is not installed", async () => {
   mocks.exists.mockReturnValue(false);
   const store = new BrowserSessionStore();
   await store.registerBrowserSession("no-cli");
   expect(store.getAgentBrowserEnvs("no-cli")).toMatchObject({
     AGENT_BROWSER_SESSION: "no-cli",
   });
-  expect(mocks.port).not.toHaveBeenCalled();
-  expect(mocks.proxy).not.toHaveBeenCalled();
   await store.unregisterBrowserSession("no-cli");
   expect(mocks.close).toHaveBeenCalledWith(
     "agent-browser",

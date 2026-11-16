@@ -72,6 +72,7 @@ describe("LiveChatKit memory lifecycle", () => {
     });
     const { executor } = chatKit.backgroundJobManager as unknown as {
       executor: {
+        drain: () => Promise<void>;
         options: {
           createChatKit: ConstructorParameters<typeof TaskExecutor>[0]["createChatKit"];
         };
@@ -121,17 +122,19 @@ describe("LiveChatKit memory lifecycle", () => {
           latestRequestSnapshot: { systemPrompt: string };
         }
       ).latestRequestSnapshot.systemPrompt = "later parent prompt";
-      await chatKit.drainBackgroundTasksAndSettleMemory();
+      await vi.waitFor(() => expect(store.backgroundTasks()).toHaveLength(1));
+      // The fake store does not notify subscribers, so run the fork directly.
+      await executor.drain();
+      expect(store.backgroundTasks()[0].status).toBe("completed");
       expect(send).toHaveBeenCalledOnce();
       expect(store.backgroundTasks()).toHaveLength(1);
-      expect(store.backgroundTasks()[0].status).toBe("completed");
     } finally {
       await chatKit.backgroundJobManager.dispose();
       factory.mockRestore();
     }
   });
 
-  it("does not start a follow-on memory fork before this parent has completed a request", async () => {
+  it("starts a follow-on memory fork only after this parent completes a request", async () => {
     const store = new FakeStore([
       makeTask({ id: "parent", status: "completed", background: false }),
       makeTask({ id: "old", status: "completed" }),
@@ -162,13 +165,12 @@ describe("LiveChatKit memory lifecycle", () => {
         },
       },
     });
-    await chatKit.drainBackgroundTasksAndSettleMemory();
+    await flushMemoryUpdates();
     expect(manager.beginDreamRun).not.toHaveBeenCalled();
     setLatestRequestSnapshot(chatKit, 0, 0);
     chatKit.chat.messages = [userMessage(), assistantMessage()];
     chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(manager.beginDreamRun).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(manager.beginDreamRun).toHaveBeenCalledOnce());
   });
 
   it("does not background a subtask if its parent is aborted during state persistence", async () => {
@@ -198,10 +200,10 @@ describe("LiveChatKit memory lifecycle", () => {
         set,
       }),
     });
-    const move = chatKit.backgroundSubTask?.({
-      taskId: "child",
-      agentType: "explore",
-    });
+    const move = chatKit.backgroundJobManager.backgroundSubTask(
+      { taskId: "child", agentType: "explore", parentTaskId: "parent" },
+      controller.signal,
+    );
     expect(set).toHaveBeenCalledOnce();
     controller.abort();
     finishWrite();
@@ -241,10 +243,9 @@ describe("LiveChatKit memory lifecycle", () => {
     parent.chat.messages = [userMessage(), assistantMessage()];
     setLatestRequestSnapshot(parent, 60_000, 0);
     parent.chat.finish(assistantMessage());
-    await parent.drainBackgroundTasksAndSettleMemory();
+    await vi.waitFor(() => expect(state?.activeTaskId).toBeTruthy());
     unsubscribe();
     const taskId = state?.activeTaskId;
-    expect(taskId).toBeTruthy();
     const reopened = new LiveChatKit<FakeChat>({
       ...options,
       taskMemory: { stateStore: { get: () => state, set } },
@@ -252,7 +253,7 @@ describe("LiveChatKit memory lifecycle", () => {
     reopened.chat.messages = parent.chat.messages;
     setLatestRequestSnapshot(reopened, 60_000, 0);
     reopened.chat.finish(assistantMessage());
-    await reopened.drainBackgroundTasksAndSettleMemory();
+    await flushMemoryUpdates();
     expect(store.backgroundTasks()).toHaveLength(1);
     store.updateTaskStatus(taskId ?? "", "failed");
     // Completion writes back without any parent-page drain or update call.
@@ -683,7 +684,7 @@ describe("LiveChatKit memory lifecycle", () => {
     // Above 80% of the 67k auto-compact threshold.
     setLatestRequestSnapshot(chatKit, 60_000, 0);
     chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
+    await vi.waitFor(() => expect(store.backgroundTasks()).toHaveLength(2));
 
     const memoryTasks = await Promise.all(
       store.backgroundTasks().map(async (task) => ({
@@ -731,7 +732,8 @@ describe("LiveChatKit memory lifecycle", () => {
 
     chatKit.chat.messages = threeUserTurns();
     chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
+    await vi.waitFor(() => expect(store.backgroundTasks()).toHaveLength(1));
+    await flushMemoryUpdates();
 
     const memoryTasks = await Promise.all(
       store.backgroundTasks().map(async (task) => ({
@@ -778,12 +780,13 @@ describe("LiveChatKit memory lifecycle", () => {
         totalTokens: 100,
       },
     } as unknown as Message);
-    await chatKit.drainBackgroundTasksAndSettleMemory();
+    await flushMemoryUpdates();
     expect(manager.writeTaskTranscript).not.toHaveBeenCalled();
 
     chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1),
+    );
     const [completed] = manager.writeTaskTranscript.mock.calls[0] as unknown as [
       { transcript: string },
     ];
@@ -796,8 +799,9 @@ describe("LiveChatKit memory lifecycle", () => {
     expect(completed.transcript).toContain('"toolName":"attemptCompletion"');
 
     chatKit.chat.fail(new Error("boom"));
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() =>
+      expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(2),
+    );
     expect(manager.writeTaskTranscript.mock.calls[1]).toMatchObject([
       { taskId: "parent", status: "failed" },
     ]);
@@ -835,8 +839,9 @@ describe("LiveChatKit memory lifecycle", () => {
         totalTokens: 100,
       },
     } as unknown as Message);
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() =>
+      expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(1),
+    );
     expect(subagentTranscript.writeTaskTranscript).toHaveBeenLastCalledWith(
       expect.objectContaining({
         taskId: "child",
@@ -846,8 +851,9 @@ describe("LiveChatKit memory lifecycle", () => {
     );
 
     chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() =>
+      expect(subagentTranscript.writeTaskTranscript).toHaveBeenCalledTimes(2),
+    );
     expect(subagentTranscript.writeTaskTranscript).toHaveBeenLastCalledWith(
       expect.objectContaining({ taskId: "child", status: "completed" }),
     );
@@ -893,8 +899,9 @@ describe("LiveChatKit memory lifecycle", () => {
         }
 
         kit.chat.finish(assistantMessage());
-        await kit.drainBackgroundTasksAndSettleMemory();
-        expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1);
+        await vi.waitFor(() =>
+          expect(manager.writeTaskTranscript).toHaveBeenCalledTimes(1),
+        );
         const [first] = manager.writeTaskTranscript.mock.calls[0];
         if (timing === "after") {
           expect(first.title).toBe("Original");
@@ -915,56 +922,12 @@ describe("LiveChatKit memory lifecycle", () => {
       }
     },
   );
-
-  it("settles task-memory after the background task completes", async () => {
-    const store = new FakeStore([
-      makeTask({
-        id: "parent",
-        status: "pending-model",
-        background: false,
-        title: "Build shared runner",
-      }),
-    ]);
-    const backgroundTaskStateStore = new BackgroundTaskStateStore();
-    let taskMemoryState: TaskMemoryState | undefined;
-    const taskMemoryStateStore = {
-      get: () => taskMemoryState,
-      set: (state: TaskMemoryState) => {
-        taskMemoryState = state;
-      },
-    };
-    const chatKit = new LiveChatKit<FakeChat>({
-      taskId: "parent",
-      store: store as unknown as LiveKitStore,
-      blobStore: {} as BlobStore,
-      chatClass: FakeChat,
-      getters: {
-        getLLM: () => ({ id: "test-model" }) as never,
-      },
-      backgroundJobManager: makeBackgroundJobs(store, backgroundTaskStateStore),
-      taskMemory: {
-        stateStore: taskMemoryStateStore,
-      },
-    });
-
-    chatKit.chat.messages = [userMessage(), assistantMessage()];
-    // Above 80% of the 67k auto-compact threshold.
-    setLatestRequestSnapshot(chatKit, 60_000, 0);
-    chatKit.chat.finish(assistantMessage());
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-
-    const activeTaskId = taskMemoryState?.activeTaskId;
-    expect(activeTaskId).toBeTruthy();
-
-    store.updateTaskStatus(activeTaskId ?? "", "failed");
-
-    await chatKit.drainBackgroundTasksAndSettleMemory();
-    expect(taskMemoryState).toMatchObject({
-      isExtracting: false,
-      activeTaskId: undefined,
-    });
-  });
 });
+
+/** Lets fire-and-forget memory and transcript updates finish. */
+async function flushMemoryUpdates() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 function setLatestRequestSnapshot(
   chatKit: LiveChatKit<FakeChat>,
@@ -1067,7 +1030,6 @@ function makeBackgroundJobs(
   if (!execute) {
     // Scheduling tests drive saved results directly; executor behavior is tested separately.
     vi.spyOn(manager, "start").mockImplementation(() => {});
-    vi.spyOn(manager, "drain").mockResolvedValue(undefined);
     vi.spyOn(manager, "waitForTaskDone").mockImplementation(
       () => new Promise(() => {}),
     );

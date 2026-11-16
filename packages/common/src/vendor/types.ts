@@ -1,11 +1,7 @@
-import z from "zod";
-
-export const ModelOptions = z.object({
-  label: z.string().optional(),
-  contextWindow: z.number().optional(),
-  useToolCallMiddleware: z.boolean().optional(),
-  useReasoningMiddleware: z.boolean().optional(),
-  contentType: z.array(z.string()).optional(),
-});
-
-export type ModelOptions = z.infer<typeof ModelOptions>;
+export type ModelOptions = {
+  label?: string;
+  contextWindow?: number;
+  useToolCallMiddleware?: boolean;
+  useReasoningMiddleware?: boolean;
+  contentType?: string[];
+};

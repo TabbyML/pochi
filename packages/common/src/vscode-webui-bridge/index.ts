@@ -14,7 +14,6 @@ export type { SessionState, WorkspaceState } from "./types/session";
 export type {
   PochiTaskInfo,
   PochiTaskParams,
-  TaskData,
   TaskState,
   TaskStates,
   McpConfigOverride,
@@ -22,12 +21,6 @@ export type {
   TaskPinnedParams,
   QueuedUserInputRecord,
 } from "./types/task";
-export type {
-  VSCodeLmModel,
-  VSCodeLmRequestCallback,
-  VSCodeLmRequestOptions,
-  VSCodeLmRequest,
-} from "./types/models";
 export type { DisplayModel } from "./types/model";
 export type { RuleFile } from "./types/rules";
 export type { CaptureEvent } from "./types/capture-event";

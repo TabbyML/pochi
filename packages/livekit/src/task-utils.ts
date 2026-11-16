@@ -8,7 +8,6 @@ import {
   type Question,
   isUserInputToolPart,
 } from "@getpochi/tools";
-import type { z } from "zod";
 import { defaultCatalog as catalog } from "./livestore";
 import type { LiveKitStore, Message, Task } from "./types";
 
@@ -197,24 +196,6 @@ export function createBackgroundSubagentNotification(
           : JSON.stringify(result),
     ),
   };
-}
-
-export function extractAttemptCompletionResult<T>(
-  store: LiveKitStore,
-  uid: string,
-  schema: z.ZodType<T>,
-): T | undefined {
-  const result = extractRawAttemptCompletionResult(store, uid);
-  if (result === undefined) return undefined;
-
-  const parsed = schema.safeParse(result);
-  if (!parsed.success) {
-    throw new Error(
-      `Invalid attemptCompletion result: ${parsed.error.message}`,
-    );
-  }
-
-  return parsed.data;
 }
 
 function extractRawAttemptCompletionResult(

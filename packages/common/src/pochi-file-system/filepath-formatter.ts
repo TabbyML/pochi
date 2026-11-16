@@ -1,7 +1,6 @@
 const builtInAssetPatterns = [
   /(?:^|\/)\.vscode(?:-[^/]+)?\/extensions\/[^/]+\/assets\/(skills|agents)\/(.+)$/i,
   /(?:^|\/)packages\/vscode\/assets\/(skills|agents)\/(.+)$/i,
-  /(?:^|\/)pochi-builtin-[^/]+\/(skills|agents)\/(.+)$/i,
 ];
 const projectStoragePattern =
   /^projects\/[^/]+\/(memory|transcripts)(?:\/(.*))?$/i;

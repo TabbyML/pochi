@@ -789,7 +789,7 @@ describe("TaskExecutor", () => {
   });
 
   it.each(["completed", "pending-input"])(
-    "processes a new user message despite a stale %s status, like the CLI",
+    "processes a new user message despite a stale %s status",
     async (status) => {
       const store = new FakeLiveKitStore([
         makeTask({ id: "task", status: "pending-model" }),
@@ -822,7 +822,7 @@ describe("TaskExecutor", () => {
   );
 
   it.each(["task-memory", "auto-memory", "auto-memory-dream"] as const)(
-    "reminds a %s task until it calls attemptCompletion, like the CLI",
+    "reminds a %s task until it calls attemptCompletion",
     async (useCase) => {
       const store = new FakeLiveKitStore([
         makeTask({ id: "task", status: "pending-model" }),

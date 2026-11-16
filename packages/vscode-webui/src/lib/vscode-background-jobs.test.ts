@@ -174,7 +174,7 @@ describe("VS Code background command ownership", () => {
     running.value = { [event.backgroundJobId]: { taskId: "child", command: event.command, monitor: event.description, outputFile: event.outputFile, isVisible: false } };
     await store.manager.watchTask("child");
     try {
-      const waiting = store.manager.wait("child", { wakeOnNotifications: true, timeoutMs: 1000 });
+      const waiting = store.manager.wait("child", { wakeOnNotifications: true });
       const completed = notification("command");
       notifications.value = [event, completed];
       expect(await waiting).toBe("notifications");

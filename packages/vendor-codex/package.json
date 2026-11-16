@@ -11,8 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "catalog:",
     "@ai-sdk/provider": "catalog:",
-    "@getpochi/common": "workspace:*",
-    "ai": "catalog:"
+    "@getpochi/common": "workspace:*"
   },
   "exports": {
     ".": "./src/node.ts",

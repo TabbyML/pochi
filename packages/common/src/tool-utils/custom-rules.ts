@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { isFileExists } from "./fs";
@@ -17,7 +18,6 @@ export const GlobalRules = [
 
 export async function collectAllRuleFiles(
   cwd: string,
-  readFileContent: (filePath: string) => Promise<string | null>,
   options: {
     customRuleFiles?: string[];
     includeDefaultRules?: boolean;
@@ -46,7 +46,7 @@ export async function collectAllRuleFiles(
 
     let content = "";
     try {
-      content = (await readFileContent(filePath)) ?? "";
+      content = await readFile(filePath, "utf8");
       // Only add the file to the list after it has been successfully read.
       if (!allRuleFiles.has(filePath)) {
         const label = isGlobal
@@ -88,7 +88,9 @@ export async function collectAllRuleFiles(
   }
 
   return Array.from(allRuleFiles.values());
-} /**
+}
+
+/**
  * Collects custom rules from README.pochi.md and specified custom rule files.
  *
  * @param cwd Current working directory
@@ -98,14 +100,13 @@ export async function collectAllRuleFiles(
  */
 export async function collectCustomRules(
   cwd: string,
-  readFileContent: (filePath: string) => Promise<string | null>,
   customRuleFiles: string[] = [],
   includeDefaultRules = true,
   includeGlobalRules = true,
 ): Promise<string> {
   let rules = "";
 
-  const allRules = await collectAllRuleFiles(cwd, readFileContent, {
+  const allRules = await collectAllRuleFiles(cwd, {
     customRuleFiles,
     includeDefaultRules,
     includeGlobalRules,
@@ -114,7 +115,7 @@ export async function collectCustomRules(
   // Read all rule files
   for (const rule of allRules) {
     try {
-      const content = (await readFileContent(rule.filePath)) ?? "";
+      const content = await readFile(rule.filePath, "utf8");
       if (content.trim().length > 0) {
         rules += `# Rules from ${rule.label}\n${content}\n`;
       }
