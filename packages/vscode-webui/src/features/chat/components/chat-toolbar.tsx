@@ -592,6 +592,13 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
           <SubmitStopButton
             isButtonEnabled={canSubmit || isStopEnabled}
             showStopButton={isRunning}
+            isRetrying={
+              pendingApproval?.name === "retry" &&
+              isRetryApprovalCountingDown(pendingApproval)
+            }
+            ariaLabel={
+              isRunning ? t("toolInvocation.stop") : t("chat.submitTooltip")
+            }
             onSubmit={handleCurrentInputSubmit}
             onStop={handleStop}
           />
@@ -604,6 +611,8 @@ export const ChatToolbar: React.FC<ChatToolbarProps> = ({
 interface SubmitStopButtonProps {
   isButtonEnabled: boolean;
   showStopButton: boolean;
+  isRetrying?: boolean;
+  ariaLabel?: string;
   onSubmit: () => void;
   onStop: () => void;
 }
@@ -611,6 +620,8 @@ interface SubmitStopButtonProps {
 const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
   isButtonEnabled,
   showStopButton,
+  isRetrying = false,
+  ariaLabel,
   onSubmit,
   onStop,
 }) => {
@@ -620,6 +631,9 @@ const SubmitStopButton: React.FC<SubmitStopButtonProps> = ({
       variant="ghost"
       size="icon"
       disabled={!isButtonEnabled}
+      aria-label={ariaLabel}
+      data-testid="chat-submit-stop-button"
+      data-running={showStopButton || isRetrying ? "true" : "false"}
       className="button-focus h-6 w-6 p-0"
       onClick={() => {
         if (showStopButton) {

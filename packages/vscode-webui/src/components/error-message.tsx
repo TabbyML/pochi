@@ -67,7 +67,7 @@ export const ErrorMessage: React.FC<ErrorMessageProps> = ({
 
   return (
     error && (
-      <div className="relative mb-2">
+      <div className="relative mb-2" data-testid="chat-error-message">
         {(() => {
           const content = (
             <div ref={contentRef}>

@@ -198,6 +198,114 @@ export function chatMessages(
   return frame.locator(`[aria-label="chat-message-${role}"]`);
 }
 
+/** Tool invocation containers in a task webview, optionally filtered by tool name. */
+export function toolInvocations(
+  frame: FrameLocator,
+  toolName?: string,
+): Locator {
+  return toolName
+    ? frame.locator(
+        `[data-testid="tool-invocation"][data-tool-name="${toolName}"]`,
+      )
+    : frame.locator('[data-testid="tool-invocation"]');
+}
+
+/**
+ * Wait until the task in `frame` finishes its current turn (`completed` or
+ * `pending-input`) and the toolbar is no longer running or auto-retrying.
+ * Throws immediately if the task settles in `failed`.
+ */
+export async function waitForTaskFinish(
+  frame: FrameLocator,
+  { timeout = 150_000 }: { timeout?: number } = {},
+): Promise<"completed" | "pending-input"> {
+  const deadline = Date.now() + timeout;
+  const container = frame.locator('[data-testid="chat-container"]');
+  const submitStop = frame.locator('[data-testid="chat-submit-stop-button"]');
+  await container.waitFor({ state: "visible", timeout });
+
+  for (;;) {
+    const [status, running, assistantCount] = await Promise.all([
+      container.getAttribute("data-task-status"),
+      submitStop.getAttribute("data-running"),
+      chatMessages(frame, "assistant").count(),
+    ]);
+    if (status === "failed" && running === "false") {
+      const errorLocator = frame.locator('[data-testid="chat-error-message"]');
+      const detail = (await errorLocator.count())
+        ? (await errorLocator.first().innerText()).trim()
+        : "unknown error";
+      throw new Error(`task failed: ${detail}`);
+    }
+    if (
+      assistantCount > 0 &&
+      running === "false" &&
+      (status === "completed" || status === "pending-input")
+    ) {
+      return status;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        `task did not finish within ${timeout}ms (status: ${status ?? "none"}, running: ${running ?? "unknown"}, assistantMessages: ${assistantCount})`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+}
+
+/** Open task `id` from the sidebar task list and wait for its task tab to render. */
+export async function openTask(
+  page: Page,
+  id: string,
+  { timeout = 30_000 }: { timeout?: number } = {},
+): Promise<void> {
+  const row = taskRow(sidebarFrame(page), id);
+  await row.waitFor({ state: "visible", timeout });
+  await row.click({ timeout });
+  await taskTabFrame(page)
+    .locator('[data-testid="chat-container"]')
+    .waitFor({ state: "visible", timeout });
+}
+
+/** Run a VS Code Command Palette entry by title. */
+export async function runCommand(
+  page: Page,
+  title: string,
+  { timeout = 30_000 }: { timeout?: number } = {},
+): Promise<void> {
+  await page.evaluate(
+    "document.activeElement?.tagName === 'IFRAME' && document.activeElement.blur()",
+  );
+  await page.keyboard.press("F1");
+  const input = page.locator(".quick-input-widget .quick-input-box input");
+  await input.waitFor({ state: "visible", timeout });
+  await input.fill(`>${title}`);
+  const row = page
+    .locator(".quick-input-widget .monaco-list-row")
+    .filter({ hasText: title })
+    .first();
+  await row.click({ timeout });
+}
+
+/** Reload the VS Code workbench window and wait until the reloaded workbench is ready. */
+export async function reloadWindow(
+  page: Page,
+  { timeout = 60_000 }: { timeout?: number } = {},
+): Promise<void> {
+  await Promise.all([
+    page.waitForEvent("framenavigated", {
+      predicate: (frame) => frame === page.mainFrame(),
+      timeout,
+    }),
+    runCommand(page, "Developer: Reload Window", { timeout }),
+  ]);
+  await page.waitForLoadState("domcontentloaded", { timeout });
+  await page.locator(".monaco-workbench").waitFor({
+    state: "visible",
+    timeout,
+  });
+}
+
 export type Pochi = {
   page: Page;
   /** Content of the Pochi sidebar webview. */
@@ -212,12 +320,20 @@ export type Pochi = {
   taskIds(): Promise<string[]>;
   /** Wait for a sidebar task row whose id is not in `known`; returns its id. */
   waitForNewTask(known?: string[], timeout?: number): Promise<string>;
+  /** Open task `id` from the sidebar and wait for its task tab to render. */
+  openTask(id: string, options?: { timeout?: number }): Promise<void>;
   /** Toggle archive state of task `id`. */
   archiveTask(id: string): Promise<void>;
   /** Toggle "Archived tasks" in the task list filter. */
   toggleArchivedTasks(): Promise<void>;
   /** User / assistant messages in the visible task tab. */
   messages(role: "user" | "assistant"): Locator;
+  /** Tool invocations in the visible task tab, optionally filtered by tool name. */
+  toolCalls(toolName?: string): Locator;
+  /** Wait until the visible task tab finishes its current turn cleanly. */
+  waitForTaskFinish(options?: {
+    timeout?: number;
+  }): Promise<"completed" | "pending-input">;
   openSidebar(): Promise<void>;
   /** See `selectModel`; `model` matches the name, `group` the group title. */
   selectModel(options?: { model?: string; group?: string }): Promise<void>;
@@ -247,9 +363,13 @@ export function createPochi(page: Page): Pochi {
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
     },
+    openTask: (id, options) => openTask(page, id, options),
     archiveTask: (id) => archiveTask(sidebar, id),
     toggleArchivedTasks: () => toggleArchivedTasks(sidebar),
     messages: (role) => chatMessages(taskTabFrame(page), role),
+    toolCalls: (toolName) => toolInvocations(taskTabFrame(page), toolName),
+    waitForTaskFinish: (options) =>
+      waitForTaskFinish(taskTabFrame(page), options),
     openSidebar: () => openPochiSidebar(page),
     selectModel: (options) => selectModel(sidebar, options),
     sendMessage: (text) => sendMessage(sidebar, text),
