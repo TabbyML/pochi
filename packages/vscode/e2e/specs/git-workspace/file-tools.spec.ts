@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { expect, test } from "../../fixtures";
 
-test.use({ workspace: "git" });
+test.use({ workspace: "git", modelGroup: "Swift" });
 
 test("reads, creates, and edits workspace files with built-in file tools", async ({
   pochi,
@@ -31,25 +31,21 @@ test("reads, creates, and edits workspace files with built-in file tools", async
     ].join("\n"),
   );
 
-  await pochi.selectModel({ group: "Swift" });
   await pochi.sendMessage(
     "Read src/config.ts and src/banner.ts with readFile, create src/summary.txt with writeToFile containing the releaseChannel value from src/config.ts, and update src/banner.ts with applyDiff so enabled is true while keeping the other fields unchanged.",
   );
 
   await pochi.waitForTaskFinish();
 
-  await expect(pochi.toolCalls("readFile").first()).toHaveAttribute(
-    "data-tool-state",
-    "output-available",
-  );
-  await expect(pochi.toolCalls("writeToFile").first()).toHaveAttribute(
-    "data-tool-state",
-    "output-available",
-  );
-  await expect(pochi.toolCalls("applyDiff").first()).toHaveAttribute(
-    "data-tool-state",
-    "output-available",
-  );
+  await expect(
+    pochi.toolCalls("readFile", "output-available").first(),
+  ).toBeVisible();
+  await expect(
+    pochi.toolCalls("writeToFile", "output-available").first(),
+  ).toBeVisible();
+  await expect(
+    pochi.toolCalls("applyDiff", "output-available").first(),
+  ).toBeVisible();
 
   await expect
     .poll(() =>

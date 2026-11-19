@@ -6,7 +6,7 @@ import {
   runCommand,
 } from "../../lib/pochi";
 
-test.use({ workspace: "git" });
+test.use({ workspace: "git", modelGroup: "Swift" });
 
 test("restores the task list and chat messages across a window reload", async ({
   page,
@@ -15,7 +15,6 @@ test("restores the task list and chat messages across a window reload", async ({
   const known = await pochi.taskIds();
   const marker = `PERSIST_${crypto.randomUUID().slice(0, 8)}`;
 
-  await pochi.selectModel({ group: "Swift" });
   await pochi.sendMessage(
     `Acknowledge marker ${marker} in one short sentence without calling any file or shell tools.`,
   );

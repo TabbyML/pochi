@@ -3,7 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { expect, test } from "../../fixtures";
 
-test.use({ workspace: "git" });
+test.use({ workspace: "git", modelGroup: "Swift" });
 
 test("executes a workspace shell command via executeCommand", async ({
   pochi,
@@ -25,17 +25,15 @@ test("executes a workspace shell command via executeCommand", async ({
     ].join("\n"),
   );
 
-  await pochi.selectModel({ group: "Swift" });
   await pochi.sendMessage(
     'Run "node scripts/write-stamp.mjs" in the workspace using executeCommand (do not read or write files directly) and confirm once the command succeeds.',
   );
 
   await pochi.waitForTaskFinish();
 
-  await expect(pochi.toolCalls("executeCommand").first()).toHaveAttribute(
-    "data-tool-state",
-    "output-available",
-  );
+  await expect(
+    pochi.toolCalls("executeCommand", "output-available").first(),
+  ).toBeVisible();
   await expect(pochi.toolCalls("writeToFile")).toHaveCount(0);
 
   await expect

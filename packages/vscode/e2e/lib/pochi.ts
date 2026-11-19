@@ -198,26 +198,33 @@ export function chatMessages(
   return frame.locator(`[aria-label="chat-message-${role}"]`);
 }
 
-/** Tool invocation containers in a task webview, optionally filtered by tool name. */
+/** Tool invocation containers in a task webview, optionally filtered by tool name and state. */
 export function toolInvocations(
   frame: FrameLocator,
   toolName?: string,
+  state?: string,
 ): Locator {
-  return toolName
-    ? frame.locator(
-        `[data-testid="tool-invocation"][data-tool-name="${toolName}"]`,
-      )
-    : frame.locator('[data-testid="tool-invocation"]');
+  let selector = '[data-testid="tool-invocation"]';
+  if (toolName) selector += `[data-tool-name="${toolName}"]`;
+  if (state) selector += `[data-tool-state="${state}"]`;
+  return frame.locator(selector);
 }
 
 /**
  * Wait until the task in `frame` finishes its current turn (`completed` or
  * `pending-input`) and the toolbar is no longer running or auto-retrying.
  * Throws immediately if the task settles in `failed`.
+ *
+ * For follow-up turns in an existing task, pass `minAssistantMessages` (e.g.
+ * previous assistant message count + 1) so this does not return on the previous
+ * turn's settled state.
  */
 export async function waitForTaskFinish(
   frame: FrameLocator,
-  { timeout = 150_000 }: { timeout?: number } = {},
+  {
+    timeout = 150_000,
+    minAssistantMessages = 1,
+  }: { timeout?: number; minAssistantMessages?: number } = {},
 ): Promise<"completed" | "pending-input"> {
   const deadline = Date.now() + timeout;
   const container = frame.locator('[data-testid="chat-container"]');
@@ -238,7 +245,7 @@ export async function waitForTaskFinish(
       throw new Error(`task failed: ${detail}`);
     }
     if (
-      assistantCount > 0 &&
+      assistantCount >= minAssistantMessages &&
       running === "false" &&
       (status === "completed" || status === "pending-input")
     ) {
@@ -263,7 +270,7 @@ export async function openTask(
   await row.waitFor({ state: "visible", timeout });
   await row.click({ timeout });
   await taskTabFrame(page)
-    .locator('[data-testid="chat-container"]')
+    .locator(`[data-testid="chat-container"][data-task-id="${id}"]`)
     .waitFor({ state: "visible", timeout });
 }
 
@@ -280,9 +287,12 @@ export async function runCommand(
   const input = page.locator(".quick-input-widget .quick-input-box input");
   await input.waitFor({ state: "visible", timeout });
   await input.fill(`>${title}`);
+  const exactLabel = page.locator(".label-name", {
+    hasText: new RegExp(`^${escapeRegExp(title)}$`),
+  });
   const row = page
     .locator(".quick-input-widget .monaco-list-row")
-    .filter({ hasText: title })
+    .filter({ has: exactLabel })
     .first();
   await row.click({ timeout });
 }
@@ -328,11 +338,12 @@ export type Pochi = {
   toggleArchivedTasks(): Promise<void>;
   /** User / assistant messages in the visible task tab. */
   messages(role: "user" | "assistant"): Locator;
-  /** Tool invocations in the visible task tab, optionally filtered by tool name. */
-  toolCalls(toolName?: string): Locator;
+  /** Tool invocations in the visible task tab, optionally filtered by tool name and state. */
+  toolCalls(toolName?: string, state?: string): Locator;
   /** Wait until the visible task tab finishes its current turn cleanly. */
   waitForTaskFinish(options?: {
     timeout?: number;
+    minAssistantMessages?: number;
   }): Promise<"completed" | "pending-input">;
   openSidebar(): Promise<void>;
   /** See `selectModel`; `model` matches the name, `group` the group title. */
@@ -367,7 +378,8 @@ export function createPochi(page: Page): Pochi {
     archiveTask: (id) => archiveTask(sidebar, id),
     toggleArchivedTasks: () => toggleArchivedTasks(sidebar),
     messages: (role) => chatMessages(taskTabFrame(page), role),
-    toolCalls: (toolName) => toolInvocations(taskTabFrame(page), toolName),
+    toolCalls: (toolName, state) =>
+      toolInvocations(taskTabFrame(page), toolName, state),
     waitForTaskFinish: (options) =>
       waitForTaskFinish(taskTabFrame(page), options),
     openSidebar: () => openPochiSidebar(page),

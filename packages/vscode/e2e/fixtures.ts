@@ -20,6 +20,8 @@ type TestFixtures = {
   workspace: WorkspaceKind;
   /** Model to select, matched against the model name; default: keep or pick the first one. */
   model: string | undefined;
+  /** Model group to select (e.g. "Swift") when `model` / `POCHI_E2E_MODEL` is not set. */
+  modelGroup: string | undefined;
   /** Folder opened in VS Code (undefined for `none`). */
   workspacePath: string | undefined;
   electronApp: ElectronApplication;
@@ -37,6 +39,7 @@ type WorkerFixtures = {
 export const test = base.extend<TestFixtures, WorkerFixtures>({
   workspace: ["git", { option: true }],
   model: [process.env.POCHI_E2E_MODEL || undefined, { option: true }],
+  modelGroup: [undefined, { option: true }],
 
   vscodeExecutable: [
     // biome-ignore lint/correctness/noEmptyPattern: Playwright requires object destructuring
@@ -128,11 +131,16 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     await use(page);
   },
 
-  pochi: async ({ page, model, workspace }, use) => {
+  pochi: async ({ page, model, modelGroup, workspace }, use) => {
     const pochi = createPochi(page);
     await pochi.openSidebar();
     // Without a folder the sidebar only asks to open one.
-    if (workspace !== "none") await pochi.selectModel({ model });
+    if (workspace !== "none") {
+      await pochi.selectModel({
+        model,
+        group: model ? undefined : modelGroup,
+      });
+    }
     await use(pochi);
   },
 });
