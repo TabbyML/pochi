@@ -8,10 +8,64 @@ import {
   detectLivekitDrift,
   evaluateCiGates,
   generateReleaseNotes,
+  parseCliArgs,
   parseVscodeVersion,
+  requiredChecksForMode,
   scanCompatibilityRisks,
   workflowSupportsTagVersion,
 } from "./lib.mjs";
+
+test("parseCliArgs accepts --key=value and flags before positionals", () => {
+  const parsed = parseCliArgs([
+    "cut",
+    "--dry-run",
+    "prerelease",
+    "--target=abc123",
+    "--version",
+    "0.85.1",
+  ]);
+  assert.equal(parsed.help, false);
+  assert.equal(parsed.command, "cut");
+  assert.deepEqual(parsed.args, ["prerelease"]);
+  assert.equal(parsed.flags["dry-run"], true);
+  assert.equal(parsed.flags.target, "abc123");
+  assert.equal(parsed.flags.version, "0.85.1");
+
+  assert.equal(parseCliArgs([]).help, true);
+  assert.equal(parseCliArgs(["cut", "--help"]).help, true);
+});
+
+test("parseCliArgs rejects typos, unsupported options, and missing values", () => {
+  // A typo must never fall through to a real tag push.
+  assert.throws(() => parseCliArgs(["cut", "prerelease", "--dryrun"]));
+  assert.throws(
+    () => parseCliArgs(["status", "--dry-run"]),
+    /not supported by 'status'/,
+  );
+  assert.throws(() => parseCliArgs(["cut", "prerelease", "--target"]));
+  assert.throws(() =>
+    parseCliArgs(["cut", "prerelease", "--target", "--dry-run"]),
+  );
+  assert.throws(() => parseCliArgs(["cut", "--dry-run=true", "prerelease"]));
+  assert.throws(
+    () => parseCliArgs(["cut", "prerelease", "extra"]),
+    /Unexpected argument/,
+  );
+  assert.throws(() => parseCliArgs(["publish"]), /Unknown command/);
+});
+
+test("requiredChecksForMode only gates hotfix and rollback on test-integration", () => {
+  assert.deepEqual(requiredChecksForMode("prerelease"), [
+    "pre-push",
+    "test-integration",
+  ]);
+  assert.deepEqual(requiredChecksForMode("promote"), [
+    "pre-push",
+    "test-integration",
+  ]);
+  assert.deepEqual(requiredChecksForMode("hotfix"), ["test-integration"]);
+  assert.deepEqual(requiredChecksForMode("rollback"), ["test-integration"]);
+});
 
 test("parseVscodeVersion classifies odd minor as prerelease and even minor as stable", () => {
   assert.deepEqual(parseVscodeVersion("vscode@0.84.0"), {
@@ -33,6 +87,9 @@ test("parseVscodeVersion classifies odd minor as prerelease and even minor as st
   // Marketplace rejects semver prerelease suffixes like -dev / -rc.1
   assert.equal(parseVscodeVersion("0.85.0-dev"), null);
   assert.equal(parseVscodeVersion("invalid"), null);
+  // Leading zeros are rejected (the workflow's shell math would read them as octal).
+  assert.equal(parseVscodeVersion("0.08.0"), null);
+  assert.equal(parseVscodeVersion("vscode@00.84.0"), null);
 });
 
 test("computeReleaseState calculates next versions when latest release is even stable", () => {
@@ -50,6 +107,7 @@ test("computeReleaseState calculates next versions when latest release is even s
     prerelease: "0.85.0",
     promote: "0.86.0",
     rollback: "0.84.1",
+    hotfix: "0.84.1",
   });
 });
 
@@ -67,6 +125,7 @@ test("computeReleaseState increments patch during an active odd-minor prerelease
     prerelease: "0.85.2",
     promote: "0.86.0",
     rollback: "0.84.1",
+    hotfix: "0.84.1",
   });
 });
 

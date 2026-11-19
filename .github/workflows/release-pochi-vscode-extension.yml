@@ -47,8 +47,8 @@ jobs:
             version=$(bun -e 'import pkg from "./packages/vscode/package.json"; console.log(pkg.version);')
           fi
 
-          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Release version must be strict major.minor.patch integers for VS Marketplace (got '$version'). Push a vscode@X.Y.Z tag or pass workflow_dispatch input 'version'."
+          if ! echo "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::Release version must be strict major.minor.patch integers without leading zeros for VS Marketplace (got '$version'). Push a vscode@X.Y.Z tag or pass workflow_dispatch input 'version'."
             exit 1
           fi
 
@@ -66,7 +66,7 @@ jobs:
           # Determine if release should be marked as pre-release (odd minor = pre-release, even minor = stable)
           is_prerelease=false
           minor=$(echo "$version" | cut -d '.' -f 2)
-          if [ $((minor % 2)) -eq 1 ]; then
+          if [ $((10#$minor % 2)) -eq 1 ]; then
             is_prerelease=true
             echo "This is a pre-release version: $version (odd minor version detected)"
           else

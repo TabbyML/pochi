@@ -1,10 +1,101 @@
 // Pure helpers for Pochi VS Code rolling release management.
 // Run unit tests with: node --test .agents/skills/release-vscode/scripts/release.test.mjs
 
-const SEMVER_RE = /^(\d+)\.(\d+)\.(\d+)$/;
+import { parseArgs } from "node:util";
+
+// Strict `major.minor.patch` integers without leading zeros (VS Marketplace
+// rejects semver pre-release suffixes, and leading zeros break shell math).
+const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const TAG_PREFIX = "vscode@";
 
 export const REQUIRED_CHECK_NAMES = ["pre-push", "test-integration"];
+
+// `ci.yml` (`pre-push`) only runs on `main` and PRs to `main`, while
+// `test-integration.yml` also runs on `release-*` branches. Hotfix branches and
+// rollback targets (re-tags of already released commits) therefore can only be
+// gated on `test-integration`.
+export const HOTFIX_REQUIRED_CHECK_NAMES = ["test-integration"];
+
+export const CUT_MODES = ["prerelease", "promote", "rollback", "hotfix"];
+
+export function requiredChecksForMode(mode) {
+  return mode === "hotfix" || mode === "rollback"
+    ? HOTFIX_REQUIRED_CHECK_NAMES
+    : REQUIRED_CHECK_NAMES;
+}
+
+const CLI_OPTIONS = {
+  help: { type: "boolean", short: "h" },
+  target: { type: "string" },
+  version: { type: "string" },
+  from: { type: "string" },
+  to: { type: "string" },
+  json: { type: "boolean" },
+  wait: { type: "boolean" },
+  force: { type: "boolean" },
+  "find-green": { type: "boolean" },
+  "no-fetch": { type: "boolean" },
+  "dry-run": { type: "boolean" },
+  "no-watch": { type: "boolean" },
+  "skip-livekit-check": { type: "boolean" },
+  "allow-unverified-ci": { type: "boolean" },
+};
+
+const COMMAND_OPTIONS = {
+  status: ["target", "find-green", "no-fetch", "json"],
+  notes: ["from", "to", "version"],
+  "deploy-livekit": ["wait", "dry-run"],
+  cut: [
+    "target",
+    "version",
+    "dry-run",
+    "no-watch",
+    "no-fetch",
+    "skip-livekit-check",
+    "allow-unverified-ci",
+    "force",
+  ],
+};
+
+const COMMAND_MAX_ARGS = {
+  status: 0,
+  notes: 0,
+  "deploy-livekit": 0,
+  cut: 1,
+};
+
+/**
+ * Strictly parse CLI arguments. Unknown options, options not supported by the
+ * command, missing option values, and extra positionals all throw, so a typo
+ * such as `--dryrun` can never fall through to a real tag push.
+ */
+export function parseCliArgs(argv) {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    options: CLI_OPTIONS,
+    allowPositionals: true,
+    strict: true,
+  });
+  const [command = null, ...args] = positionals;
+  if (values.help || !command) {
+    return { command, args, flags: values, help: true };
+  }
+  const allowed = COMMAND_OPTIONS[command];
+  if (!allowed) {
+    throw new Error(`Unknown command '${command}'. Run with --help for usage.`);
+  }
+  for (const key of Object.keys(values)) {
+    if (!allowed.includes(key)) {
+      throw new Error(`Option '--${key}' is not supported by '${command}'.`);
+    }
+  }
+  if (args.length > COMMAND_MAX_ARGS[command]) {
+    throw new Error(
+      `Unexpected argument(s) for '${command}': ${args.join(" ")}`,
+    );
+  }
+  return { command, args, flags: values, help: false };
+}
 
 export const LIVEKIT_WATCHED_PREFIXES = [
   "packages/livekit/",
@@ -45,7 +136,8 @@ export function compareVersions(a, b) {
 
 /**
  * Given all `{ tag, commitSha }` records, compute current release state and
- * next target versions for `prerelease`, `promote`, and `rollback`.
+ * next target versions for `prerelease`, `promote`, `rollback`, and `hotfix`
+ * (both of the latter publish the next Stable patch).
  */
 export function computeReleaseState(tagRecords) {
   const parsed = [];
@@ -95,6 +187,7 @@ export function computeReleaseState(tagRecords) {
       prerelease: nextPrerelease,
       promote: nextPromote,
       rollback: nextRollback,
+      hotfix: nextRollback,
     },
   };
 }

@@ -5,23 +5,31 @@
 //   node .agents/skills/release-vscode/scripts/release.mjs status [--target <ref>] [--find-green] [--no-fetch] [--json]
 //   node .agents/skills/release-vscode/scripts/release.mjs notes  --from <tag> [--to <ref>] [--version <X.Y.Z>]
 //   node .agents/skills/release-vscode/scripts/release.mjs deploy-livekit [--wait] [--dry-run]
-//   node .agents/skills/release-vscode/scripts/release.mjs cut <prerelease|promote|rollback>
-//        [--target <ref>] [--version <X.Y.Z>] [--dry-run] [--no-watch]
+//   node .agents/skills/release-vscode/scripts/release.mjs cut <prerelease|promote|rollback|hotfix>
+//        [--target <ref>] [--version <X.Y.Z>] [--dry-run] [--no-watch] [--no-fetch]
 //        [--skip-livekit-check] [--allow-unverified-ci] [--force]
+//
+// Options are parsed strictly: unknown or misspelled options are rejected.
 
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {
+  CUT_MODES,
   computeReleaseState,
   detectLivekitDrift,
   evaluateCiGates,
   generateReleaseNotes,
+  parseCliArgs,
   parseVscodeVersion,
+  requiredChecksForMode,
   scanCompatibilityRisks,
   workflowSupportsTagVersion,
 } from "./lib.mjs";
+
+const RELEASE_WORKFLOW_PATH =
+  ".github/workflows/release-pochi-vscode-extension.yml";
 
 const REPO = process.env.POCHI_GITHUB_REPO || "TabbyML/pochi";
 
@@ -36,27 +44,6 @@ function run(cmd, args, { allowFail = false } = {}) {
     const stderr = err.stderr ? String(err.stderr).trim() : err.message;
     throw new Error(`${cmd} ${args.join(" ")} failed: ${stderr}`);
   }
-}
-
-function parseFlags(argv) {
-  const positional = [];
-  const flags = {};
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (!arg.startsWith("--")) {
-      positional.push(arg);
-      continue;
-    }
-    const key = arg.slice(2);
-    const next = argv[i + 1];
-    if (next !== undefined && !next.startsWith("--")) {
-      flags[key] = next;
-      i++;
-    } else {
-      flags[key] = true;
-    }
-  }
-  return { positional, flags };
 }
 
 function fetchOrigin() {
@@ -117,11 +104,28 @@ function getChangedFilesBetween(fromRef, toSha) {
     run("git", ["merge-base", `${fromRef}^{commit}`, toSha], {
       allowFail: true,
     }) || `${fromRef}^{commit}`;
-  const out = run("git", ["diff", "--name-only", `${base}..${toSha}`], {
-    allowFail: true,
-  });
+  // Throws when either side is missing locally, so callers never mistake an
+  // unresolvable diff for "no changes".
+  const out = run("git", ["diff", "--name-only", `${base}..${toSha}`]);
   if (!out) return [];
   return out.split("\n").filter(Boolean);
+}
+
+function hasCommit(ref) {
+  return (
+    run("git", ["cat-file", "-e", `${ref}^{commit}`], { allowFail: true }) !==
+    null
+  );
+}
+
+/**
+ * Make sure `sha` exists locally. `fetchOrigin()` only fetches `main` and tags,
+ * so commits from other branches or shallow clones may need an explicit fetch.
+ */
+function ensureCommitAvailable(sha) {
+  if (hasCommit(sha)) return true;
+  run("git", ["fetch", "origin", sha, "--quiet"], { allowFail: true });
+  return hasCommit(sha);
 }
 
 function getCheckRuns(sha) {
@@ -129,7 +133,7 @@ function getCheckRuns(sha) {
     "gh",
     [
       "api",
-      `repos/${REPO}/commits/${sha}/check-runs`,
+      `repos/${REPO}/commits/${sha}/check-runs?per_page=100`,
       "--jq",
       ".check_runs | map({name, status, conclusion, html_url})",
     ],
@@ -183,14 +187,48 @@ function getLivekitStatus(targetSha, fallbackBaseTag) {
     }
   }
   const compareBase = lastDeploy?.headSha || fallbackBaseTag;
-  const changed = compareBase
-    ? getChangedFilesBetween(compareBase, targetSha)
-    : [];
+  // Fail closed: if the drift cannot be computed, report that a deploy may be
+  // needed instead of claiming the worker is up to date.
+  const unknown = (reason) => ({
+    lastDeploy,
+    compareBase,
+    unknown: true,
+    reason,
+    needsDeploy: true,
+    packages: [],
+    fileCount: 0,
+    sampleFiles: [],
+  });
+  if (!compareBase) {
+    return unknown("no previous deploy-livekit-cf run or release tag found");
+  }
+  if (!ensureCommitAvailable(compareBase)) {
+    return unknown(
+      `cannot resolve last deploy commit ${compareBase.slice(0, 7)} locally`,
+    );
+  }
+  let changed;
+  try {
+    changed = getChangedFilesBetween(compareBase, targetSha);
+  } catch (err) {
+    return unknown(err.message);
+  }
   return {
     lastDeploy,
     compareBase,
+    unknown: false,
+    reason: null,
     ...detectLivekitDrift(changed),
   };
+}
+
+function describeLivekitDrift(livekit) {
+  if (livekit.unknown) {
+    return `UNKNOWN (${livekit.reason}); treat as NEEDS DEPLOY`;
+  }
+  return livekit.needsDeploy
+    ? `NEEDS DEPLOY (${livekit.fileCount} files in ${livekit.packages.join(", ")})`
+    : "up to date";
 }
 
 function sleepMs(ms) {
@@ -262,6 +300,11 @@ function cmdStatus(flags) {
       `  rollback   -> vscode@${state.nextVersions.rollback} (restores ${state.previousStable.tag} @ ${state.previousStable.commitSha.slice(0, 7)})`,
     );
   }
+  if (state.nextVersions.hotfix) {
+    console.log(
+      `  hotfix     -> vscode@${state.nextVersions.hotfix} (requires --target <hotfix branch>)`,
+    );
+  }
 
   console.log("");
   console.log(
@@ -279,9 +322,7 @@ function cmdStatus(flags) {
   }
 
   console.log("");
-  console.log(
-    `Cloudflare livekit-cf: ${livekit.needsDeploy ? `NEEDS DEPLOY (${livekit.fileCount} files in ${livekit.packages.join(", ")})` : "up to date"}`,
-  );
+  console.log(`Cloudflare livekit-cf: ${describeLivekitDrift(livekit)}`);
   if (livekit.lastDeploy) {
     console.log(
       `  Last deploy: ${livekit.lastDeploy.headSha.slice(0, 7)} at ${livekit.lastDeploy.createdAt}`,
@@ -396,7 +437,17 @@ function cmdDeployLivekit(flags) {
     }
   }
 
-  if (flags.wait && runId) {
+  if (!runId) {
+    const message =
+      "Could not find the triggered deploy-livekit-cf run within 30s. Check GitHub Actions manually.";
+    // With --wait the caller relies on the deploy having finished, so never
+    // exit 0 without having watched the run.
+    if (flags.wait) throw new Error(message);
+    console.warn(`Warning: ${message}`);
+    return;
+  }
+
+  if (flags.wait) {
     const res = spawnSync(
       "gh",
       ["run", "watch", String(runId), "--repo", REPO, "--exit-status"],
@@ -409,9 +460,9 @@ function cmdDeployLivekit(flags) {
 }
 
 function cmdCut(mode, flags) {
-  if (!["prerelease", "promote", "rollback"].includes(mode)) {
+  if (!CUT_MODES.includes(mode)) {
     throw new Error(
-      `Unknown cut mode '${mode}'. Expected prerelease | promote | rollback`,
+      `Unknown cut mode '${mode}'. Expected ${CUT_MODES.join(" | ")}`,
     );
   }
   if (!flags["no-fetch"]) fetchOrigin();
@@ -467,11 +518,19 @@ function cmdCut(mode, flags) {
       );
     }
     notesBaseTag = state.latestStable?.tag ?? state.latestTag?.tag ?? null;
-  } else {
-    // rollback
+  } else if (mode === "rollback") {
+    // Rollback only re-publishes the build of an existing release tag. Shipping
+    // new commits (e.g. a cherry-picked fix) must go through `cut hotfix` so the
+    // release notes, livekit drift, and compatibility checks cover them.
     if (typeof flags.target === "string") {
-      targetSha = resolveCommit(flags.target);
-      rollbackFromTag = flags.target;
+      const targetInfo = parseVscodeVersion(flags.target);
+      if (!targetInfo || !run("git", ["tag", "-l", targetInfo.tag])) {
+        throw new Error(
+          `Rollback --target must be an existing vscode@X.Y.Z release tag (got '${flags.target}'). To ship new commits, use 'cut hotfix --target <ref>'.`,
+        );
+      }
+      targetSha = resolveCommit(targetInfo.tag);
+      rollbackFromTag = targetInfo.tag;
     } else if (state.previousStable) {
       targetSha = state.previousStable.commitSha;
       rollbackFromTag = state.previousStable.tag;
@@ -479,20 +538,43 @@ function cmdCut(mode, flags) {
       throw new Error("No previous Stable tag found to roll back to.");
     }
     notesBaseTag = state.latestStable?.tag ?? null;
-
-    const wfContent = run(
-      "git",
-      [
-        "show",
-        `${targetSha}:.github/workflows/release-pochi-vscode-extension.yml`,
-      ],
-      { allowFail: true },
-    );
-    if (!workflowSupportsTagVersion(wfContent ?? "")) {
+  } else {
+    // hotfix: ship a branch based on the latest Stable tag with cherry-picked fixes.
+    if (typeof flags.target !== "string") {
       throw new Error(
-        `Rollback target ${targetSha.slice(0, 7)} (${rollbackFromTag}) predates dynamic tag-version injection in release-pochi-vscode-extension.yml. Re-tagging it would re-read its committed package.json version. Use a temporary hotfix branch instead.`,
+        "Mode 'hotfix' requires --target <ref> (e.g. origin/release-vscode-0-86).",
       );
     }
+    if (!state.latestStable) {
+      throw new Error(
+        "No Stable tag found to base the hotfix release notes on.",
+      );
+    }
+    targetSha = resolveCommit(flags.target);
+    notesBaseTag = state.latestStable.tag;
+    if (
+      getCommitsBetween(notesBaseTag, targetSha).length === 0 &&
+      !flags.force
+    ) {
+      throw new Error(
+        `No new commits between ${notesBaseTag} and ${flags.target}. Pass --force to tag anyway.`,
+      );
+    }
+  }
+
+  // Every tag push runs the release workflow as committed at the tagged commit.
+  // Targets that predate tag-version injection would publish the version
+  // hardcoded in their packages/vscode/package.json instead of the tag version.
+  const workflowContent = run(
+    "git",
+    ["show", `${targetSha}:${RELEASE_WORKFLOW_PATH}`],
+    { allowFail: true },
+  );
+  if (!workflowSupportsTagVersion(workflowContent ?? "")) {
+    const label = rollbackFromTag ?? flags.target ?? "target";
+    throw new Error(
+      `Target ${targetSha.slice(0, 7)} (${label}) predates tag-version injection in ${RELEASE_WORKFLOW_PATH}; pushing ${versionInfo.tag} would publish the version hardcoded in its packages/vscode/package.json. Use a target that contains the workflow change (for a legacy Stable, cut a hotfix branch from it and cherry-pick the workflow change).`,
+    );
   }
 
   const existingLocal = run("git", ["tag", "-l", versionInfo.tag]);
@@ -505,7 +587,8 @@ function cmdCut(mode, flags) {
     throw new Error(`Tag ${versionInfo.tag} already exists!`);
   }
 
-  const ciGate = evaluateCiGates(getCheckRuns(targetSha));
+  const requiredChecks = requiredChecksForMode(mode);
+  const ciGate = evaluateCiGates(getCheckRuns(targetSha), requiredChecks);
   if (!ciGate.ok && !flags["allow-unverified-ci"]) {
     const summary = ciGate.results
       .map((r) => `${r.name}=${r.state}`)
@@ -519,7 +602,7 @@ function cmdCut(mode, flags) {
     const livekit = getLivekitStatus(targetSha, notesBaseTag);
     if (livekit.needsDeploy && !flags["skip-livekit-check"]) {
       throw new Error(
-        `Cloudflare livekit-cf has undeployed changes (${livekit.packages.join(", ")}). Run 'release.mjs deploy-livekit --wait' first, or pass --skip-livekit-check.`,
+        `Cloudflare livekit-cf: ${describeLivekitDrift(livekit)}. Run 'release.mjs deploy-livekit --wait' first, or pass --skip-livekit-check.`,
       );
     }
   }
@@ -547,7 +630,7 @@ function cmdCut(mode, flags) {
   console.log(`Target SHA   : ${targetSha}`);
   console.log(`Notes Base   : ${notesBaseTag ?? "none"}`);
   console.log(
-    `CI Gates     : ${ciGate.ok ? "PASS" : "BYPASSED (--allow-unverified-ci)"}`,
+    `CI Gates     : ${ciGate.ok ? "PASS" : "BYPASSED (--allow-unverified-ci)"} (${requiredChecks.join(", ")})`,
   );
   if (risks.length > 0) {
     console.log("Risk Warnings:");
@@ -577,7 +660,15 @@ function cmdCut(mode, flags) {
   console.log(
     `Created annotated tag ${versionInfo.tag} -> ${targetSha.slice(0, 7)}`,
   );
-  run("git", ["push", "origin", versionInfo.tag]);
+  try {
+    run("git", ["push", "origin", versionInfo.tag]);
+  } catch (err) {
+    // Drop the local tag so a retry is not blocked by "already exists".
+    run("git", ["tag", "-d", versionInfo.tag], { allowFail: true });
+    throw new Error(
+      `${err.message}\nDeleted local tag ${versionInfo.tag}; fix the push problem and rerun.`,
+    );
+  }
   console.log(`Pushed ${versionInfo.tag} to origin.`);
 
   if (flags["no-watch"]) return;
@@ -662,9 +753,8 @@ function cmdCut(mode, flags) {
 }
 
 function main() {
-  const { positional, flags } = parseFlags(process.argv.slice(2));
-  const cmd = positional[0];
-  if (!cmd || flags.help) {
+  const { command, args, flags, help } = parseCliArgs(process.argv.slice(2));
+  if (help) {
     console.log(
       [
         "Usage: node .agents/skills/release-vscode/scripts/release.mjs <command> [options]",
@@ -673,18 +763,18 @@ function main() {
         "  status [--target <ref>] [--find-green] [--no-fetch] [--json]",
         "  notes --from <tag> [--to <ref>] [--version <X.Y.Z>]",
         "  deploy-livekit [--wait] [--dry-run]",
-        "  cut <prerelease|promote|rollback> [--target <ref>] [--version <X.Y.Z>] [--dry-run]",
+        "  cut <prerelease|promote|rollback|hotfix> [--target <ref>] [--version <X.Y.Z>]",
+        "      [--dry-run] [--no-watch] [--no-fetch] [--skip-livekit-check]",
+        "      [--allow-unverified-ci] [--force]",
       ].join("\n"),
     );
     return;
   }
 
-  if (cmd === "status") return cmdStatus(flags);
-  if (cmd === "notes") return cmdNotes(flags);
-  if (cmd === "deploy-livekit") return cmdDeployLivekit(flags);
-  if (cmd === "cut") return cmdCut(positional[1], flags);
-
-  throw new Error(`Unknown command '${cmd}'. Run with --help for usage.`);
+  if (command === "status") return cmdStatus(flags);
+  if (command === "notes") return cmdNotes(flags);
+  if (command === "deploy-livekit") return cmdDeployLivekit(flags);
+  if (command === "cut") return cmdCut(args[0], flags);
 }
 
 try {

@@ -20,6 +20,8 @@ All deterministic checks and calculations live in `.agents/skills/release-vscode
 R="node .agents/skills/release-vscode/scripts/release.mjs"
 ```
 
+Options are parsed strictly: unknown, misspelled, or unsupported options (e.g. `--dryrun`) abort with an error instead of being ignored. Both `--target abc` and `--target=abc` work, and options may appear before or after the `cut` mode.
+
 ---
 
 ## 1. Check Status & Readiness (`status`)
@@ -32,10 +34,10 @@ $R status --find-green
 
 Review the 4 sections it prints:
 
-1. **Current tags & next calculated versions** (`prerelease`, `promote`, `rollback`).
+1. **Current tags & next calculated versions** (`prerelease`, `promote`, `rollback`, `hotfix`).
 2. **CI Gates on target SHA**: BOTH `pre-push` (`ci.yml`) and `test-integration` (`test-integration.yml`) must be `OK`.
    - If `origin/main` HEAD is still running checks, either wait (`gh run watch`) or pass `--target <nearest-green-sha>` reported by `--find-green`.
-3. **Cloudflare `livekit-cf` drift**: if `packages/livekit/`, `packages/livekit-cf/`, or `packages/vscode-webui/` changed since the last `deploy-livekit-cf.yml` run, deploy `livekit-cf` before cutting the extension release (Step 2).
+3. **Cloudflare `livekit-cf` drift**: if `packages/livekit/`, `packages/livekit-cf/`, or `packages/vscode-webui/` changed since the last `deploy-livekit-cf.yml` run, deploy `livekit-cf` before cutting the extension release (Step 2). `UNKNOWN` means the drift could not be computed (e.g. the last deploy commit is not available locally); treat it as `NEEDS DEPLOY`.
 4. **Compatibility & Rollback Warnings**:
    - `livestore-schema`: inspect the diff in `packages/livekit/src/livestore/` to confirm changes are additive/backward-compatible (if we have to roll the extension back, users' local SQLite DBs already have the new events/tables).
    - `backend-contract`: if `packages/vendor-pochi/` or server API contracts changed, confirm with the user that `ragdoll` production server is already deployed.
@@ -51,7 +53,7 @@ When `status` reports `Cloudflare livekit-cf: NEEDS DEPLOY`:
 $R deploy-livekit --wait
 ```
 
-This dispatches `.github/workflows/deploy-livekit-cf.yml` on `main` and waits (~1m20s) for completion so Share links and LiveStore sync match the upcoming extension build. Pass `--skip-livekit-check` to `cut` only if the user explicitly confirms those changes do not require worker redeployment.
+This dispatches `.github/workflows/deploy-livekit-cf.yml` on `main` and waits (~1m20s) for completion so Share links and LiveStore sync match the upcoming extension build. With `--wait`, the command fails if it cannot find the triggered run, so a zero exit code always means the deploy succeeded. Pass `--skip-livekit-check` to `cut` only if the user explicitly confirms those changes do not require worker redeployment.
 
 ---
 
@@ -95,6 +97,10 @@ Once the active Pre-release (`vscode@0.85.x`) has been dogfooded without blocker
 
 Marketplaces do not allow unpublishing or overwriting an existing version number; recovery always publishes a higher `patch` version on the Stable channel (`vscode@0.XX.(Y+1)`).
 
+For every `cut` mode, `release.mjs` verifies (`workflowSupportsTagVersion`) that the target commit contains the tag-version injection in `.github/workflows/release-pochi-vscode-extension.yml`. A tag push runs the workflow as committed at the tagged commit, so targets that predate it (all tags before `0.85.0`, such as `vscode@0.84.0`) would publish the version hardcoded in their `package.json`, and they are blocked.
+
+`rollback` and `hotfix` gate only on `test-integration`: `ci.yml` (`pre-push`) runs only on `main` and PRs to `main`, so release-branch commits never get a `pre-push` run.
+
 ### Option A: Fast Re-tag Rollback (Preferred — ~2.5 min)
 Re-packages the previous known-good Stable commit SHA as the next Stable patch version:
 
@@ -103,7 +109,8 @@ $R cut rollback --dry-run
 $R cut rollback
 ```
 
-- **Important**: `release.mjs` automatically verifies (`workflowSupportsTagVersion`) that the rollback target commit contains the tag-version injection in `.github/workflows/release-pochi-vscode-extension.yml`. Rolling back to legacy tags prior to `0.85.0` (such as `vscode@0.84.0`) will be blocked by this guard because those commits hardcoded `package.json` version; use Option B for legacy targets.
+- `--target` must be an existing `vscode@X.Y.Z` release tag (defaults to the previous Stable). To ship any new commit, use `cut hotfix` (Option B).
+- Legacy tags (before `0.85.0`) are blocked by the workflow guard above. Restore them with Option B: base a hotfix branch on the legacy tag and cherry-pick the release workflow change.
 - Before rolling back across a `livestore-schema` change, prefer a forward hotfix (Option B) if local LiveStore state was migrated incompatibly.
 
 ### Option B: Targeted Hotfix Branch (Only when `main` has unshippable changes)
@@ -119,6 +126,9 @@ git push -u origin release-vscode-0-86
 Wait for `test-integration.yml` on `release-vscode-0-86` to turn green, then tag and publish:
 
 ```bash
-$R cut rollback --target origin/release-vscode-0-86 --version 0.86.1 --allow-unverified-ci
+$R cut hotfix --target origin/release-vscode-0-86 --dry-run
+$R cut hotfix --target origin/release-vscode-0-86
 ```
+
+`cut hotfix` publishes the next Stable patch (`vscode@0.86.1` by default). Its release notes list the cherry-picked commits since the latest Stable tag, and it runs the same `livekit-cf` drift and compatibility checks as `promote`. If `livekit-cf` was already deployed from a newer `main`, `--skip-livekit-check` is usually appropriate; confirm with the user first.
 *(Delete the temporary `release-vscode-0-86` branch after the fix is also on `main` and superseded by the next regular release.)*
