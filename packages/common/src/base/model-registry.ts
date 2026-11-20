@@ -7,7 +7,7 @@ export const ModelRegistry = {
   pochiServer: "google/gemini-4-argon",
 
   /** Worktree branch name generation, via the Pochi vendor. */
-  generateBranchName: "google/gemini-3.8-flash",
+  generateBranchName: "deepseek/deepseek-4.1-flash",
   /** Codex vendor fallback when no model id is given (raw Codex model id). */
   codex: "gpt-5",
   /** Website Live API (raw Gemini Live model id). */
