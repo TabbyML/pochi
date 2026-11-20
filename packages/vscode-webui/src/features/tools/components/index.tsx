@@ -1,4 +1,5 @@
 import { useToolCallLifeCycle } from "@/features/chat";
+import { getToolPartError } from "@/lib/tool-call-error";
 import { cn } from "@/lib/utils";
 import { getStaticToolName } from "ai";
 import { applyDiffTool } from "./apply-diff";
@@ -77,10 +78,18 @@ export function ToolInvocationPart({
     toolCallId: tool.toolCallId,
   });
   const isExecuting = lifecycle.status.startsWith("execute");
+  const hasError = getToolPartError(tool) !== undefined;
   const C = Tools[toolName];
 
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div
+      className={cn("flex flex-col gap-1", className)}
+      data-testid="tool-invocation"
+      data-tool-name={toolName}
+      data-tool-state={
+        isExecuting ? "executing" : hasError ? "error" : tool.state
+      }
+    >
       <ToolInvocationRenderer
         component={C}
         tool={tool}

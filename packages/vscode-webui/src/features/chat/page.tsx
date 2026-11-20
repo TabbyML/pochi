@@ -501,7 +501,12 @@ function Chat({
   }
 
   return (
-    <div className={ChatContainerClassName}>
+    <div
+      className={ChatContainerClassName}
+      data-testid="chat-container"
+      data-task-id={task?.id ?? ""}
+      data-task-status={task?.status ?? ""}
+    >
       {subtask && (
         <SubtaskHeader
           subtask={subtask}
