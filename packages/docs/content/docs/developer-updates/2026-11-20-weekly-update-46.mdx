@@ -1,0 +1,20 @@
+---
+title: 'Weekly Update #46'
+---
+# Weekly Update #46
+
+### TL;DR
+
+[Pochi 0.84 is out](https://github.com/TabbyML/pochi/releases/tag/vscode%400.84.0), including the clickable task transcript badge and the removal of the separate Plan mode previewed [last week](./2026-11-13-weekly-update-45).
+
+### 🚀 Features
+
+- **Check on a background subagent before it finishes:** When Pochi starts a background subagent, the parent agent gets a link to a transcript that updates after each step. Ask what the subagent has checked so far without waiting for its final result. [**#2084**](https://github.com/TabbyML/pochi/pull/2084)
+
+### ✨ Enhancements
+
+- **Fork a conversation without changing your files:** Use **Fork** between two messages to try a different direction in a new task. The fork copies the conversation up to that point and leaves your workspace as it is. It no longer restores a file checkpoint. [**#2082**](https://github.com/TabbyML/pochi/pull/2082)
+
+### 👀 Coming Up
+
+We're working on rolling releases for the VS Code extension, backed by automated regression tests for core agent actions and for restoring conversations after a reload. The [release workflow](https://github.com/TabbyML/pochi/pull/2090) and [expanded test suite](https://github.com/TabbyML/pochi/pull/2091) are still in review.
