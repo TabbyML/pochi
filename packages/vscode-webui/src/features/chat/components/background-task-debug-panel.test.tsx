@@ -20,11 +20,13 @@ const sendMessageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: ({
+    user,
     className,
     messageListClassName,
     scrollAreaClassName,
     instantAutoScroll,
   }: {
+    user?: { name: string; image?: string | null };
     className?: string;
     messageListClassName?: string;
     scrollAreaClassName?: string;
@@ -32,6 +34,7 @@ vi.mock("@/components/task-thread", () => ({
   }) => (
     <div
       data-testid="task-thread"
+      data-user-name={user?.name}
       className={className}
       data-message-list-class-name={messageListClassName}
       data-scroll-area-class-name={scrollAreaClassName}
@@ -54,6 +57,14 @@ vi.mock("@/lib/hooks/use-background-task-state", () => ({
       useCase: "explore",
       parentTaskId: "parent-task-id",
       tools: ["readFile"],
+    },
+  }),
+}));
+
+vi.mock("@/lib/hooks/use-user-storage", () => ({
+  useUserStorage: () => ({
+    users: {
+      pochi: { name: "zhanba", image: "https://example.com/avatar.png" },
     },
   }),
 }));
@@ -225,6 +236,12 @@ describe("BackgroundTaskDetail", () => {
 
     expect(getDetailValue("Cache Input Tokens")).toBe("-");
     expect(getDetailValue("Input Tokens")).toBe("-");
+  });
+
+  it("forwards the signed-in user to TaskThread", () => {
+    openTaskDetail();
+
+    expect(screen.getByTestId("task-thread").dataset.userName).toBe("zhanba");
   });
 
   it("hides the message input when backgroundJobId is omitted", () => {

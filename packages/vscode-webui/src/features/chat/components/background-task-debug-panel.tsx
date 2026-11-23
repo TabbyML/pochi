@@ -11,6 +11,7 @@ import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import {
@@ -66,6 +67,7 @@ export function BackgroundTaskDetail({
   const queued = useBackgroundTaskQueued(taskId);
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
+  const { users } = useUserStorage();
   const [draft, setDraft] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -203,6 +205,7 @@ export function BackgroundTaskDetail({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}
+          user={users?.pochi}
           showUserMessages
           className="min-h-0 flex-1"
           messageListClassName="mb-0 min-h-0 overflow-hidden px-0 py-0"
