@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BackgroundTaskDetail } from "./background-task-debug-panel";
 
 const task = {
   id: "task-1",
-  parentId: "parent-task-id",
   title: "Background task",
   status: "failed",
   updatedAt: new Date(),
@@ -14,19 +13,14 @@ const task = {
 };
 
 let messageRows: Array<{ data: unknown }> = [];
-let mockJobStatus: "running" | "completed" | "failed" | "stopped" | undefined;
-let mockQueued = false;
-const sendMessageMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/components/task-thread", () => ({
   TaskThread: ({
-    user,
     className,
     messageListClassName,
     scrollAreaClassName,
     instantAutoScroll,
   }: {
-    user?: { name: string; image?: string | null };
     className?: string;
     messageListClassName?: string;
     scrollAreaClassName?: string;
@@ -34,7 +28,6 @@ vi.mock("@/components/task-thread", () => ({
   }) => (
     <div
       data-testid="task-thread"
-      data-user-name={user?.name}
       className={className}
       data-message-list-class-name={messageListClassName}
       data-scroll-area-class-name={scrollAreaClassName}
@@ -61,25 +54,7 @@ vi.mock("@/lib/hooks/use-background-task-state", () => ({
   }),
 }));
 
-vi.mock("@/lib/hooks/use-user-storage", () => ({
-  useUserStorage: () => ({
-    users: {
-      pochi: { name: "zhanba", image: "https://example.com/avatar.png" },
-    },
-  }),
-}));
-
 vi.mock("@getpochi/livekit", () => ({
-  BackgroundJobManager: {
-    forStore: () => ({
-      forTask: (ownerTaskId: string) => ({
-        sendMessage: (
-          backgroundJobId: string,
-          input: { message: string; interrupt?: boolean },
-        ) => sendMessageMock(ownerTaskId, backgroundJobId, input),
-      }),
-    }),
-  },
   catalog: {
     queries: {
       backgroundTasks$: "backgroundTasks",
@@ -87,12 +62,6 @@ vi.mock("@getpochi/livekit", () => ({
       makeMessagesQuery: () => "messages",
     },
   },
-}));
-
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
 }));
 
 vi.mock("@/lib/use-default-store", () => ({
@@ -117,14 +86,6 @@ function getDetailValue(label: string): string | null | undefined {
 describe("BackgroundTaskDetail", () => {
   beforeEach(() => {
     messageRows = [];
-    mockJobStatus = undefined;
-    mockQueued = false;
-    sendMessageMock.mockReset();
-    sendMessageMock.mockResolvedValue({
-      success: true,
-      status: "resumed",
-      backgroundJobId: "bgjob-task-task-1",
-    });
   });
 
   afterEach(() => {
@@ -237,98 +198,9 @@ describe("BackgroundTaskDetail", () => {
     expect(getDetailValue("Cache Input Tokens")).toBe("-");
     expect(getDetailValue("Input Tokens")).toBe("-");
   });
-
-  it("forwards the signed-in user to TaskThread", () => {
-    openTaskDetail();
-
-    expect(screen.getByTestId("task-thread").dataset.userName).toBe("zhanba");
-  });
-
-  it("hides the message input when backgroundJobId is omitted", () => {
-    openTaskDetail();
-
-    expect(screen.queryByTestId("background-task-message-input")).toBeNull();
-  });
-
-  it("sends a follow-up message from the input box and clears the draft", async () => {
-    render(
-      <BackgroundTaskDetail
-        taskId={task.id}
-        backgroundJobId="bgjob-task-task-1"
-        onBack={() => {}}
-      />,
-    );
-
-    const input = screen.getByTestId(
-      "background-task-message-input",
-    ) as HTMLTextAreaElement;
-    fireEvent.change(input, { target: { value: "  Please check tests  " } });
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
-
-    await waitFor(() => {
-      expect(sendMessageMock).toHaveBeenCalledWith(
-        "parent-task-id",
-        "bgjob-task-task-1",
-        { message: "Please check tests", interrupt: false },
-      );
-    });
-    expect(input.value).toBe("");
-    expect(screen.queryByLabelText("backgroundTasks.steerMessage")).toBeNull();
-  });
-
-  it("shows interrupt & send when running and forwards interrupt: true", async () => {
-    mockJobStatus = "running";
-    mockQueued = false;
-
-    render(
-      <BackgroundTaskDetail
-        taskId={task.id}
-        backgroundJobId="bgjob-task-task-1"
-        onBack={() => {}}
-      />,
-    );
-
-    const input = screen.getByTestId(
-      "background-task-message-input",
-    ) as HTMLTextAreaElement;
-    fireEvent.change(input, { target: { value: "Stop and pivot" } });
-    fireEvent.click(screen.getByLabelText("backgroundTasks.steerMessage"));
-
-    await waitFor(() => {
-      expect(sendMessageMock).toHaveBeenCalledWith(
-        "parent-task-id",
-        "bgjob-task-task-1",
-        { message: "Stop and pivot", interrupt: true },
-      );
-    });
-    expect(input.value).toBe("");
-  });
-
-  it("displays an error alert and preserves the draft when sending fails", async () => {
-    sendMessageMock.mockRejectedValueOnce(new Error("Subagent not found"));
-
-    render(
-      <BackgroundTaskDetail
-        taskId={task.id}
-        backgroundJobId="bgjob-task-task-1"
-        onBack={() => {}}
-      />,
-    );
-
-    const input = screen.getByTestId(
-      "background-task-message-input",
-    ) as HTMLTextAreaElement;
-    fireEvent.change(input, { target: { value: "Retry this" } });
-    fireEvent.click(screen.getByLabelText("backgroundTasks.sendMessage"));
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert").textContent).toBe("Subagent not found");
-    });
-    expect(input.value).toBe("Retry this");
-  });
 });
 
 vi.mock("../hooks/use-background-job-list", () => ({
-  useBackgroundTaskStatus: () => mockJobStatus,
-  useBackgroundTaskQueued: () => mockQueued,
+  useBackgroundTaskStatus: () => undefined,
+  useBackgroundTaskQueued: () => false,
 }));

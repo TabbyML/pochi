@@ -682,11 +682,6 @@
     "moveToBackground": "バックグラウンドへ移動",
     "all": "すべて",
     "showAll": "すべてのバックグラウンドタスクを表示",
-    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。",
-    "sendMessagePlaceholder": "メッセージを送信...",
-    "sendMessageRunningPlaceholder": "フォローアップをキューに追加または割り込み...",
-    "sendMessage": "メッセージを送信",
-    "steerMessage": "割り込んで送信",
-    "steerMessageHint": "現在のターンを中断してすぐに送信"
+    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。"
   }
 }

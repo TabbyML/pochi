@@ -9,20 +9,12 @@ import {
 
 import { TaskThread, type TaskThreadSource } from "@/components/task-thread";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { useBackgroundTaskState } from "@/lib/hooks/use-background-task-state";
-import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
-import {
-  BackgroundJobManager,
-  type Message,
-  type Task,
-  catalog,
-} from "@getpochi/livekit";
-import { ArrowLeftIcon, SendHorizontalIcon, ZapIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { type Message, type Task, catalog } from "@getpochi/livekit";
+import { ArrowLeftIcon } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
 import { formatTokens } from "../lib/format-tokens";
 import { RowStatusIndicator, type RowStatusTone } from "./row-status-indicator";
 
@@ -59,7 +51,6 @@ export function BackgroundTaskDetail({
   isOpen?: boolean;
   onBack: () => void;
 }) {
-  const { t } = useTranslation();
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
@@ -67,41 +58,6 @@ export function BackgroundTaskDetail({
   const queued = useBackgroundTaskQueued(taskId);
   const messageRows = store.useQuery(catalog.queries.makeMessagesQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
-  const { users } = useUserStorage();
-  const [draft, setDraft] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
-  const [prevTaskId, setPrevTaskId] = useState(taskId);
-  if (prevTaskId !== taskId) {
-    setPrevTaskId(taskId);
-    setDraft("");
-    setSendError(null);
-  }
-
-  const ownerTaskId = task?.parentId ?? backgroundTaskState?.parentTaskId;
-  const canSendMessage = Boolean(backgroundJobId && ownerTaskId);
-  const isRunning = jobStatus
-    ? jobStatus === "running" && !queued
-    : task
-      ? isBackgroundTaskRunning(task.status)
-      : false;
-
-  const handleSend = async (interrupt = false) => {
-    const trimmed = draft.trim();
-    if (!trimmed || !backgroundJobId || !ownerTaskId || isSending) return;
-    setIsSending(true);
-    setSendError(null);
-    try {
-      await BackgroundJobManager.forStore(store)
-        .forTask(ownerTaskId)
-        .sendMessage(backgroundJobId, { message: trimmed, interrupt });
-      setDraft("");
-    } catch (error) {
-      setSendError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   const source = useMemo<TaskThreadSource>(
     () => ({
@@ -205,78 +161,12 @@ export function BackgroundTaskDetail({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
         <TaskThread
           source={source}
-          user={users?.pochi}
-          showUserMessages
           className="min-h-0 flex-1"
           messageListClassName="mb-0 min-h-0 overflow-hidden px-0 py-0"
           scrollAreaClassName="m-0 h-full max-h-none rounded-none border-0"
           instantAutoScroll
         />
       </div>
-      {canSendMessage && (
-        <form
-          className="shrink-0 border-t p-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSend(false);
-          }}
-        >
-          <div className="flex items-end gap-1.5">
-            <Textarea
-              data-testid="background-task-message-input"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === "Enter" &&
-                  !event.shiftKey &&
-                  !event.nativeEvent.isComposing
-                ) {
-                  event.preventDefault();
-                  void handleSend(false);
-                }
-              }}
-              placeholder={
-                isRunning
-                  ? t("backgroundTasks.sendMessageRunningPlaceholder")
-                  : t("backgroundTasks.sendMessagePlaceholder")
-              }
-              disabled={isSending}
-              rows={1}
-              className="max-h-[120px] min-h-[36px] flex-1 resize-none py-1.5 text-sm"
-            />
-            {isRunning && (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                aria-label={t("backgroundTasks.steerMessage")}
-                title={t("backgroundTasks.steerMessageHint")}
-                disabled={!draft.trim() || isSending}
-                onClick={() => void handleSend(true)}
-              >
-                <ZapIcon className="size-4" />
-              </Button>
-            )}
-            <Button
-              type="submit"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              aria-label={t("backgroundTasks.sendMessage")}
-              title={t("backgroundTasks.sendMessage")}
-              disabled={!draft.trim() || isSending}
-            >
-              <SendHorizontalIcon className="size-4" />
-            </Button>
-          </div>
-          {sendError && (
-            <p className="mt-1 text-destructive text-xs" role="alert">
-              {sendError}
-            </p>
-          )}
-        </form>
-      )}
     </div>
   );
 }

@@ -681,11 +681,6 @@
     "moveToBackground": "移到后台",
     "all": "全部",
     "showAll": "显示所有后台任务",
-    "moveToBackgroundHint": "在后台继续运行，完成后通知你。",
-    "sendMessagePlaceholder": "发送消息...",
-    "sendMessageRunningPlaceholder": "排队跟进消息或立即打断...",
-    "sendMessage": "发送消息",
-    "steerMessage": "打断并发送",
-    "steerMessageHint": "打断当前轮次并立即发送"
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
   }
 }
