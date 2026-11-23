@@ -2,6 +2,11 @@ name: Release Pochi VSCode Extension
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version override (e.g. 0.85.0) when dispatching manually"
+        required: false
+        type: string
   push:
     tags:
       - "vscode@*"
@@ -29,29 +34,45 @@ jobs:
 
       - name: Extract version and determine release type
         id: release_info
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          # Extract version number from tag (remove 'vscode@' prefix)
-          version=$(echo ${{ github.ref_name }} | sed 's/vscode@//')
-          echo "version_number=$version" >> $GITHUB_OUTPUT
-
-          # Determine if release should be marked as pre-release
-          is_prerelease=false
-
-          # Check if this is a pre-release (contains -alpha, -beta, or -rc, with or without trailing qualifiers)
-          if echo "$version" | grep -Eq -- '-(alpha|beta|rc)(\.|$)'; then
-            is_prerelease=true
-            echo "This is a pre-release version: $version (pre-release suffix detected)"
+          if [ -n "$INPUT_VERSION" ]; then
+            version="${INPUT_VERSION#vscode@}"
+          elif [ "$REF_TYPE" = "tag" ] && [[ "$REF_NAME" == vscode@* ]]; then
+            version="${REF_NAME#vscode@}"
           else
-            base_version="${version%%-*}"
-            minor=$(echo "$base_version" | cut -d '.' -f 2)
-            if [[ "$minor" =~ ^[0-9]+$ ]] && [ $((minor % 2)) -eq 1 ]; then
-              is_prerelease=true
-              echo "This is a pre-release version: $version (odd minor version detected)"
-            else
-              echo "This is a stable release version: $version"
-            fi
+            version=$(bun -e 'import pkg from "./packages/vscode/package.json"; console.log(pkg.version);')
           fi
-          echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
+
+          if ! echo "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+            echo "::error::Release version must be strict major.minor.patch integers without leading zeros for VS Marketplace (got '$version'). Push a vscode@X.Y.Z tag or pass workflow_dispatch input 'version'."
+            exit 1
+          fi
+
+          VERSION="$version" bun -e '
+            import fs from "node:fs";
+            const pkgPath = "packages/vscode/package.json";
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+            pkg.version = process.env.VERSION;
+            fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+            console.log(`Injected release version ${pkg.version} into ${pkgPath}`);
+          '
+
+          echo "version_number=$version" >> "$GITHUB_OUTPUT"
+
+          # Determine if release should be marked as pre-release (odd minor = pre-release, even minor = stable)
+          is_prerelease=false
+          minor=$(echo "$version" | cut -d '.' -f 2)
+          if [ $((10#$minor % 2)) -eq 1 ]; then
+            is_prerelease=true
+            echo "This is a pre-release version: $version (odd minor version detected)"
+          else
+            echo "This is a stable release version: $version (even minor version detected)"
+          fi
+          echo "is_prerelease=$is_prerelease" >> "$GITHUB_OUTPUT"
 
 
       - name: Build VSIX
@@ -72,6 +93,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/vscode@')
         with:
           allowUpdates: true
+          omitBodyDuringUpdate: true
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           artifacts: "packages/vscode/*.vsix"
           name: pochi-vscode@${{ steps.release_info.outputs.version_number }}
