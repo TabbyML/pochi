@@ -225,6 +225,7 @@ const replaceTaskIdInMessages = (
       }
       if (
         (part.type === "tool-killBackgroundJob" ||
+          part.type === "tool-sendMessage" ||
           part.type === "tool-readBackgroundJobOutput") &&
         part.input?.backgroundJobId
       ) {

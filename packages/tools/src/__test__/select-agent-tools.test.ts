@@ -16,6 +16,7 @@ const ClientToolNames = [
   "readFile",
   "searchFiles",
   "renderWidget",
+  "sendMessage",
   "startMonitor",
   "useSkill",
   "writeToFile",
@@ -222,8 +223,10 @@ describe("selectAgentTools", () => {
     );
     expect(topLevelTools).toHaveProperty("startMonitor");
     expect(topLevelTools).toHaveProperty("killBackgroundJob");
+    expect(topLevelTools).toHaveProperty("sendMessage");
     expect(subTaskTools).not.toHaveProperty("startMonitor");
     expect(subTaskTools).not.toHaveProperty("killBackgroundJob");
+    expect(subTaskTools).not.toHaveProperty("sendMessage");
     expect(topLevelTools.attemptCompletion?.description).toContain(
       "if you are only waiting on background commands or subagents",
     );
@@ -246,7 +249,12 @@ describe("selectAgentTools", () => {
       [
         ...ClientToolNames.filter(
           (name) =>
-            !["newTask", "startMonitor", "killBackgroundJob"].includes(name),
+            ![
+              "newTask",
+              "startMonitor",
+              "killBackgroundJob",
+              "sendMessage",
+            ].includes(name),
         ),
         "mcpSearch",
       ].sort(),

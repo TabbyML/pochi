@@ -135,7 +135,7 @@ When NOT to use the newTask tool:
 Usage notes:
 1. Launch agents with independent, non-overlapping assignments concurrently whenever possible; to do that, use a single message with multiple tool uses
 2. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.
-3. Each agent invocation is stateless. You will not be able to send additional messages to the agent, nor will the agent be able to communicate with you outside of its final report. Therefore, your prompt should contain a highly detailed task description for the agent to perform autonomously and you should specify exactly what information the agent should return back to you in its final and only message to you.
+3. For background subagents (backgroundJobId: bgjob-task-...), you can send follow-up messages, steer a running subagent, or resume a completed one using sendMessage. Foreground subagents (background: false) and spawned top-level tasks (spawn: "task") cannot receive follow-up messages via sendMessage, so include a complete, detailed prompt upfront.
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
@@ -154,7 +154,7 @@ Usage notes:
         .string()
         .optional()
         .describe(
-          "Present when the subagent was started in the background; uses the bgjob-task- prefix and can be passed to killBackgroundJob to stop the subagent.",
+          "Present when the subagent was started in the background; uses the bgjob-task- prefix and can be passed to sendMessage or killBackgroundJob.",
         ),
     }),
   });

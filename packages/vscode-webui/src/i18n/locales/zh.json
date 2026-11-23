@@ -357,6 +357,7 @@
     "matched": "个已匹配",
     "resultsTruncated": "，结果已截断",
     "stopBackgroundJob": "我将停止以下后台任务",
+    "sendMessage": "我将向后台子代理发送消息",
     "stoppingBackgroundJob": "正在停止后台任务",
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
@@ -680,6 +681,11 @@
     "moveToBackground": "移到后台",
     "all": "全部",
     "showAll": "显示所有后台任务",
-    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。",
+    "sendMessagePlaceholder": "发送消息...",
+    "sendMessageRunningPlaceholder": "排队跟进消息或立即打断...",
+    "sendMessage": "发送消息",
+    "steerMessage": "打断并发送",
+    "steerMessageHint": "打断当前轮次并立即发送"
   }
 }

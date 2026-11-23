@@ -364,6 +364,7 @@
     "matched": " matched",
     "resultsTruncated": ", results truncated",
     "stopBackgroundJob": "I will stop the following background job",
+    "sendMessage": "I will send a message to the background subagent",
     "stoppingBackgroundJob": "Stopping background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
@@ -685,6 +686,11 @@
     "moveToBackground": "Move to background",
     "all": "All",
     "showAll": "Show all background tasks",
-    "moveToBackgroundHint": "Continues in the background and notifies you when done."
+    "moveToBackgroundHint": "Continues in the background and notifies you when done.",
+    "sendMessagePlaceholder": "Send a message...",
+    "sendMessageRunningPlaceholder": "Queue a follow-up or interrupt...",
+    "sendMessage": "Send message",
+    "steerMessage": "Interrupt & send",
+    "steerMessageHint": "Interrupt current turn and send immediately"
   }
 }

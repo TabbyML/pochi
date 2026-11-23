@@ -49,6 +49,7 @@ import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { startMonitor } from "./monitor";
 import { createReadFileTool } from "./read-file";
+import { sendMessage } from "./send-message";
 import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
@@ -154,6 +155,7 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createBaseTools(options),
     killBackgroundJob,
+    sendMessage,
     startMonitor,
     renderWidget,
   };
@@ -219,6 +221,7 @@ const SubTaskExcludedTools = new Set([
   "newTask",
   "startMonitor",
   "killBackgroundJob",
+  "sendMessage",
 ]);
 
 function filterTools(

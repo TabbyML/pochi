@@ -226,6 +226,12 @@ describe("forked background tasks", () => {
             input: { backgroundJobId: oldJobId },
           },
           {
+            type: "tool-sendMessage",
+            toolCallId: "send",
+            state: "input-available",
+            input: { backgroundJobId: oldJobId, message: "follow up" },
+          },
+          {
             type: "tool-readBackgroundJobOutput",
             toolCallId: "read",
             state: "input-available",
@@ -251,11 +257,15 @@ describe("forked background tasks", () => {
       },
     });
     expect(parts[1]).toMatchObject({ input: { backgroundJobId: newJobId } });
-    expect(parts[2]).toMatchObject({ input: { backgroundJobId: newJobId } });
-    expect(parts[3]).toMatchObject({
+    expect(parts[2]).toMatchObject({
+      type: "tool-sendMessage",
+      input: { backgroundJobId: newJobId, message: "follow up" },
+    });
+    expect(parts[3]).toMatchObject({ input: { backgroundJobId: newJobId } });
+    expect(parts[4]).toMatchObject({
       input: { backgroundJobId: "bgjob-cmd-command" },
     });
-    expect(parts[4]).toEqual(commandNotification);
+    expect(parts[5]).toEqual(commandNotification);
     expect(original.messages.get("parent")![0].parts[0]).toMatchObject({
       input: { _meta: { uid: "child" } },
       output: { backgroundJobId: oldJobId },

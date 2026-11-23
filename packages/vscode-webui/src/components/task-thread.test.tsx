@@ -130,4 +130,39 @@ describe("TaskThread scrolling", () => {
     render(<TaskThread source={makeSource(childMessages)} />);
     expect(mocks.messageListProps.at(-1)?.messages).toBe(childMessages);
   });
+
+  it("keeps user messages when showUserMessages is true and hides only the initial prompt by default", () => {
+    const messages: Message[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "Initial" }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [{ type: "text", text: "Done 1" }],
+      },
+      { id: "u2", role: "user", parts: [{ type: "text", text: "Follow-up" }] },
+    ];
+
+    render(<TaskThread source={makeSource(messages)} />);
+    const defaultProps = mocks.messageListProps.at(-1) as {
+      formatMessages: (msgs: Message[]) => Message[];
+      showUserAvatar: boolean;
+    };
+    expect(defaultProps.showUserAvatar).toBe(false);
+    expect(defaultProps.formatMessages(messages).map((m) => m.id)).toEqual([
+      "a1",
+      "u2",
+    ]);
+
+    render(<TaskThread source={makeSource(messages)} showUserMessages />);
+    const detailProps = mocks.messageListProps.at(-1) as {
+      formatMessages: (msgs: Message[]) => Message[];
+      showUserAvatar: boolean;
+    };
+    expect(detailProps.showUserAvatar).toBe(true);
+    expect(detailProps.formatMessages(messages).map((m) => m.id)).toEqual([
+      "u1",
+      "a1",
+      "u2",
+    ]);
+  });
 });

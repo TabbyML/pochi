@@ -48,11 +48,15 @@ export function isBackgroundSubAgentRequested(
 }
 
 /** Stable notification identity for a task and its terminal status. */
-export function getSubAgentNotificationId(task: {
-  id: string;
-  status: string;
-}): string {
-  return `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
+export function getSubAgentNotificationId(
+  task: {
+    id: string;
+    status: string;
+  },
+  turnKey?: string,
+): string {
+  const base = `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
+  return turnKey ? `${base}:${turnKey}` : base;
 }
 
 /**

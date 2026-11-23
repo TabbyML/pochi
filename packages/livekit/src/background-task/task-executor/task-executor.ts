@@ -148,6 +148,9 @@ type RunningTaskChatKit = {
   markAsFailed: (error: Error) => MaybePromise<void>;
   subscribeBackgroundJobs: () => () => void;
   flushPendingInput: () => boolean;
+  queueUserInput?: (input: {
+    parts: Array<{ type: "text"; text: string }>;
+  }) => string;
 };
 
 type CreateRunningTaskChatKit = (options: {
@@ -280,6 +283,16 @@ export class TaskExecutor {
     return this.runningTasks.has(taskId);
   }
 
+  sendMessage(
+    taskId: string,
+    message: string,
+    options?: { interrupt?: boolean },
+  ): "queued" | "interrupted" | undefined {
+    const runningTask = this.runningTasks.get(taskId);
+    if (!runningTask) return undefined;
+    return runningTask.task.sendMessage(message, options);
+  }
+
   /** Whether a runnable task is waiting for a free execution slot. */
   isTaskQueued(taskId: string) {
     if (!this.started || this.disposed || this.runningTasks.has(taskId)) {
@@ -319,7 +332,11 @@ export class TaskExecutor {
       const task = this.options.store.query(
         catalog.queries.makeTaskQuery(taskId),
       );
-      if (task?.status === "failed" && task.error?.kind === "AbortError") {
+      if (
+        task?.status === "failed" &&
+        task.error?.kind === "AbortError" &&
+        !runningTask.task.isSteeringInterrupt
+      ) {
         void runningTask.task
           .dispose()
           .catch((error) =>
@@ -410,6 +427,12 @@ class RunningTask {
   private toolRejectionCount = 0;
   private lastStepBudgetReminderStep: number | undefined;
   private disposed = false;
+  private pendingSteerAbort = false;
+  private earlyMessages: Array<{ text: string; interrupt: boolean }> = [];
+
+  get isSteeringInterrupt(): boolean {
+    return this.pendingSteerAbort;
+  }
 
   readonly done: Promise<void>;
 
@@ -428,6 +451,31 @@ class RunningTask {
     this.abortController.abort("user-abort");
     await this.toolCallQueue.abort("user-abort");
     await this.chatKit?.chat.stop();
+  }
+
+  sendMessage(
+    message: string,
+    options?: { interrupt?: boolean },
+  ): "queued" | "interrupted" {
+    const interrupt = options?.interrupt === true;
+    if (!this.chatKit) {
+      this.earlyMessages.push({ text: message, interrupt });
+      return interrupt ? "interrupted" : "queued";
+    }
+    if (this.chatKit.queueUserInput) {
+      this.chatKit.queueUserInput({
+        parts: [{ type: "text", text: message }],
+      });
+    } else {
+      this.chat.appendOrReplaceMessage(createUserMessage(message));
+    }
+    if (interrupt) {
+      this.pendingSteerAbort = true;
+      void this.toolCallQueue.abort("user-abort").catch(() => undefined);
+      void this.chatKit.chat.stop().catch(() => undefined);
+      return "interrupted";
+    }
+    return "queued";
   }
 
   private async run() {
@@ -461,6 +509,21 @@ class RunningTask {
       }
       this.chatKit = await this.createChatKit();
       this.abortController.signal.throwIfAborted();
+      if (this.earlyMessages.length > 0) {
+        for (const entry of this.earlyMessages) {
+          if (this.chatKit.queueUserInput) {
+            this.chatKit.queueUserInput({
+              parts: [{ type: "text", text: entry.text }],
+            });
+          } else {
+            this.chat.appendOrReplaceMessage(createUserMessage(entry.text));
+          }
+          if (entry.interrupt) {
+            this.pendingSteerAbort = true;
+          }
+        }
+        this.earlyMessages = [];
+      }
       unsubscribeBackgroundJobs = this.chatKit.subscribeBackgroundJobs();
 
       while (!this.abortController.signal.aborted) {
@@ -468,7 +531,13 @@ class RunningTask {
         this.abortController.signal.throwIfAborted();
         if (stepResult === "finished") {
           // Return an unanswered question without waiting or sending notices.
-          if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return;
+          if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) {
+            if (this.chatKit.flushPendingInput()) {
+              await this.sendNextMessage();
+              continue;
+            }
+            return;
+          }
           await this.options.waitForBackgroundJobs?.(
             this.options.taskId,
             this.abortController.signal,
@@ -624,6 +693,15 @@ class RunningTask {
 
     if (task.status === "failed") {
       if (isAbortTaskError(task.error)) {
+        if (this.pendingSteerAbort) {
+          this.pendingSteerAbort = false;
+          const processed = await this.prepareRetryMessage(message);
+          if (processed) {
+            this.chat.appendOrReplaceMessage(processed);
+          }
+          this.chatKit?.flushPendingInput();
+          return "retry";
+        }
         throw toError(task.error);
       }
       // Retrying the same request fails the same way; fail now with the real
@@ -842,6 +920,7 @@ class RunningTask {
 
   /** Guards the step budget, warns the model when it is nearly out, then sends. */
   private async sendNextMessage() {
+    this.pendingSteerAbort = false;
     this.throwIfMaxStepReached();
     this.maybeAppendStepBudgetReminder();
     await this.chat.sendMessage();

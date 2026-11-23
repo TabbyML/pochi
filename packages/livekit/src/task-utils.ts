@@ -157,9 +157,21 @@ export function createBackgroundSubagentNotification(
   note?: string,
 ): BackgroundSubagentNotification {
   const withNote = (result: string) => (note ? `${result}\n\n${note}` : result);
+  const childMessages =
+    typeof store.query === "function"
+      ? store
+          .query(catalog.queries.makeMessagesQuery(task.id))
+          .map((x) => x.data as Message)
+      : [];
+  const userMessageCount = childMessages.filter(
+    (message) => message.role === "user",
+  ).length;
+  const lastChildMessageId = childMessages.at(-1)?.id;
+  const turnKey =
+    userMessageCount > 1 && lastChildMessageId ? lastChildMessageId : undefined;
   const base = {
     kind: "subagent" as const,
-    notificationId: getSubAgentNotificationId(task),
+    notificationId: getSubAgentNotificationId(task, turnKey),
     backgroundJobId: getSubAgentBackgroundJobId(task.id),
   };
   const input = getSubAgentInvocation(task.id, parentMessages);

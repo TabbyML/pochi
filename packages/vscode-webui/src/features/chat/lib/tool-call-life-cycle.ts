@@ -278,6 +278,20 @@ export class ManagedToolCallLifeCycle
         options?.taskId ?? "",
         { notify: false },
       );
+    } else if (this.toolName === "sendMessage") {
+      const input = args as {
+        backgroundJobId: string;
+        message: string;
+        interrupt?: boolean;
+      };
+      executePromise = BackgroundJobManager.forStore(this.store).sendMessage(
+        input.backgroundJobId,
+        options?.taskId ?? "",
+        {
+          message: input.message,
+          interrupt: input.interrupt,
+        },
+      );
     } else if (
       this.toolName === "executeCommand" &&
       options?.builtinSubAgentInfo?.type === "browser"

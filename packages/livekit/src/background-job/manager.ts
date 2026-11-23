@@ -212,14 +212,27 @@ export class BackgroundJobManager {
           if (note) this.taskResultNotes.set(taskId, note);
           return note;
         },
-        executeToolCall: (args) =>
-          args.toolName === "killBackgroundJob"
-            ? this.kill(
-                (args.input as { backgroundJobId: string }).backgroundJobId,
-                args.taskId,
-                { notify: false },
-              )
-            : options.adaptor.executeToolCall(args),
+        executeToolCall: (args) => {
+          if (args.toolName === "killBackgroundJob") {
+            return this.kill(
+              (args.input as { backgroundJobId: string }).backgroundJobId,
+              args.taskId,
+              { notify: false },
+            );
+          }
+          if (args.toolName === "sendMessage") {
+            const input = args.input as {
+              backgroundJobId: string;
+              message: string;
+              interrupt?: boolean;
+            };
+            return this.sendMessage(input.backgroundJobId, args.taskId, {
+              message: input.message,
+              interrupt: input.interrupt,
+            });
+          }
+          return options.adaptor.executeToolCall(args);
+        },
       },
       readTaskState: async (taskId) => {
         const state = await this.taskStateStore.read(taskId);
@@ -1025,6 +1038,15 @@ export class BackgroundJobManager {
     return {
       kill: (id: string, options?: KillOptions) =>
         BackgroundJobManager.forStore(this.store).kill(id, taskId, options),
+      sendMessage: (
+        id: string,
+        input: { message: string; interrupt?: boolean },
+      ) =>
+        BackgroundJobManager.forStore(this.store).sendMessage(
+          id,
+          taskId,
+          input,
+        ),
     };
   }
 
@@ -1158,6 +1180,95 @@ export class BackgroundJobManager {
       }
     }
     return { success: true };
+  }
+
+  async sendMessage(
+    backgroundJobId: string,
+    taskId: string,
+    { message, interrupt = false }: { message: string; interrupt?: boolean },
+  ): Promise<{
+    success: true;
+    status: "queued" | "interrupted" | "resumed";
+    backgroundJobId: string;
+  }> {
+    if (this.disposed) throw new Error("Background job manager is disposed.");
+    if (parseBackgroundJobId(backgroundJobId) !== "task") {
+      throw new Error(
+        `"${backgroundJobId}" is not a background subagent. sendMessage only supports background subagents ("bgjob-task-...").`,
+      );
+    }
+    const childId = getSubAgentTaskId(backgroundJobId);
+    const job = this.jobs.get(backgroundJobId);
+    const child = childId
+      ? this.store.query(catalog.queries.makeTaskQuery(childId))
+      : undefined;
+    if (
+      !childId ||
+      !child ||
+      (job
+        ? job.ownerTaskId !== taskId
+        : !(child.background && child.parentId === taskId))
+    ) {
+      throw new Error(
+        `Background subagent with ID "${backgroundJobId}" not found.`,
+      );
+    }
+
+    this.silenced.delete(backgroundJobId);
+    this.taskResultNotes.delete(childId);
+    const state = (await this.taskStateStore.read(childId)) ?? {};
+    if (state.stoppedByParent) {
+      await this.taskStateStore.set(childId, {
+        ...state,
+        stoppedByParent: false,
+      });
+    }
+
+    const runningStatus = this.executor?.sendMessage(childId, message, {
+      interrupt,
+    });
+    if (runningStatus) {
+      return { success: true, status: runningStatus, backgroundJobId };
+    }
+
+    const latestChild = this.store.query(
+      catalog.queries.makeTaskQuery(childId),
+    );
+    if (!latestChild) {
+      throw new Error(
+        `Background subagent with ID "${backgroundJobId}" not found.`,
+      );
+    }
+
+    const wasQueued = this.executor?.isTaskQueued(childId) ?? false;
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [{ type: "text", text: message }],
+    };
+    this.batch(() => {
+      this.store.commit(
+        ...catalog.taskEvents(this.localTaskIds.has(childId), [
+          catalog.events.chatStreamStarted({
+            id: childId,
+            data: userMessage,
+            todos: latestChild.todos ? [...latestChild.todos] : [],
+            modelId: latestChild.modelId ?? undefined,
+            updatedAt: new Date(),
+          }),
+        ]),
+      );
+      this.registerTask(childId, {
+        parentTaskId: taskId,
+        agentType: state.agentType,
+      });
+    });
+
+    return {
+      success: true,
+      status: wasQueued ? "queued" : "resumed",
+      backgroundJobId,
+    };
   }
 
   async stopOwnedJobs(taskId: string) {

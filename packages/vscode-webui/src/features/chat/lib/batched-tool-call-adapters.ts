@@ -184,7 +184,34 @@ export function createSubtaskBatchedToolCall({
                 uid,
                 { notify: false },
               )
-            : await execute();
+            : toolCall.toolName === "sendMessage"
+              ? await BackgroundJobManager.forStore(store).sendMessage(
+                  (
+                    toolCall.input as {
+                      backgroundJobId: string;
+                      message: string;
+                      interrupt?: boolean;
+                    }
+                  ).backgroundJobId,
+                  uid,
+                  {
+                    message: (
+                      toolCall.input as {
+                        backgroundJobId: string;
+                        message: string;
+                        interrupt?: boolean;
+                      }
+                    ).message,
+                    interrupt: (
+                      toolCall.input as {
+                        backgroundJobId: string;
+                        message: string;
+                        interrupt?: boolean;
+                      }
+                    ).interrupt,
+                  },
+                )
+              : await execute();
 
         if (
           toolCall.toolName === "executeCommand" &&

@@ -1750,3 +1750,106 @@ async function waitFor(predicate: () => boolean) {
   }
   throw new Error("Timed out waiting for predicate");
 }
+
+describe("TaskExecutor.sendMessage", () => {
+  it("queues a message on a running task and interrupts with steer without failing", async () => {
+    const store = new FakeLiveKitStore([
+      makeTask({ id: "task", status: "pending-model" }),
+    ]);
+    store.setMessages("task", [
+      {
+        id: "user",
+        role: "user",
+        parts: [{ type: "text", text: "Start work." }],
+      },
+    ]);
+
+    const firstTurnStarted = deferred<void>();
+    const releaseFirstTurn = deferred<void>();
+    let callCount = 0;
+    const queuedInputs: string[] = [];
+
+    const send = vi
+      .spyOn(MockChat.prototype, "sendMessage")
+      .mockImplementation(async function (this: MockChat) {
+        callCount += 1;
+        if (callCount === 1) {
+          firstTurnStarted.resolve();
+          await releaseFirstTurn.promise;
+          store.failTask("task", "Aborted", "AbortError", false);
+          return;
+        }
+        const completionMsg: Message = {
+          id: `assistant-${callCount}`,
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-attemptCompletion",
+              toolCallId: "done",
+              state: "input-available",
+              input: { result: "Pivoted response." },
+            },
+          ],
+        };
+        this.appendOrReplaceMessage(completionMsg);
+        store.setMessages("task", [...this.messages]);
+        store.completeTask("task");
+      });
+
+    const executor = new TaskExecutor({
+      store: store as never,
+      blobStore: {} as never,
+      readTaskState: () => ({}),
+      adaptor: makeAdaptor({ executeToolCall: vi.fn() }),
+      createChatKit: ({ taskId, store: s }) => {
+        const kit = new MockLiveChatKit({
+          taskId,
+          store: s as never,
+        });
+        return Object.assign(kit, {
+          queueUserInput: (input: {
+            parts: Array<{ type: "text"; text: string }>;
+          }) => {
+            const text = input.parts.map((p) => p.text).join("");
+            queuedInputs.push(text);
+            return "q1";
+          },
+          flushPendingInput: () => {
+            const next = queuedInputs.shift();
+            if (!next) return false;
+            kit.chat.appendOrReplaceMessage({
+              id: `steer-${Date.now()}`,
+              role: "user",
+              parts: [{ type: "text", text: next }],
+            });
+            return true;
+          },
+        });
+      },
+    });
+
+    try {
+      executor.start();
+      await firstTurnStarted.promise;
+      expect(
+        executor.sendMessage("task", "Pivot to B", { interrupt: true }),
+      ).toBe("interrupted");
+      releaseFirstTurn.resolve();
+
+      await executor.drain();
+      expect(send).toHaveBeenCalledTimes(2);
+      expect(store.readTask("task")?.status).toBe("completed");
+      expect(store.readMessages("task").at(-1)).toMatchObject({
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-attemptCompletion",
+            input: { result: "Pivoted response." },
+          },
+        ],
+      });
+    } finally {
+      await executor.dispose();
+    }
+  });
+});

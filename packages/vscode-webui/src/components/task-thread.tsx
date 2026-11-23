@@ -4,7 +4,13 @@ import { cn } from "@/lib/utils";
 import { formatters } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 export type TaskThreadSource = {
   messages: Message[];
@@ -23,6 +29,7 @@ export const TaskThread: React.FC<{
     image?: string | null;
   };
   showMessageList?: boolean;
+  showUserMessages?: boolean;
   className?: string;
   messageListClassName?: string;
   scrollAreaClassName?: string;
@@ -32,6 +39,7 @@ export const TaskThread: React.FC<{
   user,
   assistant,
   showMessageList = true,
+  showUserMessages = false,
   className,
   messageListClassName,
   scrollAreaClassName,
@@ -98,6 +106,11 @@ export const TaskThread: React.FC<{
     }
   }, [instantAutoScroll, messages.length, scrollToBottom, showMessageList]);
 
+  const formatMessages = useCallback(
+    (msgs: Message[]) => prepareForRender(msgs, showUserMessages),
+    [showUserMessages],
+  );
+
   return (
     <div className={cn("flex flex-col", className)}>
       {showMessageList && (
@@ -113,10 +126,10 @@ export const TaskThread: React.FC<{
             "max-h-[300px] my-1 rounded-sm border",
             scrollAreaClassName,
           )}
-          showUserAvatar={false}
+          showUserAvatar={showUserMessages}
           messages={messages}
-          formatMessages={prepareForRender}
-          user={user}
+          formatMessages={formatMessages}
+          user={showUserMessages ? (user ?? { name: "You" }) : user}
           assistant={assistant}
           isLoading={isLoading}
           containerRef={newTaskContainer}
@@ -156,10 +169,15 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
   return messages;
 }
 
-function prepareForRender(messages: Message[]): Message[] {
-  const filteredMessages = messages.filter(
-    (message) => message.role !== "user",
-  );
+function prepareForRender(
+  messages: Message[],
+  showUserMessages = false,
+): Message[] {
+  const filteredMessages = showUserMessages
+    ? messages
+    : messages.filter(
+        (message, index) => !(index === 0 && message.role === "user"),
+      );
   // Filter out trailing askFollowupQuestion tool calls
   const withoutTrailingAskFollowup =
     filterTrailingAskFollowupQuestion(filteredMessages);
