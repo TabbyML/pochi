@@ -4,9 +4,10 @@
 // Commands:
 //   node .agents/skills/release-vscode/scripts/release.mjs status [--target <ref>] [--find-green] [--no-fetch] [--json]
 //   node .agents/skills/release-vscode/scripts/release.mjs notes  --from <tag> [--to <ref>] [--version <X.Y.Z>]
-//   node .agents/skills/release-vscode/scripts/release.mjs deploy-livekit [--wait] [--dry-run]
+//   node .agents/skills/release-vscode/scripts/release.mjs deploy-livekit [--ref <branch>] [--wait] [--dry-run]
+//   node .agents/skills/release-vscode/scripts/release.mjs bump-dev [--version <X.Y.Z-dev>] [--dry-run] [--no-fetch]
 //   node .agents/skills/release-vscode/scripts/release.mjs cut <prerelease|promote|rollback|hotfix>
-//        [--target <ref>] [--version <X.Y.Z>] [--dry-run] [--no-watch] [--no-fetch]
+//        [--target <ref>] [--version <X.Y.Z>] [--dry-run] [--no-watch] [--no-bump-dev] [--no-fetch]
 //        [--skip-livekit-check] [--allow-unverified-ci] [--force]
 //
 // Options are parsed strictly: unknown or misspelled options are rejected.
@@ -17,13 +18,17 @@ import os from "node:os";
 import path from "node:path";
 import {
   CUT_MODES,
+  compareVersions,
   computeReleaseState,
   detectLivekitDrift,
   evaluateCiGates,
+  evaluateDevVersionSync,
   generateReleaseNotes,
   parseCliArgs,
   parseVscodeVersion,
+  replaceVscodeDevVersion,
   requiredChecksForMode,
+  requiredChecksForRef,
   scanCompatibilityRisks,
   workflowSupportsTagVersion,
 } from "./lib.mjs";
@@ -33,11 +38,13 @@ const RELEASE_WORKFLOW_PATH =
 
 const REPO = process.env.POCHI_GITHUB_REPO || "TabbyML/pochi";
 
-function run(cmd, args, { allowFail = false } = {}) {
+function run(cmd, args, { allowFail = false, input, env } = {}) {
   try {
     return execFileSync(cmd, args, {
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
+      input,
+      env: env ? { ...process.env, ...env } : process.env,
+      stdio: [input !== undefined ? "pipe" : "ignore", "pipe", "pipe"],
     }).trim();
   } catch (err) {
     if (allowFail) return null;
@@ -46,14 +53,31 @@ function run(cmd, args, { allowFail = false } = {}) {
   }
 }
 
-function fetchOrigin() {
+function fetchOrigin(targetRef = null) {
   run("git", ["fetch", "origin", "main", "--tags", "--quiet"]);
+  if (typeof targetRef === "string" && targetRef.startsWith("origin/")) {
+    const branch = targetRef.slice("origin/".length);
+    if (branch && branch !== "main") {
+      run("git", [
+        "fetch",
+        "origin",
+        `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
+        "--quiet",
+      ]);
+    }
+  }
 }
 
-function resolveCommit(ref) {
-  const sha = run("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+function resolveCommit(ref, { allowFetch = true } = {}) {
+  let sha = run("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
     allowFail: true,
   });
+  if (!sha && allowFetch && /^[0-9a-f]{7,40}$/i.test(ref)) {
+    ensureCommitAvailable(ref);
+    sha = run("git", ["rev-parse", "--verify", `${ref}^{commit}`], {
+      allowFail: true,
+    });
+  }
   if (!sha) {
     throw new Error(`Cannot resolve git commit for '${ref}'`);
   }
@@ -235,13 +259,34 @@ function sleepMs(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function getMainPackageVersion() {
+  const raw =
+    run("git", ["show", "origin/main:packages/vscode/package.json"], {
+      allowFail: true,
+    }) ??
+    run("git", ["show", "HEAD:packages/vscode/package.json"], {
+      allowFail: true,
+    });
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw).version ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function cmdStatus(flags) {
-  if (!flags["no-fetch"]) fetchOrigin();
   const targetRef =
     typeof flags.target === "string" ? flags.target : "origin/main";
-  const targetSha = resolveCommit(targetRef);
+  const allowFetch = !flags["no-fetch"];
+  if (allowFetch) fetchOrigin(targetRef);
+  const targetSha = resolveCommit(targetRef, { allowFetch });
   const targetSubject = run("git", ["log", "-1", "--format=%s", targetSha]);
   const state = computeReleaseState(listVscodeTags());
+  const devVersionSync = evaluateDevVersionSync(
+    getMainPackageVersion(),
+    state.nextDevVersion,
+  );
 
   const diffBaseTag = state.latestTag?.tag ?? null;
   const unreleasedCommits = getCommitsBetween(diffBaseTag, targetSha);
@@ -249,7 +294,8 @@ function cmdStatus(flags) {
     state.latestStable?.tag ?? diffBaseTag,
     targetSha,
   );
-  const ciGate = evaluateCiGates(getCheckRuns(targetSha));
+  const requiredChecks = requiredChecksForRef(targetRef);
+  const ciGate = evaluateCiGates(getCheckRuns(targetSha), requiredChecks);
   const livekit = getLivekitStatus(
     targetSha,
     state.latestStable?.tag ?? diffBaseTag,
@@ -263,6 +309,7 @@ function cmdStatus(flags) {
     targetSha,
     targetSubject,
     state,
+    devVersionSync,
     unreleasedCount: unreleasedCommits.length,
     unreleasedCommits,
     ciGate,
@@ -285,6 +332,9 @@ function cmdStatus(flags) {
   );
   console.log(
     `Active Pre-release: ${state.activePrerelease ? `${state.activePrerelease.tag} (${state.activePrerelease.commitSha.slice(0, 7)})` : "none (currently on even stable cycle)"}`,
+  );
+  console.log(
+    `Main package.json : ${devVersionSync.currentVersion ?? "unknown"}${devVersionSync.needsBump ? ` -> behind ${devVersionSync.expectedVersion} (run 'release.mjs bump-dev')` : " (in sync)"}`,
   );
   console.log(
     `Target (${targetRef}) : ${targetSha.slice(0, 7)} — ${targetSubject}`,
@@ -375,10 +425,21 @@ function cmdNotes(flags) {
   );
 }
 
+function parseJsonSafe(raw) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 function cmdDeployLivekit(flags) {
+  const ref =
+    typeof flags.ref === "string" ? flags.ref.replace(/^origin\//, "") : "main";
   if (flags["dry-run"]) {
     console.log(
-      `[dry-run] Would run: gh workflow run deploy-livekit-cf.yml --repo ${REPO} --ref main`,
+      `[dry-run] Would run: gh workflow run deploy-livekit-cf.yml --repo ${REPO} --ref ${ref}`,
     );
     return;
   }
@@ -397,9 +458,9 @@ function cmdDeployLivekit(flags) {
     ],
     { allowFail: true },
   );
-  const prevId = before ? JSON.parse(before)[0]?.databaseId : null;
+  const prevId = parseJsonSafe(before)?.[0]?.databaseId ?? null;
 
-  console.log("Triggering deploy-livekit-cf.yml on main...");
+  console.log(`Triggering deploy-livekit-cf.yml on ${ref}...`);
   run("gh", [
     "workflow",
     "run",
@@ -407,7 +468,7 @@ function cmdDeployLivekit(flags) {
     "--repo",
     REPO,
     "--ref",
-    "main",
+    ref,
   ]);
 
   let runId = null;
@@ -428,8 +489,7 @@ function cmdDeployLivekit(flags) {
       ],
       { allowFail: true },
     );
-    if (!listOut) continue;
-    const latest = JSON.parse(listOut)[0];
+    const latest = parseJsonSafe(listOut)?.[0];
     if (latest && latest.databaseId !== prevId) {
       runId = latest.databaseId;
       console.log(`Started deploy-livekit-cf run ${runId}: ${latest.url}`);
@@ -459,13 +519,189 @@ function cmdDeployLivekit(flags) {
   }
 }
 
+/**
+ * Open an auto-merge PR updating `packages/vscode/package.json` (and `bun.lock`)
+ * on `main` to the active `X.Y.0-dev` version. Uses a temporary git index so
+ * the caller's working tree and checked-out branch are never touched.
+ */
+function bumpDevVersion({ version, dryRun = false, noFetch = false }) {
+  if (!noFetch) fetchOrigin();
+  const state = computeReleaseState(listVscodeTags());
+  const nextDevVersion =
+    typeof version === "string" ? version : state.nextDevVersion;
+
+  const pkgJsonText = run("git", [
+    "show",
+    "origin/main:packages/vscode/package.json",
+  ]);
+  const bunLockText = run("git", ["show", "origin/main:bun.lock"], {
+    allowFail: true,
+  });
+  const currentVersion = JSON.parse(pkgJsonText).version ?? null;
+  const sync = evaluateDevVersionSync(currentVersion, nextDevVersion);
+
+  if (!sync.needsBump && typeof version !== "string") {
+    console.log(
+      `packages/vscode/package.json on origin/main is already at ${currentVersion} (expected ${sync.expectedVersion}); skipping dev version bump.`,
+    );
+    return { skipped: true, version: sync.expectedVersion };
+  }
+
+  const updated = replaceVscodeDevVersion({
+    pkgJsonText,
+    bunLockText,
+    nextDevVersion: sync.expectedVersion,
+  });
+  const branchName = `chore/bump-vscode-${sync.expectedVersion}`;
+  const commitTitle = `chore(vscode): bump version to ${sync.expectedVersion}`;
+
+  const existingPrOut = run(
+    "gh",
+    [
+      "pr",
+      "list",
+      "--repo",
+      REPO,
+      "--head",
+      branchName,
+      "--state",
+      "open",
+      "--json",
+      "number,url",
+    ],
+    { allowFail: true },
+  );
+  const existingPr = parseJsonSafe(existingPrOut)?.[0];
+  if (existingPr) {
+    console.log(
+      `Open dev-version bump PR already exists (#${existingPr.number}): ${existingPr.url}`,
+    );
+    return { skipped: true, prUrl: existingPr.url };
+  }
+
+  if (dryRun) {
+    console.log(
+      `[dry-run] Would push ${branchName} and open auto-merge PR: "${commitTitle}" (${currentVersion} -> ${sync.expectedVersion})`,
+    );
+    return { dryRun: true, version: sync.expectedVersion };
+  }
+
+  const baseSha = resolveCommit("origin/main", { allowFetch: false });
+  const tmpIndex = path.join(
+    os.tmpdir(),
+    `pochi-bump-dev-index-${process.pid}-${Date.now()}`,
+  );
+  let commitSha;
+  try {
+    const indexEnv = { GIT_INDEX_FILE: tmpIndex };
+    run("git", ["read-tree", baseSha], { env: indexEnv });
+    const pkgBlob = run("git", ["hash-object", "-w", "--stdin"], {
+      input: updated.pkgJsonText,
+    });
+    run(
+      "git",
+      [
+        "update-index",
+        "--cacheinfo",
+        `100644,${pkgBlob},packages/vscode/package.json`,
+      ],
+      { env: indexEnv },
+    );
+    if (updated.bunLockText !== null && updated.bunLockText !== bunLockText) {
+      const lockBlob = run("git", ["hash-object", "-w", "--stdin"], {
+        input: updated.bunLockText,
+      });
+      run(
+        "git",
+        ["update-index", "--cacheinfo", `100644,${lockBlob},bun.lock`],
+        { env: indexEnv },
+      );
+    }
+    const treeSha = run("git", ["write-tree"], { env: indexEnv });
+    commitSha = run("git", [
+      "commit-tree",
+      treeSha,
+      "-p",
+      baseSha,
+      "-m",
+      commitTitle,
+    ]);
+  } finally {
+    fs.rmSync(tmpIndex, { force: true });
+  }
+
+  run("git", [
+    "push",
+    "--no-verify",
+    "origin",
+    `+${commitSha}:refs/heads/${branchName}`,
+  ]);
+
+  const prBody = [
+    "## Summary",
+    `- Bump \`packages/vscode/package.json\` version from \`${currentVersion}\` to \`${sync.expectedVersion}\` for the next development cycle${state.latestStable ? ` following \`${state.latestStable.tag}\`` : ""}.`,
+  ].join("\n");
+
+  const prUrl = run("gh", [
+    "pr",
+    "create",
+    "--repo",
+    REPO,
+    "--base",
+    "main",
+    "--head",
+    branchName,
+    "--title",
+    commitTitle,
+    "--body",
+    prBody,
+  ]);
+  console.log(`Opened dev-version bump PR: ${prUrl}`);
+
+  const autoMerged =
+    run(
+      "gh",
+      [
+        "pr",
+        "merge",
+        prUrl,
+        "--repo",
+        REPO,
+        "--auto",
+        "--squash",
+        "--delete-branch",
+      ],
+      { allowFail: true },
+    ) ??
+    run("gh", ["pr", "merge", prUrl, "--repo", REPO, "--auto"], {
+      allowFail: true,
+    });
+  if (autoMerged !== null) {
+    console.log(`Enabled auto-merge on ${prUrl}`);
+  } else {
+    console.warn(
+      `Could not enable auto-merge automatically; merge ${prUrl} once checks pass.`,
+    );
+  }
+  return { skipped: false, prUrl, version: sync.expectedVersion };
+}
+
+function cmdBumpDev(flags) {
+  bumpDevVersion({
+    version: flags.version,
+    dryRun: Boolean(flags["dry-run"]),
+    noFetch: Boolean(flags["no-fetch"]),
+  });
+}
+
 function cmdCut(mode, flags) {
   if (!CUT_MODES.includes(mode)) {
     throw new Error(
       `Unknown cut mode '${mode}'. Expected ${CUT_MODES.join(" | ")}`,
     );
   }
-  if (!flags["no-fetch"]) fetchOrigin();
+  const allowFetch = !flags["no-fetch"];
+  if (allowFetch) fetchOrigin(flags.target);
 
   const state = computeReleaseState(listVscodeTags());
   const rawVersion =
@@ -489,13 +725,33 @@ function cmdCut(mode, flags) {
     );
   }
 
+  if (!flags.force) {
+    if (
+      state.latestStable &&
+      compareVersions(versionInfo, state.latestStable) <= 0
+    ) {
+      throw new Error(
+        `Version ${versionInfo.version} must be greater than latest Stable ${state.latestStable.version}. Pass --force to override.`,
+      );
+    }
+    if (
+      mode === "prerelease" &&
+      state.latestTag &&
+      compareVersions(versionInfo, state.latestTag) <= 0
+    ) {
+      throw new Error(
+        `Version ${versionInfo.version} must be greater than latest tag ${state.latestTag.version}. Pass --force to override.`,
+      );
+    }
+  }
+
   let targetSha;
   let notesBaseTag;
   let rollbackFromTag = null;
 
   if (mode === "prerelease") {
     const ref = typeof flags.target === "string" ? flags.target : "origin/main";
-    targetSha = resolveCommit(ref);
+    targetSha = resolveCommit(ref, { allowFetch });
     notesBaseTag = state.latestTag?.tag ?? null;
     if (
       state.latestTag &&
@@ -509,7 +765,7 @@ function cmdCut(mode, flags) {
     }
   } else if (mode === "promote") {
     if (typeof flags.target === "string") {
-      targetSha = resolveCommit(flags.target);
+      targetSha = resolveCommit(flags.target, { allowFetch });
     } else if (state.activePrerelease) {
       targetSha = state.activePrerelease.commitSha;
     } else {
@@ -518,6 +774,16 @@ function cmdCut(mode, flags) {
       );
     }
     notesBaseTag = state.latestStable?.tag ?? state.latestTag?.tag ?? null;
+    if (
+      state.latestStable &&
+      (state.latestStable.commitSha === targetSha ||
+        getCommitsBetween(notesBaseTag, targetSha).length === 0) &&
+      !flags.force
+    ) {
+      throw new Error(
+        `No unreleased commits between ${state.latestStable.tag} and ${targetSha.slice(0, 7)}. Pass --force to tag anyway.`,
+      );
+    }
   } else if (mode === "rollback") {
     // Rollback only re-publishes the build of an existing release tag. Shipping
     // new commits (e.g. a cherry-picked fix) must go through `cut hotfix` so the
@@ -529,13 +795,27 @@ function cmdCut(mode, flags) {
           `Rollback --target must be an existing vscode@X.Y.Z release tag (got '${flags.target}'). To ship new commits, use 'cut hotfix --target <ref>'.`,
         );
       }
-      targetSha = resolveCommit(targetInfo.tag);
+      if (targetInfo.channel !== "stable" && !flags.force) {
+        throw new Error(
+          `Rollback --target ${targetInfo.tag} is a pre-release tag. Expected an even-minor Stable tag (or pass --force).`,
+        );
+      }
+      targetSha = resolveCommit(targetInfo.tag, { allowFetch: false });
       rollbackFromTag = targetInfo.tag;
     } else if (state.previousStable) {
       targetSha = state.previousStable.commitSha;
       rollbackFromTag = state.previousStable.tag;
     } else {
       throw new Error("No previous Stable tag found to roll back to.");
+    }
+    if (
+      state.latestStable &&
+      targetSha === state.latestStable.commitSha &&
+      !flags.force
+    ) {
+      throw new Error(
+        `Rollback target ${rollbackFromTag} points to the same commit (${targetSha.slice(0, 7)}) as latest Stable ${state.latestStable.tag}.`,
+      );
     }
     notesBaseTag = state.latestStable?.tag ?? null;
   } else {
@@ -550,7 +830,7 @@ function cmdCut(mode, flags) {
         "No Stable tag found to base the hotfix release notes on.",
       );
     }
-    targetSha = resolveCommit(flags.target);
+    targetSha = resolveCommit(flags.target, { allowFetch });
     notesBaseTag = state.latestStable.tag;
     if (
       getCommitsBetween(notesBaseTag, targetSha).length === 0 &&
@@ -601,6 +881,12 @@ function cmdCut(mode, flags) {
   if (mode !== "rollback") {
     const livekit = getLivekitStatus(targetSha, notesBaseTag);
     if (livekit.needsDeploy && !flags["skip-livekit-check"]) {
+      if (mode === "hotfix") {
+        const hotfixRef = String(flags.target).replace(/^origin\//, "");
+        throw new Error(
+          `Cloudflare livekit-cf: ${describeLivekitDrift(livekit)}. Run 'release.mjs deploy-livekit --ref ${hotfixRef} --wait' to deploy from the hotfix branch, or pass --skip-livekit-check if livekit-cf was already deployed from a newer main commit.`,
+        );
+      }
       throw new Error(
         `Cloudflare livekit-cf: ${describeLivekitDrift(livekit)}. Run 'release.mjs deploy-livekit --wait' first, or pass --skip-livekit-check.`,
       );
@@ -643,6 +929,12 @@ function cmdCut(mode, flags) {
   console.log("-------------------------------\n");
 
   if (flags["dry-run"]) {
+    if (mode === "promote" && !flags["no-bump-dev"]) {
+      const nextDev = `${versionInfo.major}.${versionInfo.minor + 1}.0-dev`;
+      console.log(
+        `[dry-run] After promote, would open auto-merge PR bumping packages/vscode/package.json to ${nextDev}.`,
+      );
+    }
     console.log(
       "[dry-run] Pre-flight checks passed. No tag created or pushed.",
     );
@@ -661,7 +953,7 @@ function cmdCut(mode, flags) {
     `Created annotated tag ${versionInfo.tag} -> ${targetSha.slice(0, 7)}`,
   );
   try {
-    run("git", ["push", "origin", versionInfo.tag]);
+    run("git", ["push", "--no-verify", "origin", versionInfo.tag]);
   } catch (err) {
     // Drop the local tag so a retry is not blocked by "already exists".
     run("git", ["tag", "-d", versionInfo.tag], { allowFail: true });
@@ -671,7 +963,17 @@ function cmdCut(mode, flags) {
   }
   console.log(`Pushed ${versionInfo.tag} to origin.`);
 
-  if (flags["no-watch"]) return;
+  if (flags["no-watch"]) {
+    console.warn(
+      `Note: --no-watch was passed, so GitHub Release notes were not applied automatically. Once the workflow finishes, update notes with 'gh release edit ${versionInfo.tag} --repo ${REPO} --notes-file <file>' (use 'release.mjs notes --from ${notesBaseTag ?? "<baseTag>"} --to ${versionInfo.tag} --version ${versionInfo.version}').`,
+    );
+    if (mode === "promote" && !flags["no-bump-dev"]) {
+      console.warn(
+        "Run 'release.mjs bump-dev' once ready to bump packages/vscode/package.json for the next cycle.",
+      );
+    }
+    return;
+  }
 
   console.log("Waiting for Release Pochi VSCode Extension workflow run...");
   let runId = null;
@@ -750,6 +1052,16 @@ function cmdCut(mode, flags) {
     ".url",
   ]);
   console.log(`Release complete: ${releaseUrl}`);
+
+  if (mode === "promote" && !flags["no-bump-dev"]) {
+    try {
+      bumpDevVersion({ dryRun: false, noFetch: false });
+    } catch (err) {
+      console.warn(
+        `Warning: Stable release succeeded, but opening the follow-up dev-version bump PR failed: ${err.message}\nRun 'node .agents/skills/release-vscode/scripts/release.mjs bump-dev' to retry.`,
+      );
+    }
+  }
 }
 
 function main() {
@@ -762,9 +1074,10 @@ function main() {
         "Commands:",
         "  status [--target <ref>] [--find-green] [--no-fetch] [--json]",
         "  notes --from <tag> [--to <ref>] [--version <X.Y.Z>]",
-        "  deploy-livekit [--wait] [--dry-run]",
+        "  deploy-livekit [--ref <branch>] [--wait] [--dry-run]",
+        "  bump-dev [--version <X.Y.Z-dev>] [--dry-run] [--no-fetch]",
         "  cut <prerelease|promote|rollback|hotfix> [--target <ref>] [--version <X.Y.Z>]",
-        "      [--dry-run] [--no-watch] [--no-fetch] [--skip-livekit-check]",
+        "      [--dry-run] [--no-watch] [--no-bump-dev] [--no-fetch] [--skip-livekit-check]",
         "      [--allow-unverified-ci] [--force]",
       ].join("\n"),
     );
@@ -774,6 +1087,7 @@ function main() {
   if (command === "status") return cmdStatus(flags);
   if (command === "notes") return cmdNotes(flags);
   if (command === "deploy-livekit") return cmdDeployLivekit(flags);
+  if (command === "bump-dev") return cmdBumpDev(flags);
   if (command === "cut") return cmdCut(args[0], flags);
 }
 

@@ -7,10 +7,13 @@ import {
   computeReleaseState,
   detectLivekitDrift,
   evaluateCiGates,
+  evaluateDevVersionSync,
   generateReleaseNotes,
   parseCliArgs,
   parseVscodeVersion,
+  replaceVscodeDevVersion,
   requiredChecksForMode,
+  requiredChecksForRef,
   scanCompatibilityRisks,
   workflowSupportsTagVersion,
 } from "./lib.mjs";
@@ -33,6 +36,19 @@ test("parseCliArgs accepts --key=value and flags before positionals", () => {
 
   assert.equal(parseCliArgs([]).help, true);
   assert.equal(parseCliArgs(["cut", "--help"]).help, true);
+
+  const deployParsed = parseCliArgs([
+    "deploy-livekit",
+    "--ref",
+    "release-vscode-0-86",
+    "--wait",
+  ]);
+  assert.equal(deployParsed.flags.ref, "release-vscode-0-86");
+  assert.equal(deployParsed.flags.wait, true);
+
+  const bumpParsed = parseCliArgs(["bump-dev", "--dry-run"]);
+  assert.equal(bumpParsed.command, "bump-dev");
+  assert.equal(bumpParsed.flags["dry-run"], true);
 });
 
 test("parseCliArgs rejects typos, unsupported options, and missing values", () => {
@@ -65,6 +81,17 @@ test("requiredChecksForMode only gates hotfix and rollback on test-integration",
   ]);
   assert.deepEqual(requiredChecksForMode("hotfix"), ["test-integration"]);
   assert.deepEqual(requiredChecksForMode("rollback"), ["test-integration"]);
+
+  assert.deepEqual(requiredChecksForRef("origin/main"), [
+    "pre-push",
+    "test-integration",
+  ]);
+  assert.deepEqual(requiredChecksForRef("origin/release-vscode-0-86"), [
+    "test-integration",
+  ]);
+  assert.deepEqual(requiredChecksForRef("release-vscode-0-86"), [
+    "test-integration",
+  ]);
 });
 
 test("parseVscodeVersion classifies odd minor as prerelease and even minor as stable", () => {
@@ -103,12 +130,26 @@ test("computeReleaseState calculates next versions when latest release is even s
   assert.equal(state.latestStable?.tag, "vscode@0.84.0");
   assert.equal(state.previousStable?.tag, "vscode@0.82.0");
   assert.equal(state.activePrerelease, null);
+  assert.equal(state.nextDevVersion, "0.85.0-dev");
   assert.deepEqual(state.nextVersions, {
     prerelease: "0.85.0",
     promote: "0.86.0",
     rollback: "0.84.1",
     hotfix: "0.84.1",
   });
+});
+
+test("computeReleaseState skips rolled-back broken release when computing previousStable", () => {
+  const afterRollback = computeReleaseState([
+    { tag: "vscode@0.82.0", commitSha: "zzzz000" },
+    { tag: "vscode@0.84.0", commitSha: "aaaa111" },
+    { tag: "vscode@0.86.0", commitSha: "bbbb222" }, // broken release
+    { tag: "vscode@0.86.1", commitSha: "aaaa111" }, // rollback restoring 0.84.0
+  ]);
+
+  assert.equal(afterRollback.latestStable?.tag, "vscode@0.86.1");
+  assert.equal(afterRollback.previousStable?.tag, "vscode@0.82.0");
+  assert.equal(afterRollback.nextDevVersion, "0.87.0-dev");
 });
 
 test("computeReleaseState increments patch during an active odd-minor prerelease cycle", () => {
@@ -121,6 +162,7 @@ test("computeReleaseState increments patch during an active odd-minor prerelease
   assert.equal(state.latestStable?.tag, "vscode@0.84.0");
   assert.equal(state.activePrerelease?.tag, "vscode@0.85.1");
   assert.equal(state.activePrerelease?.commitSha, "ffff666");
+  assert.equal(state.nextDevVersion, "0.85.0-dev");
   assert.deepEqual(state.nextVersions, {
     prerelease: "0.85.2",
     promote: "0.86.0",
@@ -177,6 +219,59 @@ test("categorizeCommit and generateReleaseNotes filter release noise and group c
     notes,
     /\*\*Full Changelog\*\*: https:\/\/github\.com\/TabbyML\/pochi\/compare\/vscode@0\.84\.0\.\.\.vscode@0\.85\.0/,
   );
+
+  const rollbackNotes = generateReleaseNotes({
+    fromTag: "vscode@0.86.0",
+    toTag: "vscode@0.86.1",
+    rollbackFromTag: "vscode@0.84.0",
+    commits: [],
+  });
+  assert.match(rollbackNotes, /restores the build from `vscode@0\.84\.0`/);
+  assert.match(
+    rollbackNotes,
+    /\*\*Rolled back changes\*\*: https:\/\/github\.com\/TabbyML\/pochi\/compare\/vscode@0\.84\.0\.\.\.vscode@0\.86\.0/,
+  );
+});
+
+test("evaluateDevVersionSync and replaceVscodeDevVersion preserve formatting", () => {
+  assert.equal(
+    evaluateDevVersionSync("0.83.0-dev", "0.85.0-dev").needsBump,
+    true,
+  );
+  assert.equal(
+    evaluateDevVersionSync("0.85.0-dev", "0.85.0-dev").needsBump,
+    false,
+  );
+  assert.equal(
+    evaluateDevVersionSync("0.87.0-dev", "0.85.0-dev").needsBump,
+    false,
+  );
+
+  const samplePkg = `{
+  "name": "pochi",
+  "version": "0.83.0-dev",
+  "activationEvents": ["onStartupFinished"]
+}\n`;
+  const sampleLock = `{
+  "packages": {
+    "packages/vscode": {
+      "name": "pochi",
+      "version": "0.83.0-dev",
+      "dependencies": {}
+    }
+  }
+}\n`;
+  const updated = replaceVscodeDevVersion({
+    pkgJsonText: samplePkg,
+    bunLockText: sampleLock,
+    nextDevVersion: "0.85.0-dev",
+  });
+  assert.match(updated.pkgJsonText, /"version": "0\.85\.0-dev"/);
+  assert.match(
+    updated.pkgJsonText,
+    /"activationEvents": \["onStartupFinished"\]/,
+  );
+  assert.match(updated.bunLockText, /"version": "0\.85\.0-dev"/);
 });
 
 test("evaluateCiGates requires both pre-push and test-integration to succeed", () => {

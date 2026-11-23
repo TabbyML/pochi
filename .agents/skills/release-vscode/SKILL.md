@@ -11,7 +11,7 @@ Pochi's VS Code extension ships directly from verified commits on `main` using g
   - **Odd minor** (`0.85.0`, `0.85.1`, ...): published to **Pre-release** on VS Code Marketplace & Open VSX, and marked Pre-release on GitHub Releases.
   - **Even minor** (`0.86.0`, `0.86.1`, ...): published to **Stable** on VS Code Marketplace & Open VSX.
   - Never use `-rc` / `-alpha` / `-dev` suffixes in `vscode@*` tags (VS Code Marketplace rejects semver pre-release strings).
-- **Tag-driven versioning**: `.github/workflows/release-pochi-vscode-extension.yml` extracts `X.Y.Z` from the `vscode@X.Y.Z` tag and writes it into `packages/vscode/package.json` in CI before `vsce package`. Thus the **exact same commit SHA** tested as `vscode@0.85.x` (Pre-release) can be promoted to `vscode@0.86.0` (Stable) simply by pushing the even tag.
+- **Tag-driven versioning + async `-dev` sync**: `.github/workflows/release-pochi-vscode-extension.yml` extracts `X.Y.Z` from the `vscode@X.Y.Z` tag and writes it into `packages/vscode/package.json` in CI before `vsce package`. Thus the **exact same commit SHA** tested as `vscode@0.85.x` (Pre-release) can be promoted to `vscode@0.86.0` (Stable) simply by pushing the even tag, without blocking releases on version-bump PRs. After promoting a Stable release, `cut promote` (or `bump-dev`) opens an async auto-merge PR updating `packages/vscode/package.json` on `main` to the next `0.XX.0-dev` cycle so local development and `X-Pochi-Client` headers stay current.
 - **No percentage rollout on Marketplace**: safety relies on `pre-push` + `test-integration` CI gates, Pre-release dogfooding, compatibility checks before tagging, and fast patch-tag rollback.
 
 All deterministic checks and calculations live in `.agents/skills/release-vscode/scripts/release.mjs`:
@@ -34,7 +34,7 @@ $R status --find-green
 
 Review the 4 sections it prints:
 
-1. **Current tags & next calculated versions** (`prerelease`, `promote`, `rollback`, `hotfix`).
+1. **Current tags, `main` `package.json` sync, & next calculated versions** (`prerelease`, `promote`, `rollback`, `hotfix`). If `main`'s `packages/vscode/package.json` is behind the active `0.XX.0-dev` cycle, run `$R bump-dev`.
 2. **CI Gates on target SHA**: BOTH `pre-push` (`ci.yml`) and `test-integration` (`test-integration.yml`) must be `OK`.
    - If `origin/main` HEAD is still running checks, either wait (`gh run watch`) or pass `--target <nearest-green-sha>` reported by `--find-green`.
 3. **Cloudflare `livekit-cf` drift**: if `packages/livekit/`, `packages/livekit-cf/`, or `packages/vscode-webui/` changed since the last `deploy-livekit-cf.yml` run, deploy `livekit-cf` before cutting the extension release (Step 2). `UNKNOWN` means the drift could not be computed (e.g. the last deploy commit is not available locally); treat it as `NEEDS DEPLOY`.
@@ -53,7 +53,7 @@ When `status` reports `Cloudflare livekit-cf: NEEDS DEPLOY`:
 $R deploy-livekit --wait
 ```
 
-This dispatches `.github/workflows/deploy-livekit-cf.yml` on `main` and waits (~1m20s) for completion so Share links and LiveStore sync match the upcoming extension build. With `--wait`, the command fails if it cannot find the triggered run, so a zero exit code always means the deploy succeeded. Pass `--skip-livekit-check` to `cut` only if the user explicitly confirms those changes do not require worker redeployment.
+This dispatches `.github/workflows/deploy-livekit-cf.yml` on `main` (pass `--ref <branch>` when deploying from a hotfix branch) and waits (~1m20s) for completion so Share links and LiveStore sync match the upcoming extension build. With `--wait`, the command fails if it cannot find the triggered run, so a zero exit code always means the deploy succeeded. Pass `--skip-livekit-check` to `cut` only if the user explicitly confirms those changes do not require worker redeployment.
 
 ---
 
@@ -84,7 +84,7 @@ Once the active Pre-release (`vscode@0.85.x`) has been dogfooded without blocker
    ```bash
    $R cut promote --dry-run
    ```
-2. Confirm with the user, then publish Stable (`vscode@0.86.0`) and write the cumulative Release Notes:
+2. Confirm with the user, then publish Stable (`vscode@0.86.0`), write the cumulative Release Notes, and automatically open an auto-merge PR bumping `packages/vscode/package.json` on `main` to `0.87.0-dev` (pass `--no-bump-dev` to skip, or run `$R bump-dev` later):
    ```bash
    $R cut promote
    ```
@@ -130,5 +130,5 @@ $R cut hotfix --target origin/release-vscode-0-86 --dry-run
 $R cut hotfix --target origin/release-vscode-0-86
 ```
 
-`cut hotfix` publishes the next Stable patch (`vscode@0.86.1` by default). Its release notes list the cherry-picked commits since the latest Stable tag, and it runs the same `livekit-cf` drift and compatibility checks as `promote`. If `livekit-cf` was already deployed from a newer `main`, `--skip-livekit-check` is usually appropriate; confirm with the user first.
+`cut hotfix` publishes the next Stable patch (`vscode@0.86.1` by default). Its release notes list the cherry-picked commits since the latest Stable tag, and it runs the same `livekit-cf` drift and compatibility checks as `promote`. If the hotfix touches `livekit` / `vscode-webui`, either deploy from the hotfix branch (`$R deploy-livekit --ref release-vscode-0-86 --wait`) or pass `--skip-livekit-check` if `livekit-cf` was already deployed from a newer `main` commit; confirm with the user first.
 *(Delete the temporary `release-vscode-0-86` branch after the fix is also on `main` and superseded by the next regular release.)*

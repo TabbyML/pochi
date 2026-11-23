@@ -93,6 +93,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/vscode@')
         with:
           allowUpdates: true
+          omitBodyDuringUpdate: true
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           artifacts: "packages/vscode/*.vsix"
           name: pochi-vscode@${{ steps.release_info.outputs.version_number }}

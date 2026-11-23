@@ -6,6 +6,7 @@ import { parseArgs } from "node:util";
 // Strict `major.minor.patch` integers without leading zeros (VS Marketplace
 // rejects semver pre-release suffixes, and leading zeros break shell math).
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const DEV_SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-dev$/;
 const TAG_PREFIX = "vscode@";
 
 export const REQUIRED_CHECK_NAMES = ["pre-push", "test-integration"];
@@ -24,10 +25,17 @@ export function requiredChecksForMode(mode) {
     : REQUIRED_CHECK_NAMES;
 }
 
+export function requiredChecksForRef(ref) {
+  return typeof ref === "string" && /^(?:origin\/)?release-/.test(ref)
+    ? HOTFIX_REQUIRED_CHECK_NAMES
+    : REQUIRED_CHECK_NAMES;
+}
+
 const CLI_OPTIONS = {
   help: { type: "boolean", short: "h" },
   target: { type: "string" },
   version: { type: "string" },
+  ref: { type: "string" },
   from: { type: "string" },
   to: { type: "string" },
   json: { type: "boolean" },
@@ -37,6 +45,7 @@ const CLI_OPTIONS = {
   "no-fetch": { type: "boolean" },
   "dry-run": { type: "boolean" },
   "no-watch": { type: "boolean" },
+  "no-bump-dev": { type: "boolean" },
   "skip-livekit-check": { type: "boolean" },
   "allow-unverified-ci": { type: "boolean" },
 };
@@ -44,12 +53,14 @@ const CLI_OPTIONS = {
 const COMMAND_OPTIONS = {
   status: ["target", "find-green", "no-fetch", "json"],
   notes: ["from", "to", "version"],
-  "deploy-livekit": ["wait", "dry-run"],
+  "deploy-livekit": ["ref", "wait", "dry-run"],
+  "bump-dev": ["version", "dry-run", "no-fetch"],
   cut: [
     "target",
     "version",
     "dry-run",
     "no-watch",
+    "no-bump-dev",
     "no-fetch",
     "skip-livekit-check",
     "allow-unverified-ci",
@@ -61,6 +72,7 @@ const COMMAND_MAX_ARGS = {
   status: 0,
   notes: 0,
   "deploy-livekit": 0,
+  "bump-dev": 0,
   cut: 1,
 };
 
@@ -151,7 +163,25 @@ export function computeReleaseState(tagRecords) {
   const latestTag = parsed[0] ?? null;
   const stableTags = parsed.filter((t) => t.channel === "stable");
   const latestStable = stableTags[0] ?? null;
-  const previousStable = stableTags[1] ?? null;
+
+  // If `latestStable` is already a rollback/re-tag of an earlier stable tag
+  // (sharing its commitSha), skip over the rolled-back tags in between so the
+  // next default rollback never bounces back to the broken release.
+  let previousStable = null;
+  if (latestStable) {
+    let anchorIdx = 0;
+    if (latestStable.commitSha) {
+      for (let i = 1; i < stableTags.length; i++) {
+        if (stableTags[i].commitSha === latestStable.commitSha) {
+          anchorIdx = i;
+        }
+      }
+    }
+    previousStable =
+      stableTags
+        .slice(anchorIdx + 1)
+        .find((t) => t.commitSha !== latestStable.commitSha) ?? null;
+  }
 
   const prereleaseCandidates = parsed.filter(
     (t) =>
@@ -178,17 +208,123 @@ export function computeReleaseState(tagRecords) {
     ? `${latestStable.major}.${latestStable.minor}.${latestStable.patch + 1}`
     : null;
 
+  let nextDevVersion = "0.1.0-dev";
+  if (activePrerelease) {
+    nextDevVersion = `${activePrerelease.major}.${activePrerelease.minor}.0-dev`;
+  } else if (latestStable) {
+    nextDevVersion = `${latestStable.major}.${latestStable.minor + 1}.0-dev`;
+  }
+
   return {
     latestTag,
     latestStable,
     previousStable,
     activePrerelease,
+    nextDevVersion,
     nextVersions: {
       prerelease: nextPrerelease,
       promote: nextPromote,
       rollback: nextRollback,
       hotfix: nextRollback,
     },
+  };
+}
+
+export function parseDevVersion(input) {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  const devMatch = DEV_SEMVER_RE.exec(trimmed);
+  if (devMatch) {
+    const major = Number(devMatch[1]);
+    const minor = Number(devMatch[2]);
+    const patch = Number(devMatch[3]);
+    return {
+      version: `${major}.${minor}.${patch}-dev`,
+      major,
+      minor,
+      patch,
+      isDev: true,
+    };
+  }
+  const rel = parseVscodeVersion(trimmed);
+  if (!rel) return null;
+  return {
+    version: rel.version,
+    major: rel.major,
+    minor: rel.minor,
+    patch: rel.patch,
+    isDev: false,
+  };
+}
+
+export function evaluateDevVersionSync(currentPkgVersion, expectedDevVersion) {
+  const expected = parseDevVersion(expectedDevVersion);
+  if (!expected || !expected.isDev) {
+    throw new Error(
+      `Invalid expected dev version '${expectedDevVersion}'. Expected major.minor.patch-dev.`,
+    );
+  }
+  const current = parseDevVersion(currentPkgVersion);
+  if (!current) {
+    return {
+      needsBump: true,
+      currentVersion: currentPkgVersion ?? null,
+      expectedVersion: expected.version,
+    };
+  }
+  const cmp = compareVersions(current, expected);
+  return {
+    needsBump: cmp < 0,
+    currentVersion: current.version,
+    expectedVersion: expected.version,
+  };
+}
+
+/**
+ * Update `"version"` in `packages/vscode/package.json` (and `bun.lock` if
+ * provided) without reformatting surrounding JSON arrays/indentation so Biome
+ * checks pass unchanged.
+ */
+export function replaceVscodeDevVersion({
+  pkgJsonText,
+  bunLockText = null,
+  nextDevVersion,
+}) {
+  const parsedNext = parseDevVersion(nextDevVersion);
+  if (!parsedNext || !parsedNext.isDev) {
+    throw new Error(
+      `Invalid dev version '${nextDevVersion}'. Expected strict major.minor.patch-dev.`,
+    );
+  }
+  const versionLineRe = /^(\s*"version":\s*)"[^"]*"(,?)$/m;
+  if (!versionLineRe.test(pkgJsonText)) {
+    throw new Error(
+      'Could not locate top-level "version" field in packages/vscode/package.json',
+    );
+  }
+  const updatedPkgJson = pkgJsonText.replace(
+    versionLineRe,
+    `$1"${parsedNext.version}"$2`,
+  );
+  const parsedJson = JSON.parse(updatedPkgJson);
+  if (parsedJson.version !== parsedNext.version) {
+    throw new Error(
+      `Failed to update packages/vscode/package.json version to ${parsedNext.version}`,
+    );
+  }
+
+  let updatedBunLock = bunLockText;
+  if (typeof bunLockText === "string") {
+    const lockRe =
+      /("packages\/vscode":\s*\{\s*\n\s*"name":\s*"pochi",\s*\n\s*"version":\s*)"[^"]*"/;
+    if (lockRe.test(bunLockText)) {
+      updatedBunLock = bunLockText.replace(lockRe, `$1"${parsedNext.version}"`);
+    }
+  }
+
+  return {
+    pkgJsonText: updatedPkgJson,
+    bunLockText: updatedBunLock,
   };
 }
 
@@ -269,7 +405,13 @@ export function generateReleaseNotes({
     lines.push("Maintenance release.", "");
   }
 
-  if (fromTag && toTag) {
+  if (rollbackFromTag) {
+    if (fromTag && rollbackFromTag !== fromTag) {
+      lines.push(
+        `**Rolled back changes**: https://github.com/${repo}/compare/${rollbackFromTag}...${fromTag}`,
+      );
+    }
+  } else if (fromTag && toTag) {
     lines.push(
       `**Full Changelog**: https://github.com/${repo}/compare/${fromTag}...${toTag}`,
     );
