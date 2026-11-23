@@ -1,7 +1,11 @@
 import { prompts, serializeTaskReference } from "@getpochi/common";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MessageMarkdown, hideUserInvokedSkillInstructions } from "./markdown";
+
+const { openFile } = vi.hoisted(() => ({
+  openFile: vi.fn(),
+}));
 
 vi.mock("@/features/chat", () => ({
   useReplaceJobIdsInContent: () => (content: string) => content,
@@ -16,8 +20,16 @@ vi.mock("@/features/tools", () => ({
 }));
 
 vi.mock("./task-reference-badge", () => ({
-  TaskReferenceBadge: ({ id, title }: { id: string; title: string }) => (
-    <span data-testid="task-reference-badge" data-task-id={id}>
+  TaskReferenceBadge: ({
+    id,
+    title,
+    onClick,
+  }: { id: string; title: string; onClick?: () => void }) => (
+    <span
+      data-testid="task-reference-badge"
+      data-task-id={id}
+      onClick={onClick}
+    >
       {title}
     </span>
   ),
@@ -25,10 +37,14 @@ vi.mock("./task-reference-badge", () => ({
 
 vi.mock("@/lib/vscode", () => ({
   isVSCodeEnvironment: () => false,
-  vscodeHost: {},
+  vscodeHost: { openFile },
 }));
 
 describe("MessageMarkdown", () => {
+  beforeEach(() => {
+    openFile.mockClear();
+  });
+
   it("renders a task reference as a task badge", () => {
     const tag = serializeTaskReference({
       id: "task-1",
@@ -41,6 +57,19 @@ describe("MessageMarkdown", () => {
     const badge = screen.getByTestId("task-reference-badge");
     expect(badge.getAttribute("data-task-id")).toBe("task-1");
     expect(badge.textContent).toBe('Fix "login" <bug>');
+  });
+
+  it("opens the transcript markdown when clicking a task reference badge", () => {
+    const tag = serializeTaskReference({
+      id: "task-1",
+      path: "/tmp/transcripts/task-1.md",
+      title: "Fix login bug",
+    });
+
+    render(<MessageMarkdown>{`compare with ${tag} please`}</MessageMarkdown>);
+
+    fireEvent.click(screen.getByTestId("task-reference-badge"));
+    expect(openFile).toHaveBeenCalledWith("/tmp/transcripts/task-1.md");
   });
 
   it("renders a task-reference tag without attributes as plain text", () => {
