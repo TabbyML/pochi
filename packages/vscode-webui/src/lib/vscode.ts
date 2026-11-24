@@ -111,6 +111,7 @@ function createVSCodeHost(): VSCodeHostApi {
         "readActiveSelection",
         "readCurrentWorkspace",
         "openFile",
+        "readImagePreview",
         "saveWidget",
         "openWidgetInPanel",
         "readResourceURI",
@@ -323,6 +324,16 @@ function createVSCodeHost(): VSCodeHostApi {
     );
   };
 
+  const readImagePreview: VSCodeHostApi["readImagePreview"] = async (
+    filePath,
+    options,
+  ) => {
+    return vscodeHostApi.readImagePreview(
+      resolvePochiUri(filePath, globalStore?.storeId ?? ""),
+      options,
+    );
+  };
+
   const previewEdit: VSCodeHostApi["previewEdit"] = async (toolName, input) => {
     return vscodeHostApi.previewEdit(
       toolName,
@@ -333,6 +344,7 @@ function createVSCodeHost(): VSCodeHostApi {
   return {
     ...vscodeHostApi,
     openFile,
+    readImagePreview,
     previewEdit,
   };
 }

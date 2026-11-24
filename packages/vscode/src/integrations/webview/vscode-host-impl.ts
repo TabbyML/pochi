@@ -27,6 +27,10 @@ import { PochiLanguage } from "@/lib/pochi-language";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { PostHog } from "@/lib/posthog";
 import { computePreviewEdit } from "@/lib/preview-edit";
+import {
+  type ReadImagePreviewOptions,
+  readImagePreview as readImagePreviewFromFile,
+} from "@/lib/read-image-preview";
 // biome-ignore lint/style/useImportType: needed for dependency injection
 import { SkillManager } from "@/lib/skill-manager";
 // biome-ignore lint/style/useImportType: needed for dependency injection
@@ -785,6 +789,13 @@ export class VSCodeHostImpl implements VSCodeHostApi, vscode.Disposable {
     },
   ) => {
     await openFileInEditor(filePath, this.cwd, options);
+  };
+
+  readImagePreview = async (
+    filePath: string,
+    options?: ReadImagePreviewOptions,
+  ) => {
+    return readImagePreviewFromFile(filePath, this.cwd, options);
   };
 
   persistPastedTextFiles = async (taskId: string, texts: string[]) => {

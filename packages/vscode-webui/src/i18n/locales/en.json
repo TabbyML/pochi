@@ -428,7 +428,8 @@
   },
   "fileBadge": {
     "backgroundJobOutput": "{{displayId}} output",
-    "terminalOutput": "terminal output"
+    "terminalOutput": "terminal output",
+    "imagePreviewUnavailable": "Image preview unavailable"
   },
   "codeBlock": {
     "showCode": "Show Code",

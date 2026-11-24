@@ -212,3 +212,11 @@ export const addLineBreak = (text: string) => {
     (match) => `${match}\u200B`,
   );
 };
+
+const imageFileExtensionPattern =
+  /\.(png|jpe?g|gif|webp|svg|bmp|ico|avif|tiff?)$/i;
+
+export const isImageFile = (filePath: string): boolean => {
+  const cleanPath = filePath.split(/[?#]/)[0] ?? filePath;
+  return imageFileExtensionPattern.test(cleanPath);
+};

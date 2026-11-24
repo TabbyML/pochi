@@ -291,6 +291,17 @@ export interface VSCodeHostApi {
   ): void;
 
   /**
+   * Reads an image file and returns a data URL for previewing in the webview.
+   * Returns `null` if the file cannot be read or is not a supported image.
+   */
+  readImagePreview(
+    filePath: string,
+    options?: {
+      fallbackGlobPattern?: string;
+    },
+  ): Promise<{ dataUrl: string } | null>;
+
+  /**
    * Asks the user where to store a standalone widget document and writes it there.
    *
    * @returns `true` when the document was written, `false` when the user cancelled.
