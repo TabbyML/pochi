@@ -166,35 +166,30 @@ function ImageFilePreviewHoverCard({
         align="start"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-2">
-          <div className="max-w-[300px] truncate font-medium text-xs">
-            {displayLabel}
+        {previewState.status === "loading" && (
+          <div className="flex h-24 w-36 items-center justify-center rounded-md border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)]">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
-          {previewState.status === "loading" && (
-            <div className="flex h-24 w-36 items-center justify-center rounded-md border border-[var(--vscode-input-border)] bg-[var(--vscode-input-background)]">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          {previewState.status === "loaded" && (
-            <div className="overflow-hidden rounded-md border border-[var(--vscode-input-border)]">
-              <CopyableImage
-                src={previewState.dataUrl}
-                alt={displayLabel}
-                filename={filename}
-                className="h-auto max-w-[90vw] object-contain"
-                style={{
-                  maxHeight: "calc(60vh - 1rem)",
-                  minWidth: "120px",
-                }}
-              />
-            </div>
-          )}
-          {previewState.status === "error" && (
-            <div className="py-1 text-muted-foreground text-xs">
-              {t("fileBadge.imagePreviewUnavailable")}
-            </div>
-          )}
-        </div>
+        )}
+        {previewState.status === "loaded" && (
+          <div className="overflow-hidden rounded-md border border-[var(--vscode-input-border)]">
+            <CopyableImage
+              src={previewState.dataUrl}
+              alt={displayLabel}
+              filename={filename}
+              className="h-auto max-w-[90vw] object-contain"
+              style={{
+                maxHeight: "calc(60vh - 1rem)",
+                minWidth: "120px",
+              }}
+            />
+          </div>
+        )}
+        {previewState.status === "error" && (
+          <div className="py-1 text-muted-foreground text-xs">
+            {t("fileBadge.imagePreviewUnavailable")}
+          </div>
+        )}
       </HoverCardContent>
     </HoverCard>
   );
