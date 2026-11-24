@@ -63,6 +63,8 @@ vi.mock("@/features/tools", () => ({
       data-status={status}
       data-output-file={outputFile}
       data-appearance={appearance}
+      data-command={command}
+      data-notification-title={notificationTitle}
     >
       <span>{notificationTitle ?? command}</span>
       <span>
@@ -338,6 +340,33 @@ describe("BackgroundJobNotifications", () => {
     expect(rows.map((row) => row.lastElementChild?.textContent)).toEqual([
       "log 1",
       "log 2",
+    ]);
+  });
+  it("titles command notifications by their description and keeps the command", () => {
+    const { getAllByTestId } = render(
+      <BackgroundJobNotifications
+        notifications={[
+          {
+            ...notification("bgjob-cmd-1", "completed"),
+            command: "cd /workspace/packages/vscode-webui && bun run test",
+            description: "  Run vscode-webui unit tests ",
+          },
+          // Older tasks, older models and subtasks have no description.
+          notification("bgjob-cmd-2", "failed"),
+          { ...notification("bgjob-cmd-3", "completed"), description: "  " },
+        ]}
+      />,
+    );
+    const rows = getAllByTestId("background-job-panel");
+    expect(rows.map((row) => row.dataset.notificationTitle)).toEqual([
+      "Run vscode-webui unit tests",
+      undefined,
+      undefined,
+    ]);
+    expect(rows.map((row) => row.dataset.command)).toEqual([
+      "cd /workspace/packages/vscode-webui && bun run test",
+      "run bgjob-cmd-2",
+      "run bgjob-cmd-3",
     ]);
   });
 });

@@ -87,6 +87,9 @@ export function BackgroundJobNotificationItems({
         backgroundJobId={notification.backgroundJobId}
         appearance="notification"
         command={notification.command}
+        // Titled like the job's row in the background jobs panel; the
+        // command stays the fallback for jobs without a description.
+        notificationTitle={notification.description?.trim() || undefined}
         summary={notification.summary}
         status={notification.status}
         exitCode={notification.exitCode}

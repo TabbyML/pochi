@@ -192,6 +192,125 @@ describe("executeCommandTool", () => {
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
   });
 
+  it("titles a background command by its description and keeps the command in the job panel", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "described-call",
+          state: "output-available",
+          input: {
+            command: "cd /workspace/packages/vscode-webui && bun run test",
+            description: " Run vscode-webui unit tests ",
+            cwd: "/workspace",
+            background: true,
+            timeout: 60,
+          },
+          output: {
+            output: "Background command started",
+            isTruncated: false,
+            _meta: {
+              backgroundJobId: "bgjob-cmd-described",
+              outputFile: "/tmp/bgjob-cmd-described.log",
+            },
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(
+      screen.getByText("toolInvocation.backgroundExecuteDescribed"),
+    ).toBeTruthy();
+    expect(screen.getByText("Run vscode-webui unit tests")).toBeTruthy();
+    expect(screen.queryByText("toolInvocation.backgroundExecute")).toBeNull();
+    expect(screen.getByTestId("background-job-panel").dataset.jobId).toBe(
+      "bgjob-cmd-described",
+    );
+  });
+
+  it("titles a promoted command by its description", () => {
+    taskCwd.current = "/workspace";
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "promoted-described-call",
+          state: "output-available",
+          input: {
+            command: "bun run build",
+            description: "Build the extension",
+            cwd: "/workspace",
+            timeout: 1,
+          },
+          output: {
+            output: "Command moved to background",
+            isTruncated: false,
+            _meta: {
+              backgroundJobId: "bgjob-cmd-promoted-described",
+              outputFile: "/tmp/bgjob-cmd-promoted-described.log",
+            },
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    const transition = screen.getByTestId("command-promotion-transition");
+    expect(transition.parentElement?.textContent).toBe(
+      "toolInvocation.startedCommandDescribed Build the extensiontoolInvocation.promotedToBackground",
+    );
+  });
+
+  it("keeps the generic title for a foreground command with a description", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "foreground-described-call",
+          state: "input-available",
+          input: {
+            command: "git status",
+            description: "Check working tree status",
+            cwd: "/workspace",
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("toolInvocation.executeCommand")).toBeTruthy();
+    expect(screen.queryByText("Check working tree status")).toBeNull();
+    expect(screen.getByTestId("foreground-command-panel").textContent).toBe(
+      "git status",
+    );
+  });
+
+  it("falls back to the generic title for a blank description", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "blank-description-call",
+          state: "input-available",
+          input: {
+            command: "bun run dev",
+            description: "  ",
+            cwd: "/workspace",
+            background: true,
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
+  });
+
   it("leaves the job state to the badge instead of the status icon", () => {
     render(
       <ExecuteCommandTool
