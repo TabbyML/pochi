@@ -36,7 +36,7 @@ export const startMonitor: ToolFunctionType<
   const location = viewColumn ? { viewColumn } : undefined;
 
   const job = await TerminalJob.create({
-    name: getBackgroundJobTerminalName(command),
+    name: getBackgroundJobTerminalName(command, description),
     command,
     cwd,
     location,

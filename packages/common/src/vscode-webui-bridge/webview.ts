@@ -58,6 +58,8 @@ export type BackgroundCommands = Record<
     detachable?: boolean;
     taskId?: string;
     command?: string;
+    /** Short user-facing title the model gave a background command. */
+    description?: string;
     monitor?: string;
     outputFile?: string;
   }

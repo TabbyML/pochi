@@ -23,6 +23,20 @@ describe("getBackgroundJobTerminalName", () => {
     );
   });
 
+  it("prefers the job description over the command", () => {
+    assert.strictEqual(
+      getBackgroundJobTerminalName(
+        "cd /Users/me/project && bun run dev",
+        "  Start dev\n server ",
+      ),
+      "Start dev server",
+    );
+  });
+
+  it("falls back to the command for a blank description", () => {
+    assert.strictEqual(getBackgroundJobTerminalName("bun test", "  "), "bun test");
+  });
+
   it("clips long commands to the maximum terminal title length", () => {
     assert.strictEqual(
       getBackgroundJobTerminalName(

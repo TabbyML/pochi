@@ -1,5 +1,6 @@
 import {
   buildForkAgentInitTitle,
+  stripForkAgentTitlePrefix,
   createForkAgent,
 } from "../fork-agent";
 import type { UIMessage } from "ai";
@@ -129,6 +130,28 @@ describe("buildForkAgentInitTitle", () => {
   it("ignores blank parent titles", () => {
     expect(buildForkAgentInitTitle("auto-memory", "   ")).toBe(
       "[Auto Memory Extraction]",
+    );
+  });
+});
+
+describe("stripForkAgentTitlePrefix", () => {
+  it("drops the use-case label in front of the parent title", () => {
+    expect(
+      stripForkAgentTitlePrefix(
+        buildForkAgentInitTitle("auto-memory", "Review PR feedback"),
+      ),
+    ).toBe("Review PR feedback");
+  });
+
+  it("keeps a title that is only the label", () => {
+    expect(stripForkAgentTitlePrefix("[Auto Memory Dream]")).toBe(
+      "[Auto Memory Dream]",
+    );
+  });
+
+  it("leaves other titles unchanged", () => {
+    expect(stripForkAgentTitlePrefix("[WIP] Build something")).toBe(
+      "[WIP] Build something",
     );
   });
 });

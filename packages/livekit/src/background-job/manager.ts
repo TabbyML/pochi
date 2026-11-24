@@ -13,7 +13,11 @@ import {
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
 import { parseOutputSchema } from "@getpochi/tools";
 import { isShallowEqual } from "remeda";
-import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
+import {
+  type ForkAgent,
+  type ForkAgentHandle,
+  stripForkAgentTitlePrefix,
+} from "../background-task/fork-agent";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
 import { TaskMemoryAdaptor } from "../background-task/memory/task-memory";
 import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
@@ -95,6 +99,8 @@ type Job = {
       notification?: CommandNotification;
       monitor?: string;
       command?: string;
+      /** Short user-facing title the model gave a background command. */
+      description?: string;
       exitCode?: number;
     }
   | { kind: "subagent"; taskId: string; agentType?: string }
@@ -617,9 +623,14 @@ export class BackgroundJobManager {
         id,
         ownerTaskId: taskId,
         kind: "command",
-        title: command.monitor?.trim() || command.command || "Command",
+        title:
+          command.monitor?.trim() ||
+          command.description?.trim() ||
+          command.command ||
+          "Command",
         monitor: command.monitor,
         command: command.command,
+        description: command.description,
         outputFile: command.outputFile,
         status: "running",
       });
@@ -728,14 +739,17 @@ export class BackgroundJobManager {
                 old.notification?.notificationId === notice.notificationId
               )
                 continue;
+              const oldCommand = old?.kind === "command" ? old : undefined;
+              const description =
+                notice.description?.trim() || oldCommand?.description;
+              const command = notice.command ?? oldCommand?.command;
               this.setJob({
                 id: notice.backgroundJobId,
                 ownerTaskId: taskId,
                 kind: "command",
-                title:
-                  notice.command ??
-                  (old?.kind === "command" ? old.title : undefined) ??
-                  "Command",
+                title: description || command || oldCommand?.title || "Command",
+                command,
+                description,
                 outputFile: notice.outputFile,
                 status: notice.status,
                 notification: notice,
@@ -1059,7 +1073,8 @@ export class BackgroundJobManager {
               kind: job.kind,
               title: job.title,
               status: job.status,
-              command: job.command ?? job.title,
+              command: job.command ?? (job.description ? undefined : job.title),
+              ...(job.description ? { description: job.description } : {}),
               monitor: job.monitor,
               outputFile: job.outputFile,
               exitCode: job.notification?.exitCode ?? job.exitCode,
@@ -1076,9 +1091,17 @@ export class BackgroundJobManager {
             ...(job.kind === "subagent"
               ? { kind: job.kind, agentType: job.agentType }
               : { kind: job.kind }),
-            // The agent type is shown on its own, so it is not a title.
+            // The agent type and use case are shown on their own, so they are
+            // not part of the title.
             title:
-              task.title || (job.kind === "subagent" ? "Subagent" : "Fork"),
+              job.kind === "subagent"
+                ? task.title || "Subagent"
+                : stripForkAgentTitlePrefix(task.title || "Fork"),
+            // Forks of one task share its title; the start time tells them
+            // apart.
+            ...(job.kind === "fork" && task.createdAt
+              ? { createdAt: task.createdAt.getTime() }
+              : {}),
             status,
             ...(status === "running" && this.isTaskQueued(job.taskId)
               ? { queued: true }

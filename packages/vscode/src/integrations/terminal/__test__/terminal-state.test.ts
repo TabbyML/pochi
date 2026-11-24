@@ -8,7 +8,7 @@ describe("TerminalState background command control", () => {
     const stopped: string[] = [];
     const jobs = [
       { id: "shell-monitor", isPtyTerminal: false, monitorDescription: "CI", isFinished: false },
-      { id: "pty-command", isPtyTerminal: true, monitorDescription: undefined, isFinished: false },
+      { id: "pty-command", isPtyTerminal: true, monitorDescription: undefined, description: "Run dev server", isFinished: false },
       { id: "shell-command", isPtyTerminal: false, monitorDescription: undefined, isFinished: false },
       { id: "ended-monitor", isPtyTerminal: false, monitorDescription: "done", isFinished: true },
     ].map((job) => ({
@@ -24,6 +24,8 @@ describe("TerminalState background command control", () => {
     assert.deepStrictEqual(Object.keys(snapshot), ["shell-monitor", "pty-command", "shell-command"]);
     assert.strictEqual(snapshot["shell-monitor"].monitor, "CI");
     assert.strictEqual(snapshot["shell-monitor"].taskId, "owner");
+    assert.strictEqual(snapshot["pty-command"].description, "Run dev server");
+    assert.strictEqual(snapshot["shell-command"].description, undefined);
     assert.strictEqual(snapshot["shell-command"].detachable, false);
     assert.strictEqual(snapshot["pty-command"].detachable, true);
     for (const job of jobs) state.closeBackgroundCommand(job.id);

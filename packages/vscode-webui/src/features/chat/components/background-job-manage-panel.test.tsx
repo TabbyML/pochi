@@ -66,6 +66,7 @@ vi.mock("react-i18next", () => ({
     // Keys stand in for their translations, with the exit code interpolated.
     t: (key: string, options?: { exitCode?: number }) =>
       options?.exitCode === undefined ? key : `${key} ${options.exitCode}`,
+    i18n: { language: "en-US" },
   }),
 }));
 
@@ -754,6 +755,55 @@ describe("BackgroundJobManagePanel", () => {
 
     expect(screen.queryByText("Background tasks")).toBeNull();
     expect(screen.getByText("managePanel.empty")).toBeDefined();
+  });
+
+  it("titles a command by its description and reveals the command on hover", async () => {
+    backgroundJobs = [
+      {
+        ...runningJob,
+        title: "Start dev server",
+        command: "cd /Users/me/project && bun run dev",
+        description: "Start dev server",
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(rowTitles()).toEqual(["Start dev server"]);
+    expect(
+      screen.queryByText("cd /Users/me/project && bun run dev"),
+    ).toBeNull();
+    fireEvent.pointerMove(screen.getByText("Start dev server"), {
+      pointerType: "mouse",
+    });
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toContain("Start dev server");
+      expect(tooltip.textContent).toContain(
+        "cd /Users/me/project && bun run dev",
+      );
+    });
+  });
+
+  it("tells forks of one task apart by their start time", () => {
+    isDevMode = true;
+    const startedAt = new Date(2024, 0, 1, 14, 5).getTime();
+    backgroundJobs = [
+      {
+        backgroundJobId: "bgjob-task-memory",
+        taskId: "memory",
+        kind: "fork",
+        title: "Review PR feedback",
+        status: "completed",
+        createdAt: startedAt,
+      },
+    ];
+    renderBackgroundJobManagePanel();
+    expect(screen.getByText("Review PR feedback")).toBeDefined();
+    expect(screen.getByTestId("background-agent-started-at").textContent).toBe(
+      new Date(startedAt).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    );
   });
 
   it("merges system agents with subagents without counting system agents", () => {

@@ -929,6 +929,83 @@ describe("BackgroundJobManager", () => {
     }
   });
 
+  it("titles a command with its description while running and after it finishes", async () => {
+    const { manager, observers } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({
+      running: {
+        "bgjob-cmd-one": {
+          ...running("parent"),
+          command: "cd /repo && bun run test",
+          description: "Run unit tests",
+        },
+      },
+      notifications: [],
+    });
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        title: "Run unit tests",
+        command: "cd /repo && bun run test",
+        description: "Run unit tests",
+      }),
+    ]);
+
+    observers.get("parent")!({
+      running: {},
+      notifications: [
+        createBackgroundJobNotification({
+          taskId: "parent",
+          backgroundJobId: "bgjob-cmd-one",
+          command: "cd /repo && bun run test",
+          description: "Run unit tests",
+          outputFile: "/tmp/output",
+          status: "completed",
+          finishedAt: 1,
+        }),
+      ],
+    });
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({
+        status: "completed",
+        title: "Run unit tests",
+        command: "cd /repo && bun run test",
+      }),
+    ]);
+    await manager.dispose();
+  });
+
+  it("titles a command without a description with its command", async () => {
+    const { manager, observers } = setup();
+    await manager.watchTask("parent");
+    observers.get("parent")!({ running: {}, notifications: [finished()] });
+    expect(manager.getJobsForTask("parent")).toEqual([
+      expect.objectContaining({ title: "test", command: "test" }),
+    ]);
+    await manager.dispose();
+  });
+
+  it("drops the use case prefix from a fork's title and keeps its start time", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("fork", {
+      id: "fork",
+      status: "completed",
+      background: true,
+      title: "[Auto Memory Extraction] Review PR feedback",
+      createdAt: new Date(1_700_000_000_000),
+    } as Task);
+    manager.registerTask("fork", {
+      parentTaskId: "parent",
+      useCase: "auto-memory",
+    });
+    await manager.watchTask("parent");
+    expect(manager.getJobsForTask("parent")[0]).toMatchObject({
+      kind: "fork",
+      title: "Review PR feedback",
+      createdAt: 1_700_000_000_000,
+    });
+    await manager.dispose();
+  });
+
   it("keeps fork results out of the parent's notification queue", async () => {
     const { manager, tasks } = setup();
     tasks.set("fork", {

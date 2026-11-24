@@ -98,6 +98,7 @@ async function flushPromises(): Promise<void> {
 
 function createHarness(options?: {
   replay?: string[];
+  description?: string;
   monitor?: MonitorJobOptions;
   appendError?: Error;
   closeError?: Error;
@@ -215,6 +216,7 @@ function createHarness(options?: {
     job = TerminalJob.adopt(ptyProcess as never, {
       name: "test job",
       command: "sleep 10",
+      description: options?.description,
       cwd: "/tmp",
       taskId: "task-test",
       monitor: options?.monitor,
@@ -379,6 +381,20 @@ describe("TerminalJob", () => {
 
     harness.ptyProcess.emitExit(0);
     await flushPromises();
+  });
+
+  it("reports the command description when it finishes", async () => {
+    const harness = createHarness({ description: "Wait for the server" });
+    assert.strictEqual(harness.job.description, "Wait for the server");
+
+    harness.ptyProcess.emitExit(0);
+    await flushPromises();
+
+    assert.strictEqual(harness.finishEvents[0]?.command, "sleep 10");
+    assert.strictEqual(
+      harness.finishEvents[0]?.description,
+      "Wait for the server",
+    );
   });
 
   it("replays foreground output and completes", async () => {

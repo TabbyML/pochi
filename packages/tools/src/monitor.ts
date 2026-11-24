@@ -22,7 +22,7 @@ Script quality:
 - Every pipe stage must flush per line or matches may remain buffered: grep needs \`--line-buffered\`; awk needs \`fflush()\`. Avoid \`head\`, which can delay output until enough matches accumulate.
 - stderr also reaches the event stream, but bypasses pipe filters. Merge with \`2>&1\` when failures written to stderr should reach your filter.
 - In polling loops, tolerate transient request failures and use suitable intervals: 30s or more for remote APIs, 0.5-1s for local checks.
-- Write a specific description because it appears in every notification.
+- Write a short, specific description because it titles the monitor in the UI and appears in every notification. Lead with what distinguishes this monitor from others.
 
 Coverage and volume:
 - Silence is not success. When watching for an outcome, emit every terminal state you would act on, including failure, cancellation, timeout, crashes, and the expected success state.
@@ -40,7 +40,7 @@ The default timeout is 5 minutes. Use persistent only for an explicitly requeste
     description: z
       .string()
       .describe(
-        'Short, specific human-readable description of what is being monitored, shown with every event notification (e.g. "errors in dev.log").',
+        'Short, specific human-readable description of what is being monitored in 3-8 words, shown as the title of the monitor and with every event notification (e.g. "errors in dev.log", "CI checks on PR #123"). Put the distinguishing part first; do not repeat a project name or a prefix shared with other monitors.',
       ),
     cwd: z
       .string()

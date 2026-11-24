@@ -33,6 +33,8 @@ const OutputResumeThresholdCharacters = OutputPauseThresholdCharacters / 2;
 export interface TerminalJobConfig {
   name: string;
   command: string;
+  /** Short user-facing title the model gave the command. */
+  description?: string;
   cwd: string;
   location?: vscode.TerminalEditorLocationOptions;
   // Cancels startup only: a started job outlives its tool call, whose signal
@@ -109,6 +111,10 @@ export class TerminalJob implements vscode.Disposable {
 
   get command() {
     return this.config.command;
+  }
+
+  get description() {
+    return this.config.description;
   }
 
   get name() {
@@ -606,6 +612,9 @@ export class TerminalJob implements vscode.Disposable {
       outputFile: this.outputFile,
       status,
       command: this.config.command,
+      ...(this.config.description
+        ? { description: this.config.description }
+        : {}),
       ...(exitCode !== undefined ? { exitCode } : {}),
       ...(executionError ? { error: executionError.message } : {}),
       finishedAt: Date.now(),
