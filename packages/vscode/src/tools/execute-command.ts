@@ -42,6 +42,7 @@ export const executeCommand: ToolFunctionType<
 > = async (
   {
     command,
+    description,
     cwd = ".",
     background = false,
     timeout = ExecuteCommandDefaultTimeoutSec,
@@ -60,6 +61,11 @@ export const executeCommand: ToolFunctionType<
     throw new Error("Command is required to execute.");
   }
 
+  const jobDescription =
+    typeof description === "string"
+      ? description.trim() || undefined
+      : undefined;
+
   if (path.isAbsolute(cwd)) {
     cwd = path.normalize(cwd);
   } else {
@@ -77,8 +83,9 @@ export const executeCommand: ToolFunctionType<
     const viewColumn = getViewColumnForTerminal();
     const location = viewColumn ? { viewColumn } : undefined;
     const job = await TerminalJob.create({
-      name: getBackgroundJobTerminalName(command),
+      name: getBackgroundJobTerminalName(command, jobDescription),
       command,
+      ...(jobDescription ? { description: jobDescription } : {}),
       cwd,
       location,
       abortSignal,
@@ -163,8 +170,9 @@ export const executeCommand: ToolFunctionType<
           const viewColumn = getViewColumnForTerminal();
           const location = viewColumn ? { viewColumn } : undefined;
           const job = TerminalJob.adopt(result.ptyProcess, {
-            name: getBackgroundJobTerminalName(command),
+            name: getBackgroundJobTerminalName(command, jobDescription),
             command,
+            ...(jobDescription ? { description: jobDescription } : {}),
             cwd,
             location,
             taskId,

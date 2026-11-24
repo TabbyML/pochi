@@ -57,6 +57,20 @@ export function buildForkAgentInitTitle(
   return parent ? `[${useCaseLabel}] ${parent}` : `[${useCaseLabel}]`;
 }
 
+/**
+ * The title of a fork agent without its `[use case]` prefix, for views that
+ * already show the use case on its own. A title that is only the prefix stays
+ * as is so the row is never empty.
+ */
+export function stripForkAgentTitlePrefix(title: string): string {
+  for (const label of Object.values(ForkAgentUseCaseLabels)) {
+    const prefix = `[${label}]`;
+    if (!title.startsWith(prefix)) continue;
+    return title.slice(prefix.length).trim() || title;
+  }
+  return title;
+}
+
 function buildForkMessages<TMessage extends UIMessage>(
   parentMessages: readonly TMessage[],
   directive: string,

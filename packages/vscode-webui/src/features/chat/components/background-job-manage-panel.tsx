@@ -325,6 +325,7 @@ function SystemAgentJobRow({
       badgeLabel={
         backgroundTaskState?.useCase ?? t("backgroundTasks.systemAgent")
       }
+      startedAt={job.createdAt}
       onSelect={onSelect}
     />
   );
@@ -333,15 +334,25 @@ function SystemAgentJobRow({
 function AgentJobRow({
   job,
   badgeLabel,
+  startedAt,
   parentTaskId,
   onSelect,
 }: {
   job: Extract<BackgroundJobEntry, { kind: "subagent" | "fork" }>;
   badgeLabel?: string;
+  /** Shown for rows whose titles repeat, such as forks of one task. */
+  startedAt?: number;
   parentTaskId?: string;
   onSelect: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const startedAtLabel =
+    startedAt === undefined
+      ? undefined
+      : new Date(startedAt).toLocaleTimeString(i18n.language, {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
   const manager = useBackgroundJobManager(parentTaskId ?? "");
   const [error, setError] = useState<string>();
   const summary = [
@@ -386,6 +397,14 @@ function AgentJobRow({
             <span className="mt-1 block text-sm opacity-80">{summary}</span>
           </TooltipContent>
         </Tooltip>
+        {startedAtLabel && (
+          <span
+            data-testid="background-agent-started-at"
+            className="shrink-0 text-muted-foreground/70 text-xs tabular-nums"
+          >
+            {startedAtLabel}
+          </span>
+        )}
         {/* Like a command row: a running subagent swaps to stop; anything
             else hints that the row drills into its details. */}
         <RowStateSlot
@@ -462,6 +481,8 @@ export function JobRow({
   const title = (
     <span className="min-w-0 flex-1 truncate text-sm">{job.title}</span>
   );
+  // What the model called the job; the tooltip adds it above the command.
+  const label = job.monitor ?? job.description;
 
   const action = isRunning ? (
     <StopJobAction
@@ -513,13 +534,13 @@ export function JobRow({
           <TerminalIcon className="size-3" aria-hidden="true" />
         )}
       </span>
-      {job.command || job.monitor || statusLabel ? (
+      {job.command || label || statusLabel ? (
         <Tooltip>
           <TooltipTrigger asChild>{title}</TooltipTrigger>
           <TooltipContent>
-            {job.monitor && job.monitor !== job.command && (
+            {label && label !== job.command && (
               <span className="mb-1 block max-w-sm whitespace-pre-wrap break-words text-sm">
-                {job.monitor}
+                {label}
               </span>
             )}
             {job.command && (

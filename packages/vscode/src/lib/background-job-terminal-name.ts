@@ -5,10 +5,15 @@ const MaxTerminalNameLength = 24;
  *
  * Long commands often begin with inline environment variables. Showing those in
  * the terminal title makes VS Code tabs unreadable, so strip only leading env
- * assignments and keep the actual command visible.
+ * assignments and keep the actual command visible. A description the model
+ * gave the job reads better than any command, so it wins when present.
  */
-export function getBackgroundJobTerminalName(command: string): string {
+export function getBackgroundJobTerminalName(
+  command: string,
+  description?: string,
+): string {
   const title =
+    description?.replace(/\s+/g, " ").trim() ||
     stripLeadingEnvAssignments(command).replace(/\s+/g, " ").trim() ||
     "Background Job";
 

@@ -268,6 +268,7 @@ export class TerminalState implements vscode.Disposable {
             detachable: job.isPtyTerminal,
             taskId: job.taskId,
             command: job.command,
+            ...(job.description ? { description: job.description } : {}),
             monitor: job.monitorDescription,
             outputFile: job.outputFile,
           },
@@ -293,7 +294,7 @@ export class TerminalState implements vscode.Disposable {
           TerminalHistoryManager.getOrCreate(id).terminalName = terminal.name;
         }
         return {
-          name: job?.monitorDescription ?? terminal.name,
+          name: job?.monitorDescription ?? job?.description ?? terminal.name,
           isActive: terminal === vscode.window.activeTerminal,
           backgroundJobId: id,
           outputFile: this.getTerminalOutputFile(terminal),
@@ -303,7 +304,7 @@ export class TerminalState implements vscode.Disposable {
     for (const job of TerminalJob.list()) {
       if (listedJobIds.has(job.id)) continue;
       terminals.push({
-        name: job.monitorDescription ?? job.name,
+        name: job.monitorDescription ?? job.description ?? job.name,
         isActive: false,
         backgroundJobId: job.id,
         outputFile: job.outputFile,

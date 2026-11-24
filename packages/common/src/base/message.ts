@@ -80,6 +80,8 @@ export const BackgroundCommandNotification = z.object({
   finishedAt: z.number(),
   outputFile: z.string(),
   command: z.string().optional(),
+  /** Short user-facing title the model gave the command. */
+  description: z.string().optional(),
   summary: z.string(),
   exitCode: z.number().optional(),
 });
@@ -145,6 +147,7 @@ export const BackgroundJobTerminalEvent = z.object({
   outputFile: z.string(),
   status: z.enum(["completed", "failed", "stopped"]),
   command: z.string(),
+  description: z.string().optional(),
   exitCode: z.number().optional(),
   error: z.string().optional(),
   finishedAt: z.number(),
@@ -174,6 +177,7 @@ export function createBackgroundJobNotification(
     backgroundJobId: event.backgroundJobId,
     outputFile: event.outputFile,
     command: event.command,
+    ...(event.description ? { description: event.description } : {}),
     status: event.status,
     summary,
     ...(event.exitCode !== undefined ? { exitCode: event.exitCode } : {}),

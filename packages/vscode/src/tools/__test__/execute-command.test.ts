@@ -285,7 +285,12 @@ describe("executeCommand Tool", () => {
     assert.strictEqual(create.callCount, 0);
 
     const result = await executeCommand(
-      { command: "npm run dev", cwd: "apps/web", background: true },
+      {
+        command: "npm run dev",
+        description: " Start web dev server ",
+        cwd: "apps/web",
+        background: true,
+      },
       {
         abortSignal,
         cwd: "/workspace",
@@ -309,12 +314,19 @@ describe("executeCommand Tool", () => {
       create.calledOnceWithExactly({
         name: "Background",
         command: "npm run dev",
+        description: "Start web dev server",
         cwd: "/workspace/apps/web",
         location: { viewColumn: 2 },
         abortSignal,
         taskId: "task-1",
         rootTaskId: "root-task",
       }),
+    );
+    assert.ok(
+      getBackgroundJobTerminalName.calledOnceWithExactly(
+        "npm run dev",
+        "Start web dev server",
+      ),
     );
     assert.ok(revealTerminal.calledOnceWithExactly());
   });

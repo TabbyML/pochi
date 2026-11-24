@@ -9,6 +9,8 @@ export type BackgroundJobEntry = {
   | {
       kind: "command";
       command?: string;
+      /** Short user-facing title the model gave a background command. */
+      description?: string;
       monitor?: string;
       exitCode?: number;
       outputFile?: string;
@@ -23,6 +25,8 @@ export type BackgroundJobEntry = {
   | {
       kind: "fork";
       taskId: string;
+      /** When the agent's task was created, in epoch milliseconds. */
+      createdAt?: number;
       /** Running, but still waiting for a free execution slot. */
       queued?: boolean;
     }

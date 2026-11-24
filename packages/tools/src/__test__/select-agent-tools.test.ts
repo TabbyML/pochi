@@ -211,6 +211,8 @@ describe("selectAgentTools", () => {
 
     expect(topLevelSchema.shape).toHaveProperty("background");
     expect(subTaskSchema.shape).not.toHaveProperty("background");
+    expect(topLevelSchema.shape).toHaveProperty("description");
+    expect(subTaskSchema.shape).not.toHaveProperty("description");
     expect(topLevelTools.executeCommand?.description).toContain(
       "Do not infer status from empty or partial file contents",
     );

@@ -181,6 +181,12 @@ Important:
       ...(isSubTask
         ? {}
         : {
+            description: z
+              .string()
+              .optional()
+              .describe(
+                'Clear, concise description of what this command does in 3-8 words, written for the user (e.g. "Run vscode-webui unit tests", "Start Vite dev server"). Put the distinguishing part first and omit paths and shared prefixes. It is shown as the title of the job if the command runs in the background, so always provide it when background is true.',
+              ),
             background: z
               .boolean()
               .optional()
