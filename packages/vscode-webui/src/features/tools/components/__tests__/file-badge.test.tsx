@@ -1,6 +1,8 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileBadge } from "../file-badge";
+
+const mockReadImagePreview = vi.fn();
 
 vi.mock("@/components/theme-provider", () => ({
   useTheme: () => ({ theme: "dark" }),
@@ -11,9 +13,35 @@ vi.mock("react-i18next", () => ({
 }));
 
 vi.mock("@/lib/vscode", () => ({
+  isVSCodeEnvironment: () => true,
   vscodeHost: {
     openFile: vi.fn(),
+    readImagePreview: (...args: unknown[]) => mockReadImagePreview(...args),
   },
+}));
+
+vi.mock("@/components/ui/hover-card", () => ({
+  HoverCard: ({
+    children,
+    onOpenChange,
+  }: {
+    children: React.ReactNode;
+    onOpenChange?: (open: boolean) => void;
+  }) => (
+    <div
+      data-testid="hover-card"
+      onMouseEnter={() => onOpenChange?.(true)}
+      onMouseLeave={() => onOpenChange?.(false)}
+    >
+      {children}
+    </div>
+  ),
+  HoverCardTrigger: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  HoverCardContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="hover-card-content">{children}</div>
+  ),
 }));
 
 const visibleText = (container: HTMLElement) =>
@@ -24,6 +52,7 @@ describe("FileBadge", () => {
 
   beforeEach(() => {
     globalThis.POCHI_HOME_DIR = "/Users/jueliang";
+    mockReadImagePreview.mockReset();
   });
 
   afterEach(() => {
@@ -179,5 +208,46 @@ describe("FileBadge", () => {
       />,
     );
     expect(visibleText(labeled.container)).toContain("custom label");
+  });
+
+  it("loads and renders image preview on hover for image files", async () => {
+    const dataUrl = "data:image/png;base64,iVBORw0KGgo=";
+    mockReadImagePreview.mockResolvedValueOnce({ dataUrl });
+
+    render(<FileBadge path="assets/preview.png" />);
+
+    const hoverCard = screen.getByTestId("hover-card");
+    fireEvent.mouseEnter(hoverCard);
+
+    await waitFor(() => {
+      expect(mockReadImagePreview).toHaveBeenCalledWith("assets/preview.png", {
+        fallbackGlobPattern: undefined,
+      });
+    });
+
+    const img = await screen.findByRole("img");
+    expect(img.getAttribute("src")).toBe(dataUrl);
+  });
+
+  it("shows fallback message when image preview is unavailable", async () => {
+    mockReadImagePreview.mockResolvedValueOnce(null);
+
+    render(<FileBadge path="assets/missing.png" />);
+
+    fireEvent.mouseEnter(screen.getByTestId("hover-card"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("fileBadge.imagePreviewUnavailable"),
+      ).toBeTruthy();
+    });
+  });
+
+  it("does not wrap non-image files or directories in an image hover card", () => {
+    const { rerender } = render(<FileBadge path="src/main.ts" />);
+    expect(screen.queryByTestId("hover-card")).toBeNull();
+
+    rerender(<FileBadge path="assets/images.png" isDirectory />);
+    expect(screen.queryByTestId("hover-card")).toBeNull();
   });
 });

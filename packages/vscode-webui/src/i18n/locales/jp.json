@@ -420,7 +420,8 @@
   },
   "fileBadge": {
     "backgroundJobOutput": "{{displayId}} の出力",
-    "terminalOutput": "ターミナル出力"
+    "terminalOutput": "ターミナル出力",
+    "imagePreviewUnavailable": "画像をプレビューできません"
   },
   "codeBlock": {
     "showCode": "コードを表示",

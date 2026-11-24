@@ -420,7 +420,8 @@
   },
   "fileBadge": {
     "backgroundJobOutput": "{{displayId}} 출력",
-    "terminalOutput": "터미널 출력"
+    "terminalOutput": "터미널 출력",
+    "imagePreviewUnavailable": "이미지 미리보기를 사용할 수 없습니다"
   },
   "codeBlock": {
     "showCode": "코드 보기",

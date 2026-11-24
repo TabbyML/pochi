@@ -193,6 +193,14 @@ const VSCodeHostStub = {
       taskId?: string;
     },
   ): void => {},
+  readImagePreview: (
+    _filePath: string,
+    _options?: {
+      fallbackGlobPattern?: string;
+    },
+  ): Promise<{ dataUrl: string } | null> => {
+    return Promise.resolve(null);
+  },
   saveWidget: (_html: string, _suggestedFilename: string): Promise<boolean> => {
     return Promise.resolve(false);
   },

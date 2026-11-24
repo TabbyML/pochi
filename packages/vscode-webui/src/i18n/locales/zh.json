@@ -419,7 +419,8 @@
   },
   "fileBadge": {
     "backgroundJobOutput": "{{displayId}} 输出",
-    "terminalOutput": "终端输出"
+    "terminalOutput": "终端输出",
+    "imagePreviewUnavailable": "无法预览图片"
   },
   "codeBlock": {
     "showCode": "显示代码",
