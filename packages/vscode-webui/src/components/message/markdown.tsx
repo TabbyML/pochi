@@ -526,7 +526,13 @@ export function MessageMarkdown({
         // plain text, not a badge.
         if (!id || !path || !title) return <>{children}</>;
         const cleanId = id.replace("user-content-", "");
-        return <TaskReferenceBadge id={cleanId} title={title} />;
+        return (
+          <TaskReferenceBadge
+            id={cleanId}
+            title={title}
+            onClick={() => vscodeHost.openFile(path)}
+          />
+        );
       },
       code: (props) => <MemoCode {...props} />,
       a({ href, children, ...props }) {
