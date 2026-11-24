@@ -185,7 +185,7 @@ Important:
               .string()
               .optional()
               .describe(
-                'Clear, concise description of what this command does in 3-8 words, written for the user (e.g. "Run vscode-webui unit tests", "Start Vite dev server"). Put the distinguishing part first and omit paths and shared prefixes. It is shown as the title of the job if the command runs in the background, so always provide it when background is true.',
+                'Clear, concise description of what this command does in 3-8 words, written for the user (e.g. "Run vscode-webui unit tests", "Start Vite dev server"). Put the distinguishing part first and omit paths and shared prefixes. It titles the job whenever the command runs in the background, including a foreground command that is moved to the background when its wait times out. Provide it for any command that may take a while; it can be omitted for quick commands such as `ls` or `git status`.',
               ),
             background: z
               .boolean()
