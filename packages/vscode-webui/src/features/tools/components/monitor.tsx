@@ -42,6 +42,7 @@ export const StartMonitorTool: React.FC<ToolProps<"startMonitor">> = ({
           <BackgroundJobPanel
             backgroundJobId={backgroundJobId}
             command={command}
+            showCommand
             outputFile={
               tool.state === "output-available"
                 ? tool.output.outputFile

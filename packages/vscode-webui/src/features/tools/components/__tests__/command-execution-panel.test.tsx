@@ -14,7 +14,12 @@ let backgroundCommands:
   | Record<string, { isVisible: boolean; detachable?: boolean }>
   | undefined = {};
 let jobInfo:
-  | { command: string | undefined; displayId: string; outputFile?: string }
+  | {
+      command: string | undefined;
+      description?: string;
+      displayId: string;
+      outputFile?: string;
+    }
   | undefined;
 const stopJob = vi.fn(async () => {});
 let commandJob:
@@ -214,6 +219,35 @@ describe("BackgroundJobPanel job control", () => {
       screen.queryByLabelText("backgroundJobNotifications.openOutput"),
     ).toBeNull();
     expect(document.querySelector(".lucide-file-text")).toBeNull();
+  });
+
+  it("titles a job that only carries its id by the job's description", () => {
+    jobInfo = {
+      command: "cd /workspace && bun install",
+      description: "Install project dependencies with bun",
+      displayId: "%1",
+    };
+
+    renderBackgroundJobPanel();
+
+    const title = screen.getByText("Install project dependencies with bun");
+    expect(title.getAttribute("title")).toBe("cd /workspace && bun install");
+    expect(screen.queryByText("cd /workspace && bun install")).toBeNull();
+  });
+
+  it("titles the job by its command on the card that started it", () => {
+    jobInfo = {
+      command: "cd /workspace && bun install",
+      description: "Install project dependencies with bun",
+      displayId: "%1",
+    };
+
+    render(<BackgroundJobPanel backgroundJobId="bgjob-cmd-1" showCommand />);
+
+    expect(screen.getByText("cd /workspace && bun install")).toBeTruthy();
+    expect(
+      screen.queryByText("Install project dependencies with bun"),
+    ).toBeNull();
   });
 
   it("top-aligns the display ID with a multi-line command", () => {

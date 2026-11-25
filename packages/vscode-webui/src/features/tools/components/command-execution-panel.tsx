@@ -340,6 +340,12 @@ export const BackgroundJobPanel: FC<{
   terminalName?: string;
   /** Last command run in the terminal, from the tool output (term- ids only). */
   lastCommand?: string;
+  /**
+   * Title the panel by the command even when the job has a description. For
+   * the card that starts the job, whose own title already shows the
+   * description.
+   */
+  showCommand?: boolean;
 }> = ({
   backgroundJobId,
   output,
@@ -354,6 +360,7 @@ export const BackgroundJobPanel: FC<{
   outputFile,
   terminalName,
   lastCommand,
+  showCommand = false,
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -408,9 +415,17 @@ export const BackgroundJobPanel: FC<{
     liveTerminal?.name ?? terminalName,
     lastCommand,
   );
-  const title = isUserTerminal
-    ? (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
-    : (resolvedCommand ?? backgroundJobId);
+  // Cards that only refer to a job (reading its output, stopping it) title it
+  // like its row in the background jobs panel: by the model's description,
+  // with the command on hover and in the copy button.
+  const jobDescription = showCommand ? undefined : info?.description;
+  const title = isUserTerminal ? (
+    (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
+  ) : jobDescription ? (
+    <span title={resolvedCommand}>{jobDescription}</span>
+  ) : (
+    (resolvedCommand ?? backgroundJobId)
+  );
   const isActive = liveTerminal?.isActive ?? false;
 
   // On a card the badge is the job's status indicator. The host's list is the

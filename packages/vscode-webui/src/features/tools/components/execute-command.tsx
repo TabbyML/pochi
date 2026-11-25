@@ -101,6 +101,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
             <BackgroundJobPanel
               backgroundJobId={backgroundJobMetadata.backgroundJobId}
               outputFile={backgroundJobMetadata.outputFile}
+              showCommand
             />
           ) : availableCommand ? (
             <CommandPanelContainer
