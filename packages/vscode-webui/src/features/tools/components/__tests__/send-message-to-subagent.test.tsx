@@ -197,7 +197,7 @@ describe("SendMessageToSubagentTool", () => {
         state: "input-available",
         input,
       });
-      expect(screen.getByText("backgroundTasks.untitled")).toBeTruthy();
+      expect(screen.getByText("bgjob-task-child")).toBeTruthy();
       expect(screen.queryByRole("button")).toBeNull();
     } finally {
       mocks.knownTask = true;

@@ -20,9 +20,6 @@ export const SendMessageToSubagentTool: React.FC<
   const { t } = useTranslation();
   const input = tool.input;
   const backgroundJobId = input?.backgroundJobId;
-  const taskId = backgroundJobId
-    ? getSubAgentTaskId(backgroundJobId)
-    : undefined;
   const error = getToolPartError(tool);
   const status: SendMessageToSubagentStatus | undefined =
     tool.state === "output-available" && !error
@@ -48,6 +45,7 @@ export const SendMessageToSubagentTool: React.FC<
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">{label}</span>
+      {/* A requested interrupt that found nothing to interrupt was queued. */}
       {interrupt && !error && status !== "queued" && (
         <Badge
           variant="outline"
@@ -69,13 +67,9 @@ export const SendMessageToSubagentTool: React.FC<
             className="flex flex-col gap-1.5 rounded-md border px-2 py-1.5"
             aria-label="subagent-message"
           >
-            {taskId ? (
-              <SubagentTarget taskId={taskId} />
-            ) : backgroundJobId ? (
-              <code className="truncate text-muted-foreground text-xs">
-                {backgroundJobId}
-              </code>
-            ) : null}
+            {backgroundJobId && (
+              <SubagentTarget backgroundJobId={backgroundJobId} />
+            )}
             {input?.message && (
               <div className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words border-l-2 pl-2 text-sm">
                 {input.message}
@@ -89,28 +83,32 @@ export const SendMessageToSubagentTool: React.FC<
 };
 
 /** The subagent a message goes to: its agent, title, and live status. */
-function SubagentTarget({ taskId }: { taskId: string }) {
+function SubagentTarget({ backgroundJobId }: { backgroundJobId: string }) {
   const { t } = useTranslation();
+  const taskId = getSubAgentTaskId(backgroundJobId) ?? "";
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
   const status = useBackgroundSubagentStatus(taskId);
-  const agentType = backgroundTaskState?.agentType || "Subagent";
-  const title = task?.title || t("backgroundTasks.untitled");
 
+  // Not a subagent of this workspace, e.g. an id the model got wrong.
+  if (!task) {
+    return (
+      <code className="truncate bg-transparent p-0 font-mono text-muted-foreground text-xs">
+        {backgroundJobId}
+      </code>
+    );
+  }
+
+  const agentType = backgroundTaskState?.agentType || "Subagent";
+  const title = task.title || t("backgroundTasks.untitled");
   return (
     <div className="flex min-w-0 items-center gap-2 text-sm">
       <Badge
         variant="secondary"
         className="inline-flex h-5 shrink-0 py-0 align-top"
       >
-        {task ? (
-          <BackgroundTaskButton taskId={taskId}>
-            {agentType}
-          </BackgroundTaskButton>
-        ) : (
-          agentType
-        )}
+        <BackgroundTaskButton taskId={taskId}>{agentType}</BackgroundTaskButton>
       </Badge>
       <span
         className="min-w-0 flex-1 truncate text-muted-foreground"
