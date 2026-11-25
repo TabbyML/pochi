@@ -83,12 +83,14 @@ export function getUserInputPartsForDelivery(
  * without a result. Such a response is what the model sees as unfinished work
  * to pick up.
  *
- * A turn that ended on a follow-up question is not interrupted: it handed the
- * conversation back to the user on purpose.
+ * A turn that ended on a follow-up question or a completion is not
+ * interrupted: it handed the conversation back to the user on purpose.
  */
 export function isInterruptedAssistantResponse(message?: Message): boolean {
   if (message?.role !== "assistant") return false;
   if (isAwaitingFollowupAnswer(message)) return false;
+  // A completion ends the turn on purpose too; it is never given a result.
+  if (endsWithCompletion(message)) return false;
   if (isAssistantMessageWithStreamingParts(message)) return true;
 
   // A last step without tool calls is a finished answer, even when the turn
@@ -152,4 +154,17 @@ export function detachUserInputParts(
   if (remaining.length === 0) updated.splice(index, 1);
   else updated[index] = { ...message, parts: remaining };
   return updated;
+}
+
+function endsWithCompletion(message: Message): boolean {
+  const lastStepStart = message.parts.findLastIndex(
+    (part) => part.type === "step-start",
+  );
+  return message.parts
+    .slice(lastStepStart + 1)
+    .some(
+      (part) =>
+        part.type === "tool-attemptCompletion" &&
+        part.state === "input-available",
+    );
 }

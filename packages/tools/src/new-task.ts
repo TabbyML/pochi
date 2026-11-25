@@ -135,7 +135,7 @@ When NOT to use the newTask tool:
 Usage notes:
 1. Launch agents with independent, non-overlapping assignments concurrently whenever possible; to do that, use a single message with multiple tool uses
 2. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.
-3. Each agent invocation is stateless. You will not be able to send additional messages to the agent, nor will the agent be able to communicate with you outside of its final report. Therefore, your prompt should contain a highly detailed task description for the agent to perform autonomously and you should specify exactly what information the agent should return back to you in its final and only message to you.
+3. Write a highly detailed prompt so the agent can work autonomously, and specify exactly what information it should return in its final message. A background subagent can later receive follow-up instructions with sendMessage (using its taskId), which also resumes it after it has finished; foreground subagents and spawned top-level tasks (spawn: "task") cannot.
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
@@ -150,6 +150,12 @@ Usage notes:
     inputSchema,
     outputSchema: z.object({
       result: z.string().describe("The task completion result."),
+      taskId: z
+        .string()
+        .optional()
+        .describe(
+          "Present when the subagent was started in the background; can be passed to sendMessage to follow up, steer, or resume it.",
+        ),
       backgroundJobId: z
         .string()
         .optional()

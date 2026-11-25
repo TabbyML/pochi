@@ -11,7 +11,7 @@ import {
   withTimeout,
 } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
-import { parseOutputSchema } from "@getpochi/tools";
+import { type SendMessageStatus, parseOutputSchema } from "@getpochi/tools";
 import { isShallowEqual } from "remeda";
 import {
   type ForkAgent,
@@ -24,6 +24,7 @@ import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
 import {
   type RunningTaskAdaptor,
   TaskExecutor,
+  isRunnableTaskStatus,
 } from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
 import { getBackgroundJobNotificationIds } from "../chat/background-job-notification";
@@ -103,7 +104,13 @@ type Job = {
       description?: string;
       exitCode?: number;
     }
-  | { kind: "subagent"; taskId: string; agentType?: string }
+  | {
+      kind: "subagent";
+      taskId: string;
+      agentType?: string;
+      /** Follow-up messages sent with sendMessage. */
+      followUpCount?: number;
+    }
   | { kind: "fork"; taskId: string }
 );
 
@@ -218,14 +225,27 @@ export class BackgroundJobManager {
           if (note) this.taskResultNotes.set(taskId, note);
           return note;
         },
-        executeToolCall: (args) =>
-          args.toolName === "killBackgroundJob"
-            ? this.kill(
-                (args.input as { backgroundJobId: string }).backgroundJobId,
-                args.taskId,
-                { notify: false },
-              )
-            : options.adaptor.executeToolCall(args),
+        executeToolCall: (args) => {
+          if (args.toolName === "killBackgroundJob") {
+            return this.kill(
+              (args.input as { backgroundJobId: string }).backgroundJobId,
+              args.taskId,
+              { notify: false },
+            );
+          }
+          if (args.toolName === "sendMessage") {
+            const input = args.input as {
+              taskId: string;
+              message: string;
+              interrupt?: boolean;
+            };
+            return this.sendMessage(input.taskId, args.taskId, {
+              message: input.message,
+              interrupt: input.interrupt,
+            });
+          }
+          return options.adaptor.executeToolCall(args);
+        },
       },
       readTaskState: async (taskId) => {
         const state = await this.taskStateStore.read(taskId);
@@ -507,7 +527,13 @@ export class BackgroundJobManager {
       taskId,
       ...(state.useCase
         ? { kind: "fork" }
-        : { kind: "subagent", agentType: state.agentType }),
+        : {
+            kind: "subagent",
+            agentType: state.agentType,
+            ...(state.followUpCount
+              ? { followUpCount: state.followUpCount }
+              : {}),
+          }),
     });
     if (!registered) {
       const unsubscribe = this.store.subscribe(
@@ -899,6 +925,7 @@ export class BackgroundJobManager {
             task,
             messages,
             this.taskResultNotes.get(task.id),
+            job.followUpCount,
           ),
         );
     }
@@ -1181,6 +1208,114 @@ export class BackgroundJobManager {
       }
     }
     return { success: true };
+  }
+
+  /**
+   * Sends a follow-up message from a task to one of its background subagents.
+   * A running subagent reads it at its next step, or right away when
+   * `interrupt` is set. A finished one is resumed with it.
+   */
+  async sendMessage(
+    targetTaskId: string,
+    parentTaskId: string,
+    { message, interrupt = false }: { message: string; interrupt?: boolean },
+  ): Promise<{
+    success: true;
+    status: SendMessageStatus;
+    taskId: string;
+  }> {
+    if (this.disposed) throw new Error("Background job manager is disposed.");
+    const parsedKind = parseBackgroundJobId(targetTaskId);
+    if (parsedKind && parsedKind !== "task") {
+      throw new Error(
+        `"${targetTaskId}" is not a background subagent. sendMessage only supports background subagents.`,
+      );
+    }
+    if (!message.trim()) throw new Error("The message is empty.");
+    // Accept a bare taskId, or a bgjob-task-<id> if the caller passed one.
+    const childId =
+      parsedKind === "task"
+        ? (getSubAgentTaskId(targetTaskId) ?? "")
+        : targetTaskId;
+    const backgroundJobId = getSubAgentBackgroundJobId(childId);
+    const job = this.jobs.get(backgroundJobId);
+    const child = childId
+      ? this.store.query(catalog.queries.makeTaskQuery(childId))
+      : undefined;
+    if (
+      !childId ||
+      !child ||
+      !child.background ||
+      (job ? job.ownerTaskId !== parentTaskId : child.parentId !== parentTaskId)
+    ) {
+      throw new Error(
+        `Background subagent with taskId "${targetTaskId}" not found.`,
+      );
+    }
+    const state = (await this.taskStateStore.read(childId)) ?? {};
+    if (job?.kind === "fork" || isForkAgentUseCase(state.useCase)) {
+      throw new Error(
+        `"${childId}" is a fork agent. Fork agents cannot receive messages.`,
+      );
+    }
+
+    // Every follow-up gets its own result notification, even when the parent
+    // stopped the subagent earlier.
+    const followUpCount = (state.followUpCount ?? 0) + 1;
+    const nextState = {
+      ...state,
+      parentTaskId: state.parentTaskId ?? parentTaskId,
+      stoppedByParent: false,
+      followUpCount,
+    };
+    await this.taskStateStore.set(childId, nextState);
+    // Applied only once the task is pending again: a finished task with the
+    // new follow-up count, or a stopped one no longer silenced, would announce
+    // its previous result as the new one.
+    const activate = () => {
+      this.silenced.delete(backgroundJobId);
+      this.taskResultNotes.delete(childId);
+      this.registerTask(childId, nextState);
+    };
+
+    const delivered = await this.executor?.sendMessage(childId, message, {
+      interrupt,
+    });
+    if (delivered) {
+      activate();
+      return { success: true, status: delivered, taskId: childId };
+    }
+
+    const latestChild = this.store.query(
+      catalog.queries.makeTaskQuery(childId),
+    );
+    if (!latestChild) {
+      throw new Error(
+        `Background subagent with taskId "${targetTaskId}" not found.`,
+      );
+    }
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      parts: [{ type: "text", text: message }],
+    };
+    this.store.commit(
+      ...catalog.taskEvents(this.localTaskIds.has(childId), [
+        catalog.events.chatStreamStarted({
+          id: childId,
+          data: userMessage,
+          todos: latestChild.todos ? [...latestChild.todos] : [],
+          modelId: latestChild.modelId ?? undefined,
+          updatedAt: new Date(),
+        }),
+      ]),
+    );
+    activate();
+    // A subagent that was runnable but not running is waiting for a slot.
+    const status: SendMessageStatus = isRunnableTaskStatus(latestChild.status)
+      ? "queued"
+      : "resumed";
+    return { success: true, status, taskId: childId };
   }
 
   async stopOwnedJobs(taskId: string) {

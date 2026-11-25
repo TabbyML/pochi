@@ -1161,13 +1161,16 @@ export class LiveChatKit<
 
   /**
    * Delivers all pending input when no request is going to carry it, for
-   * instance once the agent has stopped.
+   * instance once the agent has stopped. `interrupted` tells that the agent's
+   * last step was cut short for this input, e.g. by a steering message, even
+   * if the response itself looks complete.
    *
    * @returns true when a turn was started for it.
    */
   flushPendingInput = ({
     automatic = true,
-  }: { automatic?: boolean } = {}): boolean => {
+    interrupted = false,
+  }: { automatic?: boolean; interrupted?: boolean } = {}): boolean => {
     this.enqueueBackgroundJobNotifications(
       this.backgroundJobManager.getPendingNotifications(this.taskId),
     );
@@ -1196,7 +1199,7 @@ export class LiveChatKit<
     // Input that reaches the agent as its own turn continues an interrupted
     // response when there is one; otherwise it is an ordinary new turn.
     const delivery: UserInputDelivery | undefined =
-      isInterruptedAssistantResponse(this.chat.messages.at(-1))
+      interrupted || isInterruptedAssistantResponse(this.chat.messages.at(-1))
         ? "after-interruption"
         : undefined;
     const userParts = getUserInputPartsForDelivery(userInputs, delivery);

@@ -151,6 +151,11 @@ export interface BackgroundTaskState {
   baselineStepCount?: number;
   /** The parent stopped this task itself, so its result needs no notification. */
   stoppedByParent?: boolean;
+  /**
+   * Follow-up messages the parent sent with sendMessage. Each one
+   * gives the subagent's next result its own notification.
+   */
+  followUpCount?: number;
 }
 
 export {

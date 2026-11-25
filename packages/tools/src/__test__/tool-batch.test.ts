@@ -432,3 +432,83 @@ describe("runConcurrentBatch", () => {
     expect(maxConcurrent).toBeLessThanOrEqual(2);
   });
 });
+
+describe("ToolCallQueue.interrupt", () => {
+  it("lets the running call finish and skips the calls that have not started", async () => {
+    const { ToolCallQueue } = await import("../utils/tool-batch");
+    const queue = new ToolCallQueue();
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      queue.enqueue({
+        toolCallId: "write-a",
+        toolName: "writeToFile",
+        input: {},
+        run: async () => {
+          resolve();
+          await new Promise<void>((done) => {
+            release = done;
+          });
+          return { kind: "success" };
+        },
+        cancel: () => {
+          throw new Error("a running call must not be cancelled");
+        },
+      });
+    });
+    const cancelled: string[] = [];
+    let ranB = false;
+    queue.enqueue({
+      toolCallId: "write-b",
+      toolName: "writeToFile",
+      input: {},
+      run: async () => {
+        ranB = true;
+        return { kind: "success" };
+      },
+      cancel: (reason) => {
+        cancelled.push(reason);
+      },
+    });
+
+    const running = queue.start();
+    await started;
+    expect(queue.interrupt("steered")).toBe(true);
+    release();
+    await running;
+
+    expect(ranB).toBe(false);
+    expect(cancelled).toEqual(["steered"]);
+    expect(getToolCallCancelErrorMessage("steered")).toBe(
+      "Tool call was skipped because a new instruction interrupted this step.",
+    );
+  });
+});
+
+describe("ToolCallQueue.interrupt with nothing left to skip", () => {
+  it("reports that no tool call is skipped", async () => {
+    const { ToolCallQueue } = await import("../utils/tool-batch");
+    const queue = new ToolCallQueue();
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      queue.enqueue({
+        toolCallId: "test",
+        toolName: "executeCommand",
+        input: { command: "bun run test" },
+        run: async () => {
+          resolve();
+          await new Promise<void>((done) => {
+            release = done;
+          });
+          return { kind: "success" };
+        },
+        cancel: () => {},
+      });
+    });
+    const running = queue.start();
+    await started;
+    expect(queue.interrupt("steered")).toBe(false);
+    release();
+    await running;
+    expect(queue.interrupt("steered")).toBe(false);
+  });
+});

@@ -149,18 +149,21 @@ export function getSubAgentInvocation(
  * Builds the notification for a finished background subagent task, injected
  * into the parent conversation as a `data-background-job-notification` part.
  * `note` is appended to the result, e.g. the fate of an isolated worktree.
+ * `followUp` is the number of follow-up messages the subagent received.
  */
 export function createBackgroundSubagentNotification(
   store: LiveKitStore,
   task: Pick<Task, "id" | "status" | "error" | "title">,
   parentMessages: readonly Message[],
   note?: string,
+  followUp?: number,
 ): BackgroundSubagentNotification {
   const withNote = (result: string) => (note ? `${result}\n\n${note}` : result);
   const base = {
     kind: "subagent" as const,
-    notificationId: getSubAgentNotificationId(task),
+    notificationId: getSubAgentNotificationId(task, followUp),
     backgroundJobId: getSubAgentBackgroundJobId(task.id),
+    ...(followUp ? { followUp } : {}),
   };
   const input = getSubAgentInvocation(task.id, parentMessages);
   const agentType = input?.agentType;

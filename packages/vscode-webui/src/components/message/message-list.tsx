@@ -1,4 +1,4 @@
-import { Loader2, UserIcon } from "lucide-react";
+import { CornerDownRight, Loader2, UserIcon } from "lucide-react";
 import type React from "react";
 import { useTranslation } from "react-i18next";
 
@@ -80,6 +80,11 @@ export const MessageList: React.FC<{
   /** Formats only the mounted raw-message range. */
   formatMessages?: (messages: Message[]) => Message[];
   emptyPlaceholder?: React.ReactNode;
+  /**
+   * Labels a user message where no avatar row shows who wrote it, e.g. a
+   * subagent thread showing the messages its parent task sent.
+   */
+  getUserMessageLabel?: (message: Message) => string | undefined;
 }> = ({
   messages,
   isLoading,
@@ -101,6 +106,7 @@ export const MessageList: React.FC<{
   renderAllMessages = false,
   formatMessages,
   emptyPlaceholder,
+  getUserMessageLabel,
 }) => {
   const [debouncedIsLoading, setDebouncedIsLoading] = useDebounceState(
     isLoading,
@@ -170,6 +176,12 @@ export const MessageList: React.FC<{
             <EarlierMessagesEdge ref={loadEarlierTriggerRef} />
           )}
           {renderMessages.map((m, messageIndex) => {
+            const userMessageLabel =
+              !showUserAvatar &&
+              m.role === "user" &&
+              m.parts.some((part) => part.type === "text")
+                ? getUserMessageLabel?.(m)
+                : undefined;
             return (
               <div
                 key={renderKeys[messageIndex]}
@@ -206,11 +218,19 @@ export const MessageList: React.FC<{
                       </strong>
                     </div>
                   )}
+                  {userMessageLabel && (
+                    <div className="mt-2 ml-1 flex items-center gap-1 text-muted-foreground text-xs">
+                      <CornerDownRight className="size-3" aria-hidden="true" />
+                      <span>{userMessageLabel}</span>
+                    </div>
+                  )}
                   <div
                     className={cn(
                       "ml-1 flex flex-col",
                       showUserAvatar && "mt-3",
+                      userMessageLabel && "mt-1 mb-2 border-l-2 pl-2",
                     )}
+                    aria-label={userMessageLabel}
                   >
                     {m.parts.map((part, index) => (
                       <Part

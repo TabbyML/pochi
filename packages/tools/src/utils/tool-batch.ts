@@ -3,7 +3,22 @@ import { isReadonlyToolCall } from "./readonly-validation";
 
 export type BatchedToolCallCancelReason =
   | "user-abort"
-  | "previous-tool-call-failed";
+  | "previous-tool-call-failed"
+  | "steered";
+
+const BatchedToolCallCancelReasons: readonly BatchedToolCallCancelReason[] = [
+  "user-abort",
+  "previous-tool-call-failed",
+  "steered",
+];
+
+function isBatchedToolCallCancelReason(
+  value: unknown,
+): value is BatchedToolCallCancelReason {
+  return BatchedToolCallCancelReasons.includes(
+    value as BatchedToolCallCancelReason,
+  );
+}
 
 export function getToolCallCancelErrorMessage(
   reason: BatchedToolCallCancelReason,
@@ -13,6 +28,8 @@ export function getToolCallCancelErrorMessage(
       return "User aborted the tool call";
     case "previous-tool-call-failed":
       return "Tool call was cancelled because a previous tool call failed.";
+    case "steered":
+      return "Tool call was skipped because a new instruction interrupted this step.";
   }
 }
 
@@ -219,6 +236,7 @@ export async function executeToolCalls({
  */
 export class ToolCallQueue {
   private queue: BatchedToolCall[] = [];
+  private readonly running = new Set<string>();
   private processing = false;
   private abortController: AbortController | null = null;
 
@@ -230,9 +248,11 @@ export class ToolCallQueue {
     const wrappedItem: BatchedToolCall = {
       ...item,
       run: async () => {
+        this.running.add(item.toolCallId);
         try {
           return await item.run();
         } finally {
+          this.running.delete(item.toolCallId);
           // Remove from queue once completed (success, error, or throw),
           // so abort() only cancels truly pending items.
           removeFromQueue();
@@ -272,6 +292,21 @@ export class ToolCallQueue {
     await Promise.all(items.map((item) => item.cancel(reason)));
   }
 
+  /**
+   * Stops dispatching further batches. Tool calls that are already running
+   * finish normally; the ones that have not started are cancelled with
+   * `reason` once the running batch settles.
+   *
+   * @returns whether any tool call is going to be skipped.
+   */
+  interrupt(reason: BatchedToolCallCancelReason): boolean {
+    if (!this.abortController || this.abortController.signal.aborted) {
+      return false;
+    }
+    this.abortController.abort(reason);
+    return this.queue.some((item) => !this.running.has(item.toolCallId));
+  }
+
   async abort(reason: BatchedToolCallCancelReason): Promise<void> {
     this.abortController?.abort(reason);
     await this.cancelItems(this.queue, reason);
@@ -292,7 +327,10 @@ export class ToolCallQueue {
           error instanceof BatchExecutionError &&
           error.message === BatchExecutionErrorMessages.FAILED
             ? "previous-tool-call-failed"
-            : "user-abort";
+            : error instanceof BatchExecutionError &&
+                isBatchedToolCallCancelReason(error.cause)
+              ? error.cause
+              : "user-abort";
 
         // At this point this.queue only contains items that haven't completed yet,
         // since completed items remove themselves via the enqueue wrapper.

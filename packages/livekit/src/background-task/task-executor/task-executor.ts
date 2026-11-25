@@ -134,6 +134,8 @@ type CreateTaskExecutorOptions = {
 
 type RunningTaskChat = {
   messages: Message[];
+  /** The AI SDK request status; a request is in flight while it is "submitted" or "streaming". */
+  status?: string;
   stop: () => Promise<void>;
   sendMessage: () => Promise<void>;
   addToolOutput: AbstractChat<Message>["addToolOutput"];
@@ -147,7 +149,10 @@ type RunningTaskChatKit = {
   persistToolOutput: () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
   subscribeBackgroundJobs: () => () => void;
-  flushPendingInput: () => boolean;
+  flushPendingInput: (options?: { interrupted?: boolean }) => boolean;
+  queueUserInput?: (input: {
+    parts: Array<{ type: "text"; text: string }>;
+  }) => string;
 };
 
 type CreateRunningTaskChatKit = (options: {
@@ -280,6 +285,22 @@ export class TaskExecutor {
     return this.runningTasks.has(taskId);
   }
 
+  /**
+   * Delivers a message to a task this executor is running.
+   *
+   * @returns undefined when the task is not running or its loop has already
+   * ended, so the caller has to resume it instead.
+   */
+  async sendMessage(
+    taskId: string,
+    message: string,
+    options?: { interrupt?: boolean },
+  ): Promise<"queued" | "interrupted" | undefined> {
+    const runningTask = this.runningTasks.get(taskId);
+    if (!runningTask) return undefined;
+    return runningTask.task.sendMessage(message, options);
+  }
+
   /** Whether a runnable task is waiting for a free execution slot. */
   isTaskQueued(taskId: string) {
     if (!this.started || this.disposed || this.runningTasks.has(taskId)) {
@@ -319,7 +340,14 @@ export class TaskExecutor {
       const task = this.options.store.query(
         catalog.queries.makeTaskQuery(taskId),
       );
-      if (task?.status === "failed" && task.error?.kind === "AbortError") {
+      runningTask.task.observeTaskStatus(task?.status);
+      if (
+        task?.status === "failed" &&
+        task.error?.kind === "AbortError" &&
+        // Stopping the response to deliver a steering message leaves the same
+        // failure behind; the task restarts from it on its own.
+        !runningTask.task.isSteering
+      ) {
         void runningTask.task
           .dispose()
           .catch((error) =>
@@ -410,6 +438,41 @@ class RunningTask {
   private toolRejectionCount = 0;
   private lastStepBudgetReminderStep: number | undefined;
   private disposed = false;
+  /** The loop has ended; messages sent now must resume the task instead. */
+  private closed = false;
+  private executingTools = false;
+  /**
+   * A steering message arrived while tools ran: `skipped` when it cut tool
+   * calls of the step, `boundary` when there was nothing left to skip.
+   */
+  private steeredTools: "skipped" | "boundary" | undefined;
+  /**
+   * A steering message stopped the in-flight response. `stopping` until the
+   * loop sees the abort failure that the stop leaves behind, `restarting`
+   * until the next request moves the task out of that failed state.
+   */
+  private steer: "none" | "stopping" | "restarting" = "none";
+  /** Settles once the chat kit exists, or with undefined if it never will. */
+  private resolveChatKitReady: (chatKit?: RunningTaskChatKit) => void =
+    () => {};
+  private readonly chatKitReady = new Promise<RunningTaskChatKit | undefined>(
+    (resolve) => {
+      this.resolveChatKitReady = resolve;
+    },
+  );
+  /** Wakes the wait for background jobs when a message arrives. */
+  private messageWake: AbortController | undefined;
+
+  get isSteering(): boolean {
+    return this.steer !== "none";
+  }
+
+  /** The restart after a steer is underway once the task is no longer failed. */
+  observeTaskStatus(status: string | undefined) {
+    if (this.steer === "restarting" && status !== "failed") {
+      this.steer = "none";
+    }
+  }
 
   readonly done: Promise<void>;
 
@@ -428,6 +491,64 @@ class RunningTask {
     this.abortController.abort("user-abort");
     await this.toolCallQueue.abort("user-abort");
     await this.chatKit?.chat.stop();
+  }
+
+  async sendMessage(
+    message: string,
+    options?: { interrupt?: boolean },
+  ): Promise<"queued" | "interrupted" | undefined> {
+    const chatKit = this.chatKit ?? (await this.chatKitReady);
+    if (!chatKit || this.closed || this.disposed) return undefined;
+    this.queueMessage(chatKit, message);
+    this.messageWake?.abort();
+    if (options?.interrupt !== true) return "queued";
+
+    const isRequesting =
+      chatKit.chat.status === "submitted" ||
+      chatKit.chat.status === "streaming";
+    if (!isRequesting && !this.executingTools) return "queued";
+    if (this.executingTools) {
+      // Running tool calls finish; the ones that have not started are
+      // skipped. Either way the message goes out right after them.
+      const skipped = this.toolCallQueue.interrupt("steered");
+      this.steeredTools = skipped ? "skipped" : "boundary";
+      return skipped ? "interrupted" : "queued";
+    }
+    if (isRequesting) {
+      this.steer = "stopping";
+      void chatKit.chat
+        .stop()
+        .catch((error) =>
+          logger.warn(
+            { taskId: this.options.taskId, error },
+            "Failed to stop the response for a steering message",
+          ),
+        );
+    }
+    return "interrupted";
+  }
+
+  private queueMessage(chatKit: RunningTaskChatKit, message: string) {
+    if (chatKit.queueUserInput) {
+      chatKit.queueUserInput({ parts: [{ type: "text", text: message }] });
+    } else {
+      chatKit.chat.appendOrReplaceMessage(createUserMessage(message));
+    }
+  }
+
+  private async waitForBackgroundJobs() {
+    const wait = this.options.waitForBackgroundJobs;
+    if (!wait) return;
+    const wake = new AbortController();
+    this.messageWake = wake;
+    try {
+      await wait(
+        this.options.taskId,
+        AbortSignal.any([this.abortController.signal, wake.signal]),
+      );
+    } finally {
+      this.messageWake = undefined;
+    }
   }
 
   private async run() {
@@ -461,6 +582,7 @@ class RunningTask {
       }
       this.chatKit = await this.createChatKit();
       this.abortController.signal.throwIfAborted();
+      this.resolveChatKitReady(this.chatKit);
       unsubscribeBackgroundJobs = this.chatKit.subscribeBackgroundJobs();
 
       while (!this.abortController.signal.aborted) {
@@ -468,18 +590,24 @@ class RunningTask {
         this.abortController.signal.throwIfAborted();
         if (stepResult === "finished") {
           // Return an unanswered question without waiting or sending notices.
-          if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) return;
-          await this.options.waitForBackgroundJobs?.(
-            this.options.taskId,
-            this.abortController.signal,
-          );
+          // A queued message answers it, so it still goes out.
+          if (isAwaitingFollowupAnswer(this.chat.messages.at(-1))) {
+            if (this.chatKit.flushPendingInput()) {
+              await this.sendNextMessage();
+              continue;
+            }
+            return;
+          }
+          await this.waitForBackgroundJobs();
           this.abortController.signal.throwIfAborted();
           if (!this.chatKit.flushPendingInput()) return;
           await this.sendNextMessage();
           continue;
         }
 
-        if (stepResult === "retry") {
+        if (stepResult === "steered") {
+          // A steer is not a failed attempt, so the retry budget is untouched.
+        } else if (stepResult === "retry") {
           this.retryCount += 1;
           if (this.retryCount > TaskExecutorMaxRetry) {
             const task = this.task;
@@ -523,6 +651,10 @@ class RunningTask {
       }
       throw normalizedError;
     } finally {
+      // Set before anything is awaited: from here on, a message must resume
+      // the task rather than wait in a queue nobody reads.
+      this.closed = true;
+      this.resolveChatKitReady(undefined);
       await this.toolCallQueue.abort("user-abort");
       unsubscribeBackgroundJobs?.();
     }
@@ -593,7 +725,7 @@ class RunningTask {
     });
   }
 
-  private async step(): Promise<"finished" | "next" | "retry"> {
+  private async step(): Promise<"finished" | "next" | "retry" | "steered"> {
     const lastMessage = this.chat.messages.at(-1);
     if (!lastMessage) {
       throw new Error("No messages in the task chat.");
@@ -608,10 +740,15 @@ class RunningTask {
 
   private async processMessage(
     message: Message,
-  ): Promise<"finished" | "retry" | undefined> {
+  ): Promise<"finished" | "retry" | "steered" | undefined> {
     const task = this.task;
     if (!task) {
       throw new Error("Task is not loaded.");
+    }
+    if (task.status !== "failed") {
+      // The response finished before the steer could stop it, or the restart
+      // after it is underway. The message rides along with the next request.
+      this.steer = "none";
     }
 
     // A result or a request for user input ends every background task.
@@ -624,6 +761,20 @@ class RunningTask {
 
     if (task.status === "failed") {
       if (isAbortTaskError(task.error)) {
+        if (this.steer === "stopping") {
+          // Stays marked until the next request leaves the failed state, so
+          // the executor does not take this failure for a cancellation.
+          this.steer = "restarting";
+          const processed = await this.prepareRetryMessage(message);
+          if (processed) {
+            this.chat.appendOrReplaceMessage(processed);
+          }
+          // Delivers the queued message as the continuation of the cut-off
+          // response. If it cannot go out on its own, the next request
+          // carries it.
+          this.chatKit?.flushPendingInput({ interrupted: true });
+          return "steered";
+        }
         throw toError(task.error);
       }
       // Retrying the same request fails the same way; fail now with the real
@@ -710,10 +861,20 @@ class RunningTask {
     }
 
     chatKit.markStartToolsExecution();
+    this.executingTools = true;
     try {
       await this.toolCallQueue.start();
     } finally {
+      this.executingTools = false;
       chatKit.markEndToolsExecution();
+    }
+    if (this.steeredTools) {
+      // The message changes the plan, so it goes out as its own turn rather
+      // than as a note to fold into the work in progress.
+      chatKit.flushPendingInput({
+        interrupted: this.steeredTools === "skipped",
+      });
+      this.steeredTools = undefined;
     }
     return "next";
   }
@@ -975,7 +1136,7 @@ function normalizeCwd(cwd: string | null | undefined) {
   return cwd ?? undefined;
 }
 
-function isRunnableTaskStatus(status: string) {
+export function isRunnableTaskStatus(status: string) {
   return status === "pending-model" || status === "pending-tool";
 }
 

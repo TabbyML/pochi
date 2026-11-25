@@ -131,7 +131,8 @@ export function createBatchedToolCallFromLifecycle({
       });
     },
     cancel: (reason: ToolCallCancelReason) => {
-      lifecycle.abort(reason);
+      // Only background tasks steer; a chat page never interrupts its queue.
+      lifecycle.abort(reason === "steered" ? "user-abort" : reason);
     },
   };
 }
@@ -184,7 +185,9 @@ export function createSubtaskBatchedToolCall({
                 uid,
                 { notify: false },
               )
-            : await execute();
+            : toolCall.toolName === "sendMessage"
+              ? await sendMessage(store, uid, toolCall.input)
+              : await execute();
 
         if (
           toolCall.toolName === "executeCommand" &&
@@ -308,4 +311,21 @@ export function createSubtaskBatchedToolCall({
       });
     },
   };
+}
+
+function sendMessage(
+  store: Parameters<typeof BackgroundJobManager.forStore>[0],
+  parentTaskId: string,
+  input: unknown,
+) {
+  const { taskId, message, interrupt } = input as {
+    taskId: string;
+    message: string;
+    interrupt?: boolean;
+  };
+  return BackgroundJobManager.forStore(store).sendMessage(
+    taskId,
+    parentTaskId,
+    { message, interrupt },
+  );
 }
