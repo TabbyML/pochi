@@ -472,7 +472,7 @@ describe("ToolCallQueue.interrupt", () => {
 
     const running = queue.start();
     await started;
-    queue.interrupt("steered");
+    expect(queue.interrupt("steered")).toBe(true);
     release();
     await running;
 
@@ -481,5 +481,34 @@ describe("ToolCallQueue.interrupt", () => {
     expect(getToolCallCancelErrorMessage("steered")).toBe(
       "Tool call was skipped because a new instruction interrupted this step.",
     );
+  });
+});
+
+describe("ToolCallQueue.interrupt with nothing left to skip", () => {
+  it("reports that no tool call is skipped", async () => {
+    const { ToolCallQueue } = await import("../utils/tool-batch");
+    const queue = new ToolCallQueue();
+    let release!: () => void;
+    const started = new Promise<void>((resolve) => {
+      queue.enqueue({
+        toolCallId: "test",
+        toolName: "executeCommand",
+        input: { command: "bun run test" },
+        run: async () => {
+          resolve();
+          await new Promise<void>((done) => {
+            release = done;
+          });
+          return { kind: "success" };
+        },
+        cancel: () => {},
+      });
+    });
+    const running = queue.start();
+    await started;
+    expect(queue.interrupt("steered")).toBe(false);
+    release();
+    await running;
+    expect(queue.interrupt("steered")).toBe(false);
   });
 });

@@ -179,6 +179,52 @@ describe("TaskExecutor.sendMessage", () => {
     await executor.dispose();
   });
 
+  it("reports a queued message when the only tool call is already running, and still sends it as the next turn", async () => {
+    const store = new FakeStore([task("task", "pending-tool")]);
+    store.setMessages("task", [
+      userMessage("u1", "Fix the failing test."),
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          toolPart("writeToFile", "write-a", { path: "a.ts", content: "a" }),
+        ],
+      } as Message,
+    ]);
+    const releaseWrite = deferred<void>();
+    const writeStarted = deferred<void>();
+    const kits: SteerChatKit[] = [];
+    let requestMessages: Message[] = [];
+    const executor = makeExecutor(store, kits, {
+      executeToolCall: vi.fn(async () => {
+        writeStarted.resolve();
+        await releaseWrite.promise;
+        return { success: true };
+      }),
+      respond: async (chat) => {
+        requestMessages = structuredClone(chat.messages);
+        complete(store, chat, "Done.");
+      },
+    });
+
+    executor.start();
+    await writeStarted.promise;
+    await expect(
+      executor.sendMessage("task", "Use b.ts instead.", { interrupt: true }),
+    ).resolves.toBe("queued");
+    releaseWrite.resolve();
+    await executor.drain();
+
+    expect(toolOutput(requestMessages[1], "write-a")).toEqual({
+      success: true,
+    });
+    expect(requestMessages.at(-1)).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "Use b.ts instead." }],
+    });
+    await executor.dispose();
+  });
+
   it("wakes a task that waits for its background jobs and does not report an interrupt", async () => {
     const store = new FakeStore([task("task", "pending-model")]);
     store.setMessages("task", [userMessage("u1", "Run the tests.")]);

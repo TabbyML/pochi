@@ -40,7 +40,7 @@ const toolDef = {
       .boolean()
       .describe("Whether the message was delivered or queued."),
     status: SendMessageToSubagentStatus.describe(
-      "queued: the subagent was running or waiting for a slot and will read the message at its next step. interrupted: the in-flight response was stopped and the subagent continues with the message. resumed: the subagent had finished and was restarted with the message.",
+      "queued: the subagent will read the message at its next step (it was running with nothing to interrupt, or waiting for an execution slot). interrupted: its in-flight response was stopped, or its pending tool calls were skipped, and it continues with the message. resumed: the subagent had finished and was restarted with the message.",
     ),
     backgroundJobId: z
       .string()

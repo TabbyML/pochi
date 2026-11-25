@@ -236,6 +236,7 @@ export async function executeToolCalls({
  */
 export class ToolCallQueue {
   private queue: BatchedToolCall[] = [];
+  private readonly running = new Set<string>();
   private processing = false;
   private abortController: AbortController | null = null;
 
@@ -247,9 +248,11 @@ export class ToolCallQueue {
     const wrappedItem: BatchedToolCall = {
       ...item,
       run: async () => {
+        this.running.add(item.toolCallId);
         try {
           return await item.run();
         } finally {
+          this.running.delete(item.toolCallId);
           // Remove from queue once completed (success, error, or throw),
           // so abort() only cancels truly pending items.
           removeFromQueue();
@@ -293,9 +296,15 @@ export class ToolCallQueue {
    * Stops dispatching further batches. Tool calls that are already running
    * finish normally; the ones that have not started are cancelled with
    * `reason` once the running batch settles.
+   *
+   * @returns whether any tool call is going to be skipped.
    */
-  interrupt(reason: BatchedToolCallCancelReason): void {
-    this.abortController?.abort(reason);
+  interrupt(reason: BatchedToolCallCancelReason): boolean {
+    if (!this.abortController || this.abortController.signal.aborted) {
+      return false;
+    }
+    this.abortController.abort(reason);
+    return this.queue.some((item) => !this.running.has(item.toolCallId));
   }
 
   async abort(reason: BatchedToolCallCancelReason): Promise<void> {

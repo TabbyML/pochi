@@ -505,9 +505,10 @@ class RunningTask {
       chatKit.chat.status === "streaming";
     if (!isRequesting && !this.executingTools) return "queued";
     if (this.executingTools) {
-      // Running tool calls finish; the ones that have not started are skipped.
+      // Running tool calls finish; the ones that have not started are
+      // skipped. Either way the message goes out right after them.
       this.steeredTools = true;
-      this.toolCallQueue.interrupt("steered");
+      return this.toolCallQueue.interrupt("steered") ? "interrupted" : "queued";
     }
     if (isRequesting) {
       this.steer = "stopping";
