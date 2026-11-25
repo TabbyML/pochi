@@ -1244,14 +1244,20 @@ export class BackgroundJobManager {
       followUpCount,
     };
     await this.taskStateStore.set(childId, nextState);
-    this.silenced.delete(backgroundJobId);
-    this.taskResultNotes.delete(childId);
-    this.registerTask(childId, nextState);
+    // Applied only once the task is pending again: a finished task with the
+    // new follow-up count, or a stopped one no longer silenced, would announce
+    // its previous result as the new one.
+    const activate = () => {
+      this.silenced.delete(backgroundJobId);
+      this.taskResultNotes.delete(childId);
+      this.registerTask(childId, nextState);
+    };
 
     const delivered = await this.executor?.sendMessage(childId, message, {
       interrupt,
     });
     if (delivered) {
+      activate();
       return { success: true, status: delivered, backgroundJobId };
     }
 
@@ -1279,6 +1285,7 @@ export class BackgroundJobManager {
         }),
       ]),
     );
+    activate();
     // A subagent that was runnable but not running is waiting for a slot.
     const status: SendMessageToSubagentStatus = isRunnableTaskStatus(
       latestChild.status,

@@ -1133,6 +1133,11 @@ describe("sendMessageToSubagent", () => {
       });
       expect(first).not.toHaveProperty("followUp");
       deliver(setMessages, [first!]);
+      const announced: BackgroundJobNotification[] = [];
+      manager.subscribeNotifications("parent", (notices) =>
+        announced.push(...notices),
+      );
+      await Promise.resolve();
 
       await expect(
         manager.sendMessageToSubagent("bgjob-task-child", "parent", {
@@ -1157,8 +1162,10 @@ describe("sendMessageToSubagent", () => {
       );
       expect(tasks.get("child")?.status).toBe("pending-model");
       expect(readState(manager, "child")).toMatchObject({ followUpCount: 1 });
-      // Nothing to announce while the subagent works on the follow-up.
+      // Nothing to announce while the subagent works on the follow-up, not
+      // even for a moment before the message is committed.
       expect(manager.getPendingNotifications("parent")).toEqual([]);
+      expect(announced).toEqual([]);
 
       messages.set("child", [
         ...(messages.get("child") ?? []),
@@ -1246,11 +1253,32 @@ describe("sendMessageToSubagent", () => {
     try {
       await manager.watchTask("parent");
       expect(manager.getPendingNotifications("parent")).toEqual([]);
+      const announced: BackgroundJobNotification[] = [];
+      manager.subscribeNotifications("parent", (notices) =>
+        announced.push(...notices),
+      );
+      await Promise.resolve();
+      // Jobs keep changing while the message is on its way.
+      const internals = manager as unknown as {
+        executor?: { sendMessage: () => Promise<undefined> };
+      };
+      // biome-ignore lint/suspicious/noExplicitAny: test seam
+      (internals as any).executor = {
+        dispose: async () => {},
+        isTaskRunning: () => false,
+        isTaskQueued: () => false,
+        sendMessage: async () => {
+          manager.taskChanged("child");
+          return undefined;
+        },
+      };
       await expect(
         manager.sendMessageToSubagent("bgjob-task-child", "parent", {
           message: "Resume, but only check the README.",
         }),
       ).resolves.toMatchObject({ status: "resumed" });
+      internals.executor = undefined;
+      expect(announced).toEqual([]);
       expect(readState(manager, "child")).toMatchObject({
         stoppedByParent: false,
         followUpCount: 1,
