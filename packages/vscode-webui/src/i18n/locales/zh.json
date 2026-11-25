@@ -364,7 +364,6 @@
     "sentMessageToSubagentInterrupted": "已发送消息并打断子代理",
     "sentMessageToSubagentResumed": "已发送消息并恢复子代理",
     "sendMessageToSubagentFailed": "无法向子代理发送消息",
-    "interruptBadge": "打断",
     "stoppingBackgroundJob": "正在停止后台任务",
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",

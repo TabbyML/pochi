@@ -371,7 +371,6 @@
     "sentMessageToSubagentInterrupted": "Interrupted the subagent with a message",
     "sentMessageToSubagentResumed": "Resumed the subagent with a message",
     "sendMessageToSubagentFailed": "Could not send the message to the subagent",
-    "interruptBadge": "Interrupt",
     "stoppingBackgroundJob": "Stopping background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",

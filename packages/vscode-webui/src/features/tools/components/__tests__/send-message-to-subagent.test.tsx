@@ -84,10 +84,9 @@ describe("SendMessageToSubagentTool", () => {
       "Also check the image alt texts.\nList each one.",
     );
     expect(screen.queryByText("bgjob-task-child")).toBeNull();
-    expect(screen.queryByText("toolInvocation.interruptBadge")).toBeNull();
   });
 
-  it("flags an interrupt before and after it happens", () => {
+  it("labels an interrupt before and after it happens", () => {
     const { rerender } = renderTool({
       type: "tool-sendMessageToSubagent",
       toolCallId: "call",
@@ -97,7 +96,6 @@ describe("SendMessageToSubagentTool", () => {
     expect(
       screen.getByText("toolInvocation.sendMessageToSubagentInterrupt"),
     ).toBeTruthy();
-    expect(screen.getByText("toolInvocation.interruptBadge")).toBeTruthy();
 
     rerender(
       <SendMessageToSubagentTool
@@ -119,7 +117,6 @@ describe("SendMessageToSubagentTool", () => {
     expect(
       screen.getByText("toolInvocation.sentMessageToSubagentInterrupted"),
     ).toBeTruthy();
-    expect(screen.getByText("toolInvocation.interruptBadge")).toBeTruthy();
   });
 
   it("does not claim an interrupt when there was nothing to interrupt", () => {
@@ -137,7 +134,6 @@ describe("SendMessageToSubagentTool", () => {
     expect(
       screen.getByText("toolInvocation.sentMessageToSubagentQueued"),
     ).toBeTruthy();
-    expect(screen.queryByText("toolInvocation.interruptBadge")).toBeNull();
   });
 
   it.each([

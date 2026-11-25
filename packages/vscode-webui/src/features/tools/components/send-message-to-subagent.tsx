@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { getSubAgentTaskId } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
 import type { SendMessageToSubagentStatus } from "@getpochi/tools";
-import { Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useBackgroundSubagentStatus } from "./new-task/background-status-icon";
 import { StatusIcon } from "./status-icon";
@@ -45,16 +44,6 @@ export const SendMessageToSubagentTool: React.FC<
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">{label}</span>
-      {/* A requested interrupt that found nothing to interrupt was queued. */}
-      {interrupt && !error && status !== "queued" && (
-        <Badge
-          variant="outline"
-          className="ml-2 h-5 gap-1 px-1.5 py-0 align-text-bottom font-normal text-xs"
-        >
-          <Zap className="size-3" aria-hidden="true" />
-          {t("toolInvocation.interruptBadge")}
-        </Badge>
-      )}
     </>
   );
 

@@ -365,7 +365,6 @@
     "sentMessageToSubagentInterrupted": "メッセージでサブエージェントを中断しました",
     "sentMessageToSubagentResumed": "メッセージでサブエージェントを再開しました",
     "sendMessageToSubagentFailed": "サブエージェントにメッセージを送信できませんでした",
-    "interruptBadge": "中断",
     "stoppingBackgroundJob": "バックグラウンドジョブを停止中",
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
