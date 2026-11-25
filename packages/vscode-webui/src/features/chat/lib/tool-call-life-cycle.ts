@@ -278,18 +278,20 @@ export class ManagedToolCallLifeCycle
         options?.taskId ?? "",
         { notify: false },
       );
-    } else if (this.toolName === "sendMessageToSubagent") {
+    } else if (this.toolName === "sendMessage") {
       const { backgroundJobId, message, interrupt } = args as {
         backgroundJobId: string;
         message: string;
         interrupt?: boolean;
       };
-      executePromise = BackgroundJobManager.forStore(
-        this.store,
-      ).sendMessageToSubagent(backgroundJobId, options?.taskId ?? "", {
-        message,
-        interrupt,
-      });
+      executePromise = BackgroundJobManager.forStore(this.store).sendMessage(
+        backgroundJobId,
+        options?.taskId ?? "",
+        {
+          message,
+          interrupt,
+        },
+      );
     } else if (
       this.toolName === "executeCommand" &&
       options?.builtinSubAgentInfo?.type === "browser"

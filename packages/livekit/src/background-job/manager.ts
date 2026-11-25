@@ -11,10 +11,7 @@ import {
   withTimeout,
 } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
-import {
-  type SendMessageToSubagentStatus,
-  parseOutputSchema,
-} from "@getpochi/tools";
+import { type SendMessageStatus, parseOutputSchema } from "@getpochi/tools";
 import { isShallowEqual } from "remeda";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
@@ -105,7 +102,7 @@ type Job = {
       kind: "subagent";
       taskId: string;
       agentType?: string;
-      /** Follow-up messages sent with sendMessageToSubagent. */
+      /** Follow-up messages sent with sendMessage. */
       followUpCount?: number;
     }
   | { kind: "fork"; taskId: string }
@@ -230,17 +227,16 @@ export class BackgroundJobManager {
               { notify: false },
             );
           }
-          if (args.toolName === "sendMessageToSubagent") {
+          if (args.toolName === "sendMessage") {
             const input = args.input as {
               backgroundJobId: string;
               message: string;
               interrupt?: boolean;
             };
-            return this.sendMessageToSubagent(
-              input.backgroundJobId,
-              args.taskId,
-              { message: input.message, interrupt: input.interrupt },
-            );
+            return this.sendMessage(input.backgroundJobId, args.taskId, {
+              message: input.message,
+              interrupt: input.interrupt,
+            });
           }
           return options.adaptor.executeToolCall(args);
         },
@@ -1196,19 +1192,19 @@ export class BackgroundJobManager {
    * A running subagent reads it at its next step, or right away when
    * `interrupt` is set. A finished one is resumed with it.
    */
-  async sendMessageToSubagent(
+  async sendMessage(
     backgroundJobId: string,
     taskId: string,
     { message, interrupt = false }: { message: string; interrupt?: boolean },
   ): Promise<{
     success: true;
-    status: SendMessageToSubagentStatus;
+    status: SendMessageStatus;
     backgroundJobId: string;
   }> {
     if (this.disposed) throw new Error("Background job manager is disposed.");
     if (parseBackgroundJobId(backgroundJobId) !== "task") {
       throw new Error(
-        `"${backgroundJobId}" is not a background subagent. sendMessageToSubagent only supports background subagents ("bgjob-task-...").`,
+        `"${backgroundJobId}" is not a background subagent. sendMessage only supports background subagents ("bgjob-task-...").`,
       );
     }
     if (!message.trim()) throw new Error("The message is empty.");
@@ -1287,9 +1283,7 @@ export class BackgroundJobManager {
     );
     activate();
     // A subagent that was runnable but not running is waiting for a slot.
-    const status: SendMessageToSubagentStatus = isRunnableTaskStatus(
-      latestChild.status,
-    )
+    const status: SendMessageStatus = isRunnableTaskStatus(latestChild.status)
       ? "queued"
       : "resumed";
     return { success: true, status, backgroundJobId };

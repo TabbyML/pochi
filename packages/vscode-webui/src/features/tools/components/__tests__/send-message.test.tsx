@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SendMessageToSubagentTool } from "../send-message-to-subagent";
+import { SendMessageTool } from "../send-message";
 import { ToolCallLite } from "../tool-call-lite";
 import type { ToolProps } from "../types";
 
@@ -48,7 +48,7 @@ const mocks = vi.hoisted(() => ({
   subagentStatus: "running" as string | undefined,
 }));
 
-type Tool = ToolProps<"sendMessageToSubagent">["tool"];
+type Tool = ToolProps<"sendMessage">["tool"];
 
 const input = {
   backgroundJobId: "bgjob-task-child",
@@ -57,18 +57,14 @@ const input = {
 
 function renderTool(tool: Tool, isExecuting = false) {
   return render(
-    <SendMessageToSubagentTool
-      tool={tool}
-      isExecuting={isExecuting}
-      isLoading={false}
-    />,
+    <SendMessageTool tool={tool} isExecuting={isExecuting} isLoading={false} />,
   );
 }
 
-describe("SendMessageToSubagentTool", () => {
+describe("SendMessageTool", () => {
   it("shows the target subagent and the full message before it is sent", () => {
     renderTool({
-      type: "tool-sendMessageToSubagent",
+      type: "tool-sendMessage",
       toolCallId: "call",
       state: "input-available",
       input,
@@ -88,7 +84,7 @@ describe("SendMessageToSubagentTool", () => {
 
   it("labels an interrupt before and after it happens", () => {
     const { rerender } = renderTool({
-      type: "tool-sendMessageToSubagent",
+      type: "tool-sendMessage",
       toolCallId: "call",
       state: "input-available",
       input: { ...input, interrupt: true },
@@ -98,11 +94,11 @@ describe("SendMessageToSubagentTool", () => {
     ).toBeTruthy();
 
     rerender(
-      <SendMessageToSubagentTool
+      <SendMessageTool
         isExecuting={false}
         isLoading={false}
         tool={{
-          type: "tool-sendMessageToSubagent",
+          type: "tool-sendMessage",
           toolCallId: "call",
           state: "output-available",
           input: { ...input, interrupt: true },
@@ -121,7 +117,7 @@ describe("SendMessageToSubagentTool", () => {
 
   it("does not claim an interrupt when there was nothing to interrupt", () => {
     renderTool({
-      type: "tool-sendMessageToSubagent",
+      type: "tool-sendMessage",
       toolCallId: "call",
       state: "output-available",
       input: { ...input, interrupt: true },
@@ -141,7 +137,7 @@ describe("SendMessageToSubagentTool", () => {
     ["queued", "toolInvocation.sentMessageToSubagentQueued"],
   ] as const)("labels a %s delivery", (status, label) => {
     renderTool({
-      type: "tool-sendMessageToSubagent",
+      type: "tool-sendMessage",
       toolCallId: "call",
       state: "output-available",
       input,
@@ -153,7 +149,7 @@ describe("SendMessageToSubagentTool", () => {
   it("labels a running and a failed call", () => {
     const { rerender } = renderTool(
       {
-        type: "tool-sendMessageToSubagent",
+        type: "tool-sendMessage",
         toolCallId: "call",
         state: "input-available",
         input,
@@ -165,11 +161,11 @@ describe("SendMessageToSubagentTool", () => {
     ).toBeTruthy();
 
     rerender(
-      <SendMessageToSubagentTool
+      <SendMessageTool
         isExecuting={false}
         isLoading={false}
         tool={{
-          type: "tool-sendMessageToSubagent",
+          type: "tool-sendMessage",
           toolCallId: "call",
           state: "output-available",
           input,
@@ -188,7 +184,7 @@ describe("SendMessageToSubagentTool", () => {
     mocks.subagentStatus = undefined;
     try {
       renderTool({
-        type: "tool-sendMessageToSubagent",
+        type: "tool-sendMessage",
         toolCallId: "call",
         state: "input-available",
         input,
@@ -207,7 +203,7 @@ describe("SendMessageToSubagentTool", () => {
         showStatusIcon={false}
         tools={[
           {
-            type: "tool-sendMessageToSubagent",
+            type: "tool-sendMessage",
             toolCallId: "call",
             state: "input-available",
             input,

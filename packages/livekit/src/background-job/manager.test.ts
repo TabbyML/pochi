@@ -1038,7 +1038,7 @@ it("does not revive a completed command when an older live snapshot arrives", as
   await manager.dispose();
 });
 
-describe("sendMessageToSubagent", () => {
+describe("sendMessage", () => {
   const completedChild = (overrides: Partial<Task> = {}) =>
     ({
       id: "child",
@@ -1086,7 +1086,7 @@ describe("sendMessageToSubagent", () => {
     tasks.set("other", completedChild({ id: "other", parentId: "elsewhere" }));
     tasks.set("fg", completedChild({ id: "fg", background: false }));
     const send = (id: string, message = "Check the links too.") =>
-      manager.sendMessageToSubagent(id, "parent", { message });
+      manager.sendMessage(id, "parent", { message });
     try {
       await expect(send("bgjob-cmd-one")).rejects.toThrow(
         /not a background subagent/,
@@ -1110,7 +1110,7 @@ describe("sendMessageToSubagent", () => {
     });
     try {
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-fork", "parent", {
+        manager.sendMessage("bgjob-task-fork", "parent", {
           message: "Keep going.",
         }),
       ).rejects.toThrow(/fork agent/);
@@ -1140,7 +1140,7 @@ describe("sendMessageToSubagent", () => {
       await Promise.resolve();
 
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "Also check the images.",
         }),
       ).resolves.toEqual({
@@ -1273,7 +1273,7 @@ describe("sendMessageToSubagent", () => {
         },
       };
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "Resume, but only check the README.",
         }),
       ).resolves.toMatchObject({ status: "resumed" });
@@ -1299,7 +1299,7 @@ describe("sendMessageToSubagent", () => {
     manager.registerTask("child", { parentTaskId: "parent" });
     try {
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "Start with the README.",
           interrupt: true,
         }),
@@ -1342,12 +1342,12 @@ describe("sendMessageToSubagent", () => {
       .mockResolvedValueOnce(undefined);
     try {
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "Also check the images.",
         }),
       ).resolves.toMatchObject({ status: "queued" });
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "Stop, check the README first.",
           interrupt: true,
         }),
@@ -1368,7 +1368,7 @@ describe("sendMessageToSubagent", () => {
       // The loop ended between the status check and the message.
       tasks.set("child", completedChild());
       await expect(
-        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+        manager.sendMessage("bgjob-task-child", "parent", {
           message: "One more thing.",
         }),
       ).resolves.toMatchObject({ status: "resumed" });

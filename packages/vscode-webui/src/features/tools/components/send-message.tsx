@@ -6,21 +6,22 @@ import { useDefaultStore } from "@/lib/use-default-store";
 import { cn } from "@/lib/utils";
 import { getSubAgentTaskId } from "@getpochi/common";
 import { catalog } from "@getpochi/livekit";
-import type { SendMessageToSubagentStatus } from "@getpochi/tools";
+import type { SendMessageStatus } from "@getpochi/tools";
 import { useTranslation } from "react-i18next";
 import { useBackgroundSubagentStatus } from "./new-task/background-status-icon";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
 
-export const SendMessageToSubagentTool: React.FC<
-  ToolProps<"sendMessageToSubagent">
-> = ({ tool, isExecuting }) => {
+export const SendMessageTool: React.FC<ToolProps<"sendMessage">> = ({
+  tool,
+  isExecuting,
+}) => {
   const { t } = useTranslation();
   const input = tool.input;
   const backgroundJobId = input?.backgroundJobId;
   const error = getToolPartError(tool);
-  const status: SendMessageToSubagentStatus | undefined =
+  const status: SendMessageStatus | undefined =
     tool.state === "output-available" && !error
       ? tool.output?.status
       : undefined;

@@ -78,7 +78,7 @@ export const ToolsByPermission = {
   execute: [
     "executeCommand",
     "killBackgroundJob",
-    "sendMessageToSubagent",
+    "sendMessage",
     "startMonitor",
     "newTask",
   ] as string[],

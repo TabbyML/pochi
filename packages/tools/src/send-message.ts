@@ -1,14 +1,8 @@
 import z from "zod";
 import { defineClientTool } from "./types";
 
-export const SendMessageToSubagentStatus = z.enum([
-  "queued",
-  "interrupted",
-  "resumed",
-]);
-export type SendMessageToSubagentStatus = z.infer<
-  typeof SendMessageToSubagentStatus
->;
+export const SendMessageStatus = z.enum(["queued", "interrupted", "resumed"]);
+export type SendMessageStatus = z.infer<typeof SendMessageStatus>;
 
 const toolDef = {
   description:
@@ -39,7 +33,7 @@ const toolDef = {
     success: z
       .boolean()
       .describe("Whether the message was delivered or queued."),
-    status: SendMessageToSubagentStatus.describe(
+    status: SendMessageStatus.describe(
       "queued: the subagent will read the message at its next step (it was running with nothing to interrupt, or waiting for an execution slot). interrupted: its in-flight response was stopped, or its pending tool calls were skipped, and it continues with the message. resumed: the subagent had finished and was restarted with the message.",
     ),
     backgroundJobId: z
@@ -48,4 +42,4 @@ const toolDef = {
   }),
 };
 
-export const sendMessageToSubagent = defineClientTool(toolDef);
+export const sendMessage = defineClientTool(toolDef);

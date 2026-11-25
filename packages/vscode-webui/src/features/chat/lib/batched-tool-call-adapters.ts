@@ -185,8 +185,8 @@ export function createSubtaskBatchedToolCall({
                 uid,
                 { notify: false },
               )
-            : toolCall.toolName === "sendMessageToSubagent"
-              ? await sendMessageToSubagent(store, uid, toolCall.input)
+            : toolCall.toolName === "sendMessage"
+              ? await sendMessage(store, uid, toolCall.input)
               : await execute();
 
         if (
@@ -313,7 +313,7 @@ export function createSubtaskBatchedToolCall({
   };
 }
 
-function sendMessageToSubagent(
+function sendMessage(
   store: Parameters<typeof BackgroundJobManager.forStore>[0],
   taskId: string,
   input: unknown,
@@ -323,7 +323,7 @@ function sendMessageToSubagent(
     message: string;
     interrupt?: boolean;
   };
-  return BackgroundJobManager.forStore(store).sendMessageToSubagent(
+  return BackgroundJobManager.forStore(store).sendMessage(
     backgroundJobId,
     taskId,
     { message, interrupt },
