@@ -337,7 +337,7 @@ const JobDescription: FC<{
     <Tooltip>
       <TooltipTrigger asChild>{label}</TooltipTrigger>
       <TooltipContent>
-        <code className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-all bg-transparent p-0 font-mono text-xs">
+        <code className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-words bg-transparent p-0 font-mono text-xs">
           {command}
         </code>
       </TooltipContent>
