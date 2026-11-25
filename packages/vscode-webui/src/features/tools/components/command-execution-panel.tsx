@@ -322,10 +322,34 @@ export const CommandPanelContainer: FC<{
   );
 };
 
+/**
+ * A job's description, with its command in a tooltip. Commands can be long or
+ * span lines, so the tooltip keeps their line breaks and scrolls.
+ */
+const JobDescription: FC<{
+  description: string;
+  command?: string;
+  className?: string;
+}> = ({ description, command, className }) => {
+  const label = <span className={className}>{description}</span>;
+  if (!command) return label;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{label}</TooltipTrigger>
+      <TooltipContent>
+        <code className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-words bg-transparent p-0 font-mono text-xs">
+          {command}
+        </code>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
   appearance?: "default" | "notification";
+  /** The job's description, shown instead of its command on a notification. */
   notificationTitle?: string;
   notificationIcon?: React.ReactNode;
   notificationEvents?: { id: string; text: string }[];
@@ -408,9 +432,24 @@ export const BackgroundJobPanel: FC<{
     liveTerminal?.name ?? terminalName,
     lastCommand,
   );
-  const title = isUserTerminal
-    ? (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
-    : (resolvedCommand ?? backgroundJobId);
+  // A job row shows one name, the same on every surface: the model's
+  // description when there is one, otherwise the command. The command stays
+  // on hover and in the copy button.
+  const jobDescription = isNotification
+    ? (notificationTitle ?? info?.description)
+    : info?.description;
+  const title = isUserTerminal ? (
+    (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
+  ) : jobDescription ? (
+    // The container breaks commands anywhere; a description breaks at words.
+    <JobDescription
+      description={jobDescription}
+      command={resolvedCommand}
+      className="break-normal break-words"
+    />
+  ) : (
+    (resolvedCommand ?? backgroundJobId)
+  );
   const isActive = liveTerminal?.isActive ?? false;
 
   // On a card the badge is the job's status indicator. The host's list is the
@@ -483,7 +522,7 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
-    const text = notificationTitle ?? resolvedCommand ?? backgroundJobId;
+    const text = jobDescription ?? resolvedCommand ?? backgroundJobId;
     // The job number ties the notification to the card that started it and
     // opens the job like that card's badge does; jobs started elsewhere keep
     // the type icon. It sits beside the row's own button, never inside it.
@@ -505,12 +544,22 @@ export const BackgroundJobPanel: FC<{
       "flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left";
     const notificationRowContent = (
       <>
-        <code
-          className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
-          title={text}
-        >
-          {text}
-        </code>
+        {jobDescription ? (
+          <JobDescription
+            description={jobDescription}
+            // A command notification's summary tooltip already names the
+            // command.
+            command={summary ? undefined : resolvedCommand}
+            className="min-w-0 flex-1 truncate text-foreground text-xs"
+          />
+        ) : (
+          <code
+            className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
+            title={text}
+          >
+            {text}
+          </code>
+        )}
         <NotificationStatusIcon status={status} />
       </>
     );

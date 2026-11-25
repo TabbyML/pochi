@@ -14,7 +14,12 @@ let backgroundCommands:
   | Record<string, { isVisible: boolean; detachable?: boolean }>
   | undefined = {};
 let jobInfo:
-  | { command: string | undefined; displayId: string; outputFile?: string }
+  | {
+      command: string | undefined;
+      description?: string;
+      displayId: string;
+      outputFile?: string;
+    }
   | undefined;
 const stopJob = vi.fn(async () => {});
 let commandJob:
@@ -216,6 +221,57 @@ describe("BackgroundJobPanel job control", () => {
     expect(document.querySelector(".lucide-file-text")).toBeNull();
   });
 
+  it("names a notification by the job's description, plain text, without a second tooltip", () => {
+    jobInfo = {
+      command: "bun install",
+      description: "Install project dependencies with bun",
+      displayId: "%1",
+    };
+
+    render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        appearance="notification"
+        command="bun install"
+        summary='Background command "bun install" completed with exit code 0'
+        status="completed"
+      />,
+    );
+
+    const title = screen.getByText("Install project dependencies with bun");
+    expect(title.tagName).not.toBe("CODE");
+    expect(title.closest("code")).toBeNull();
+    expect(title.hasAttribute("data-state")).toBe(false);
+  });
+
+  it("names a job row by its description and shows the full command on hover", async () => {
+    const command = [
+      "cd /workspace/packages/vscode-webui && \\",
+      "  bun run test src/features/tools -- --reporter=dot",
+    ].join("\n");
+    jobInfo = {
+      command,
+      description: "Run tools component tests",
+      displayId: "%1",
+    };
+
+    renderBackgroundJobPanel();
+
+    const title = screen.getByText("Run tools component tests");
+    expect(screen.queryByText(/bun run test/)).toBeNull();
+    expect(title.classList.contains("break-words")).toBe(true);
+    fireEvent.pointerMove(title, { pointerType: "mouse" });
+    await waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+      expect(tooltip.textContent).toBe(command);
+    });
+    const block = screen
+      .getAllByText(/bun run test/)
+      .find((element) => element.tagName === "CODE");
+    expect(block?.classList.contains("whitespace-pre-wrap")).toBe(true);
+    expect(block?.classList.contains("overflow-y-auto")).toBe(true);
+  });
+
   it("top-aligns the display ID with a multi-line command", () => {
     backgroundCommands = { "bgjob-cmd-1": { isVisible: false } };
     jobInfo = {
@@ -391,9 +447,9 @@ describe("BackgroundJobPanel job control", () => {
     expect(row.parentElement?.querySelector(".lucide-activity")).not.toBeNull();
     expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
     expect(row.querySelector(".lucide-chevron-left")).not.toBeNull();
-    expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
-      true,
-    );
+    const title = screen.getByText("Simulated log entries");
+    expect(title.tagName).not.toBe("CODE");
+    expect(title.classList.contains("truncate")).toBe(true);
     fireEvent.click(row);
     expect(row.getAttribute("aria-expanded")).toBe("true");
     const event = screen.getByText(/first log/);

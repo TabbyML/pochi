@@ -48,13 +48,9 @@ export function BackgroundJobNotificationItems({
           key={notification.backgroundJobId}
           backgroundJobId={notification.backgroundJobId}
           appearance="notification"
-          command={notification.command}
+          command={notification.command?.trim() || undefined}
           notificationIcon={<Activity className="size-3" />}
-          notificationTitle={
-            notification.description?.trim() ||
-            notification.command?.trim() ||
-            notification.backgroundJobId
-          }
+          notificationTitle={notification.description?.trim() || undefined}
           notificationEvents={item.map((batch) => ({
             id: batch.notificationId,
             text: [
@@ -87,6 +83,7 @@ export function BackgroundJobNotificationItems({
         backgroundJobId={notification.backgroundJobId}
         appearance="notification"
         command={notification.command}
+        notificationTitle={notification.description?.trim() || undefined}
         summary={notification.summary}
         status={notification.status}
         exitCode={notification.exitCode}
