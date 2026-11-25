@@ -169,10 +169,16 @@ describe("TaskExecutor.sendMessage", () => {
     expect(toolOutput(toolMessage, "write-b")).toEqual({
       error: getToolCallCancelErrorMessage("steered"),
     });
-    // Its own turn, not a note folded into the step it cut short.
+    // Its own turn that tells the subagent its step was cut short.
     expect(requestMessages.at(-1)).toMatchObject({
       role: "user",
-      parts: [{ type: "text", text: "Leave b.ts alone." }],
+      parts: [
+        {
+          type: "text",
+          text: prompts.createSystemReminder(prompts.userInputAfterInterruption),
+        },
+        { type: "text", text: "Leave b.ts alone." },
+      ],
     });
     expect(kits[0]?.flushes).toBe(1);
     expect(store.readTask("task")?.status).toBe("completed");
@@ -366,17 +372,18 @@ class SteerChatKit {
 
   flushes = 0;
 
-  flushPendingInput() {
+  flushPendingInput(options?: { interrupted?: boolean }) {
     if (this.queued.length === 0) return false;
     this.flushes += 1;
     const texts = this.queued.splice(0);
     // Like isInterruptedAssistantResponse: a response cut off mid-stream.
     const last = this.chat.messages.at(-1);
     const interrupted =
-      last?.role === "assistant" &&
+      options?.interrupted === true ||
+      (last?.role === "assistant" &&
       last.parts.some(
         (part) => part.type === "text" && part.state === "streaming",
-      );
+      ));
     this.chat.appendOrReplaceMessage({
       id: crypto.randomUUID(),
       role: "user",

@@ -104,6 +104,21 @@ describe("LiveChatKit pending input", () => {
     ]);
   });
 
+  it("frames flushed input as an interruption when the caller cut the step short", () => {
+    const kit = makeChatKit();
+    // The response looks complete: its tool calls have results, some of them
+    // the ones a steering message skipped.
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    kit.queueUserInput({ parts: textParts("only check the README") });
+
+    expect(kit.flushPendingInput({ interrupted: true })).toBe(true);
+
+    expect(kit.chat.sentMessages[0].parts).toEqual([
+      ...reminderParts(prompts.userInputAfterInterruption),
+      ...textParts("only check the README"),
+    ]);
+  });
+
   it("puts user inputs before notifications in the same request", async () => {
     const kit = makeChatKit();
     kit.chat.messages = [userMessage("run it"), assistantMessage()];

@@ -3,7 +3,7 @@ import { useIsAtBottom } from "@/lib/hooks/use-is-at-bottom";
 import { cn } from "@/lib/utils";
 import { formatters, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
-import { type Todo, getToolCallCancelErrorMessage } from "@getpochi/tools";
+import type { Todo } from "@getpochi/tools";
 import {
   useCallback,
   useEffect,
@@ -119,9 +119,7 @@ export const TaskThread: React.FC<{
     () =>
       new Set(
         messages
-          .filter((message, index) =>
-            isAfterInterruption(message, messages[index - 1]),
-          )
+          .filter((message) => isAfterInterruption(message))
           .map((message) => message.id),
       ),
     [messages],
@@ -193,29 +191,14 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
   return messages;
 }
 
-/**
- * Whether a user message cut the previous response short: it either comes
- * with the after-interruption reminder, or follows tool calls it skipped.
- */
-function isAfterInterruption(
-  message: Message,
-  previous: Message | undefined,
-): boolean {
-  if (message.role !== "user") return false;
+/** Whether a user message cut the previous response short. */
+function isAfterInterruption(message: Message): boolean {
   const reminder = prompts.createSystemReminder(
     prompts.userInputAfterInterruption,
   );
-  const skipped = getToolCallCancelErrorMessage("steered");
   return (
-    message.parts.some(
-      (part) => part.type === "text" && part.text === reminder,
-    ) ||
-    (previous?.role === "assistant" &&
-      previous.parts.some(
-        (part) =>
-          "output" in part &&
-          (part.output as { error?: unknown } | undefined)?.error === skipped,
-      ))
+    message.role === "user" &&
+    message.parts.some((part) => part.type === "text" && part.text === reminder)
   );
 }
 

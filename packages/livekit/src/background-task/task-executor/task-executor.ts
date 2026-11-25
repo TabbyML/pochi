@@ -149,7 +149,7 @@ type RunningTaskChatKit = {
   persistToolOutput: () => void;
   markAsFailed: (error: Error) => MaybePromise<void>;
   subscribeBackgroundJobs: () => () => void;
-  flushPendingInput: () => boolean;
+  flushPendingInput: (options?: { interrupted?: boolean }) => boolean;
   queueUserInput?: (input: {
     parts: Array<{ type: "text"; text: string }>;
   }) => string;
@@ -441,8 +441,11 @@ class RunningTask {
   /** The loop has ended; messages sent now must resume the task instead. */
   private closed = false;
   private executingTools = false;
-  /** A steering message skipped tool calls of the current step. */
-  private steeredTools = false;
+  /**
+   * A steering message arrived while tools ran: `skipped` when it cut tool
+   * calls of the step, `boundary` when there was nothing left to skip.
+   */
+  private steeredTools: "skipped" | "boundary" | undefined;
   /**
    * A steering message stopped the in-flight response. `stopping` until the
    * loop sees the abort failure that the stop leaves behind, `restarting`
@@ -507,8 +510,9 @@ class RunningTask {
     if (this.executingTools) {
       // Running tool calls finish; the ones that have not started are
       // skipped. Either way the message goes out right after them.
-      this.steeredTools = true;
-      return this.toolCallQueue.interrupt("steered") ? "interrupted" : "queued";
+      const skipped = this.toolCallQueue.interrupt("steered");
+      this.steeredTools = skipped ? "skipped" : "boundary";
+      return skipped ? "interrupted" : "queued";
     }
     if (isRequesting) {
       this.steer = "stopping";
@@ -768,7 +772,7 @@ class RunningTask {
           // Delivers the queued message as the continuation of the cut-off
           // response. If it cannot go out on its own, the next request
           // carries it.
-          this.chatKit?.flushPendingInput();
+          this.chatKit?.flushPendingInput({ interrupted: true });
           return "steered";
         }
         throw toError(task.error);
@@ -865,10 +869,12 @@ class RunningTask {
       chatKit.markEndToolsExecution();
     }
     if (this.steeredTools) {
-      // The message changed the plan, so it goes out as its own turn rather
+      // The message changes the plan, so it goes out as its own turn rather
       // than as a note to fold into the work in progress.
-      this.steeredTools = false;
-      chatKit.flushPendingInput();
+      chatKit.flushPendingInput({
+        interrupted: this.steeredTools === "skipped",
+      });
+      this.steeredTools = undefined;
     }
     return "next";
   }
