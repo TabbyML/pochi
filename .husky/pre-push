@@ -5,7 +5,20 @@ check_git_clean() {
     git diff --staged --exit-code
 }
 
+check_bun_version() {
+    if [ -f .bun-version ]; then
+        expected=$(tr -d '[:space:]' < .bun-version)
+        actual=$(bun --version)
+        if [ "$actual" != "$expected" ]; then
+            echo "Error: Bun version mismatch (expected $expected from .bun-version, got $actual)." >&2
+            echo "Please align your local Bun version (e.g. 'bun upgrade --version=$expected' or via mise/asdf) before pushing." >&2
+            exit 1
+        fi
+    fi
+}
+
 main() {
+    check_bun_version
     bun dep-check
     bun gen:config-schema
     bun check:ast-grep
