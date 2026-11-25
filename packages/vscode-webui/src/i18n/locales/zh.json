@@ -348,7 +348,6 @@
     "executeCommand": "我将执行以下命令",
     "executingCommand": "正在执行命令",
     "startedCommand": "已启动命令",
-    "startedCommandDescribed": "已启动：",
     "for": "匹配",
     "matching": "匹配",
     "searching": "搜索中",
@@ -364,7 +363,6 @@
     "readBackground": "正在读取后台任务输出",
     "readTerminal": "正在读取终端输出",
     "backgroundExecute": "我将在后台执行以下命令",
-    "backgroundExecuteDescribed": "我将在后台运行：",
     "backgroundExecuting": "正在后台执行命令",
     "promotedToBackground": "；随后转入后台",
     "updatingToDos": "更新待办事项中",
@@ -378,7 +376,7 @@
     "askingQuestion_one": "提问中",
     "askingQuestion_other": "提问中",
     "skipped": "已跳过",
-    "startMonitor": "我将监听：",
+    "startMonitor": "我将启动监听",
     "monitoring": "正在监听"
   },
   "reasoning": {

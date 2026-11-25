@@ -355,7 +355,6 @@
     "executeCommand": "I will execute the following command",
     "executingCommand": "Executing command",
     "startedCommand": "Started command",
-    "startedCommandDescribed": "Started:",
     "for": "for",
     "matching": "matching",
     "searching": "Searching",
@@ -371,7 +370,6 @@
     "readBackground": "Reading background job output",
     "readTerminal": "Reading terminal output",
     "backgroundExecute": "I will execute the following command in the background",
-    "backgroundExecuteDescribed": "I will run in the background:",
     "backgroundExecuting": "Executing command in background",
     "promotedToBackground": "; continued in background",
     "updatingToDos": "Updating TODOs",
@@ -387,7 +385,7 @@
     "askingQuestion_one": "Asking Question",
     "askingQuestion_other": "Asking Questions",
     "skipped": "Skipped",
-    "startMonitor": "I will monitor",
+    "startMonitor": "I will start a monitor",
     "monitoring": "Monitoring"
   },
   "reasoning": {

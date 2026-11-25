@@ -28,7 +28,7 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
     lifecycle.abort();
   }, [lifecycle.abort]);
 
-  const { cwd, command, background, description } = tool.input || {};
+  const { cwd, command, background } = tool.input || {};
   const taskCwd = useTaskCwd();
   const backgroundJobMetadata =
     tool.state === "output-available" ? tool.output._meta : undefined;
@@ -44,33 +44,16 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
         {t("toolInvocation.in")} <HighlightedText>{cwd}</HighlightedText>
       </span>
     ) : null;
-  // Background and promoted commands are titled like their job in the
-  // background jobs panel: by the model's description when there is one.
-  // The command itself stays in the detail.
-  const jobDescription =
-    (background || isPromoted) && typeof description === "string"
-      ? description.trim() || undefined
-      : undefined;
-  const text = jobDescription
-    ? background
-      ? t("toolInvocation.backgroundExecuteDescribed")
-      : t("toolInvocation.startedCommandDescribed")
-    : background
-      ? t("toolInvocation.backgroundExecute")
-      : isPromoted
-        ? t("toolInvocation.startedCommand")
-        : t("toolInvocation.executeCommand");
+  const text = background
+    ? t("toolInvocation.backgroundExecute")
+    : isPromoted
+      ? t("toolInvocation.startedCommand")
+      : t("toolInvocation.executeCommand");
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
       <span className="ml-2">
         {text}
-        {jobDescription && (
-          <>
-            {" "}
-            <HighlightedText>{jobDescription}</HighlightedText>
-          </>
-        )}
         {cwdNode}
         {isPromoted && (
           <span data-testid="command-promotion-transition">
@@ -101,7 +84,6 @@ export const executeCommandTool: React.FC<ToolProps<"executeCommand">> = ({
             <BackgroundJobPanel
               backgroundJobId={backgroundJobMetadata.backgroundJobId}
               outputFile={backgroundJobMetadata.outputFile}
-              showCommand
             />
           ) : availableCommand ? (
             <CommandPanelContainer

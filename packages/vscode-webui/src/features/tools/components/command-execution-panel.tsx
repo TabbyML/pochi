@@ -326,6 +326,7 @@ export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
   appearance?: "default" | "notification";
+  /** The job's description, shown instead of its command on a notification. */
   notificationTitle?: string;
   notificationIcon?: React.ReactNode;
   notificationEvents?: { id: string; text: string }[];
@@ -340,12 +341,6 @@ export const BackgroundJobPanel: FC<{
   terminalName?: string;
   /** Last command run in the terminal, from the tool output (term- ids only). */
   lastCommand?: string;
-  /**
-   * Title the panel by the command even when the job has a description. For
-   * the card that starts the job, whose own title already shows the
-   * description.
-   */
-  showCommand?: boolean;
 }> = ({
   backgroundJobId,
   output,
@@ -360,7 +355,6 @@ export const BackgroundJobPanel: FC<{
   outputFile,
   terminalName,
   lastCommand,
-  showCommand = false,
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -415,10 +409,12 @@ export const BackgroundJobPanel: FC<{
     liveTerminal?.name ?? terminalName,
     lastCommand,
   );
-  // Cards that only refer to a job (reading its output, stopping it) title it
-  // like its row in the background jobs panel: by the model's description,
-  // with the command on hover and in the copy button.
-  const jobDescription = showCommand ? undefined : info?.description;
+  // A job row shows one name, the same on every surface: the model's
+  // description when there is one, otherwise the command. The command stays
+  // on hover and in the copy button.
+  const jobDescription = isNotification
+    ? (notificationTitle ?? info?.description)
+    : info?.description;
   const title = isUserTerminal ? (
     (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
   ) : jobDescription ? (
@@ -498,7 +494,7 @@ export const BackgroundJobPanel: FC<{
       );
 
   if (isNotification) {
-    const text = notificationTitle ?? resolvedCommand ?? backgroundJobId;
+    const text = jobDescription ?? resolvedCommand ?? backgroundJobId;
     // The job number ties the notification to the card that started it and
     // opens the job like that card's badge does; jobs started elsewhere keep
     // the type icon. It sits beside the row's own button, never inside it.
@@ -520,12 +516,21 @@ export const BackgroundJobPanel: FC<{
       "flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left";
     const notificationRowContent = (
       <>
-        <code
-          className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
-          title={text}
-        >
-          {text}
-        </code>
+        {jobDescription ? (
+          <span
+            className="min-w-0 flex-1 truncate text-foreground text-xs"
+            title={resolvedCommand ?? jobDescription}
+          >
+            {jobDescription}
+          </span>
+        ) : (
+          <code
+            className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
+            title={text}
+          >
+            {text}
+          </code>
+        )}
         <NotificationStatusIcon status={status} />
       </>
     );

@@ -349,7 +349,6 @@
     "executeCommand": "以下のコマンドを実行します",
     "executingCommand": "コマンドを実行中",
     "startedCommand": "コマンドを開始",
-    "startedCommandDescribed": "開始しました：",
     "for": "で",
     "matching": "一致する",
     "searching": "検索中",
@@ -365,7 +364,6 @@
     "readBackground": "バックグラウンドジョブ出力を読み込み中",
     "readTerminal": "ターミナル出力を読み込み中",
     "backgroundExecute": "以下のコマンドをバックグラウンドで実行します",
-    "backgroundExecuteDescribed": "バックグラウンドで実行します：",
     "backgroundExecuting": "バックグラウンドでコマンドを実行中",
     "promotedToBackground": "、その後バックグラウンドで継続",
     "updatingToDos": "TODOを更新中",
@@ -379,7 +377,7 @@
     "askingQuestion_one": "質問中",
     "askingQuestion_other": "質問中",
     "skipped": "スキップ済み",
-    "startMonitor": "監視します：",
+    "startMonitor": "監視を開始します",
     "monitoring": "監視中"
   },
   "reasoning": {

@@ -221,6 +221,27 @@ describe("BackgroundJobPanel job control", () => {
     expect(document.querySelector(".lucide-file-text")).toBeNull();
   });
 
+  it("titles a notification by the job's description from the start card", () => {
+    jobInfo = {
+      command: "bun install",
+      description: "Install project dependencies with bun",
+      displayId: "%1",
+    };
+
+    render(
+      <BackgroundJobPanel
+        backgroundJobId="bgjob-cmd-1"
+        appearance="notification"
+        command="bun install"
+        status="completed"
+      />,
+    );
+
+    const title = screen.getByText("Install project dependencies with bun");
+    expect(title.tagName).not.toBe("CODE");
+    expect(title.getAttribute("title")).toBe("bun install");
+  });
+
   it("titles a job that only carries its id by the job's description", () => {
     jobInfo = {
       command: "cd /workspace && bun install",
@@ -233,21 +254,6 @@ describe("BackgroundJobPanel job control", () => {
     const title = screen.getByText("Install project dependencies with bun");
     expect(title.getAttribute("title")).toBe("cd /workspace && bun install");
     expect(screen.queryByText("cd /workspace && bun install")).toBeNull();
-  });
-
-  it("titles the job by its command on the card that started it", () => {
-    jobInfo = {
-      command: "cd /workspace && bun install",
-      description: "Install project dependencies with bun",
-      displayId: "%1",
-    };
-
-    render(<BackgroundJobPanel backgroundJobId="bgjob-cmd-1" showCommand />);
-
-    expect(screen.getByText("cd /workspace && bun install")).toBeTruthy();
-    expect(
-      screen.queryByText("Install project dependencies with bun"),
-    ).toBeNull();
   });
 
   it("top-aligns the display ID with a multi-line command", () => {
@@ -425,9 +431,10 @@ describe("BackgroundJobPanel job control", () => {
     expect(row.parentElement?.querySelector(".lucide-activity")).not.toBeNull();
     expect(row.querySelector(".lucide-circle-slash")).not.toBeNull();
     expect(row.querySelector(".lucide-chevron-left")).not.toBeNull();
-    expect(row.querySelector("code")?.classList.contains("truncate")).toBe(
-      true,
-    );
+    const title = screen.getByText("Simulated log entries");
+    expect(title.tagName).not.toBe("CODE");
+    expect(title.getAttribute("title")).toBe("watch logs");
+    expect(title.classList.contains("truncate")).toBe(true);
     fireEvent.click(row);
     expect(row.getAttribute("aria-expanded")).toBe("true");
     const event = screen.getByText(/first log/);

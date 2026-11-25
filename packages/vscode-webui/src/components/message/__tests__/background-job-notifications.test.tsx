@@ -66,7 +66,7 @@ vi.mock("@/features/tools", () => ({
       data-command={command}
       data-notification-title={notificationTitle}
     >
-      <span>{notificationTitle ?? command}</span>
+      <span>{notificationTitle ?? command ?? backgroundJobId}</span>
       <span>
         {notificationEvents?.map((event) => event.text).join("\n") ?? summary}
       </span>
