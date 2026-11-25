@@ -135,7 +135,7 @@ When NOT to use the newTask tool:
 Usage notes:
 1. Launch agents with independent, non-overlapping assignments concurrently whenever possible; to do that, use a single message with multiple tool uses
 2. When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.
-3. Write a highly detailed prompt so the agent can work autonomously, and specify exactly what information it should return in its final message. A background subagent (backgroundJobId: bgjob-task-...) can later receive follow-up instructions with sendMessage, which also resumes it after it has finished; foreground subagents and spawned top-level tasks (spawn: "task") cannot.
+3. Write a highly detailed prompt so the agent can work autonomously, and specify exactly what information it should return in its final message. A background subagent can later receive follow-up instructions with sendMessage (using its taskId), which also resumes it after it has finished; foreground subagents and spawned top-level tasks (spawn: "task") cannot.
 4. The agent's outputs should generally be trusted
 5. Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.), since it is not aware of the user's intent
 6. If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
@@ -150,11 +150,17 @@ Usage notes:
     inputSchema,
     outputSchema: z.object({
       result: z.string().describe("The task completion result."),
+      taskId: z
+        .string()
+        .optional()
+        .describe(
+          "Present when the subagent was started in the background; can be passed to sendMessage to follow up, steer, or resume it.",
+        ),
       backgroundJobId: z
         .string()
         .optional()
         .describe(
-          "Present when the subagent was started in the background; uses the bgjob-task- prefix and can be passed to sendMessage or killBackgroundJob.",
+          "Present when the subagent was started in the background; uses the bgjob-task- prefix and can be passed to killBackgroundJob to stop the subagent.",
         ),
     }),
   });

@@ -229,11 +229,11 @@ export class BackgroundJobManager {
           }
           if (args.toolName === "sendMessage") {
             const input = args.input as {
-              backgroundJobId: string;
+              taskId: string;
               message: string;
               interrupt?: boolean;
             };
-            return this.sendMessage(input.backgroundJobId, args.taskId, {
+            return this.sendMessage(input.taskId, args.taskId, {
               message: input.message,
               interrupt: input.interrupt,
             });
@@ -1193,22 +1193,28 @@ export class BackgroundJobManager {
    * `interrupt` is set. A finished one is resumed with it.
    */
   async sendMessage(
-    backgroundJobId: string,
-    taskId: string,
+    targetTaskId: string,
+    parentTaskId: string,
     { message, interrupt = false }: { message: string; interrupt?: boolean },
   ): Promise<{
     success: true;
     status: SendMessageStatus;
-    backgroundJobId: string;
+    taskId: string;
   }> {
     if (this.disposed) throw new Error("Background job manager is disposed.");
-    if (parseBackgroundJobId(backgroundJobId) !== "task") {
+    const parsedKind = parseBackgroundJobId(targetTaskId);
+    if (parsedKind && parsedKind !== "task") {
       throw new Error(
-        `"${backgroundJobId}" is not a background subagent. sendMessage only supports background subagents ("bgjob-task-...").`,
+        `"${targetTaskId}" is not a background subagent. sendMessage only supports background subagents.`,
       );
     }
     if (!message.trim()) throw new Error("The message is empty.");
-    const childId = getSubAgentTaskId(backgroundJobId);
+    // Accept a bare taskId, or a bgjob-task-<id> if the caller passed one.
+    const childId =
+      parsedKind === "task"
+        ? (getSubAgentTaskId(targetTaskId) ?? "")
+        : targetTaskId;
+    const backgroundJobId = getSubAgentBackgroundJobId(childId);
     const job = this.jobs.get(backgroundJobId);
     const child = childId
       ? this.store.query(catalog.queries.makeTaskQuery(childId))
@@ -1217,16 +1223,16 @@ export class BackgroundJobManager {
       !childId ||
       !child ||
       !child.background ||
-      (job ? job.ownerTaskId !== taskId : child.parentId !== taskId)
+      (job ? job.ownerTaskId !== parentTaskId : child.parentId !== parentTaskId)
     ) {
       throw new Error(
-        `Background subagent with ID "${backgroundJobId}" not found.`,
+        `Background subagent with taskId "${targetTaskId}" not found.`,
       );
     }
     const state = (await this.taskStateStore.read(childId)) ?? {};
     if (job?.kind === "fork" || isForkAgentUseCase(state.useCase)) {
       throw new Error(
-        `"${backgroundJobId}" is a fork agent. Fork agents cannot receive messages.`,
+        `"${childId}" is a fork agent. Fork agents cannot receive messages.`,
       );
     }
 
@@ -1235,7 +1241,7 @@ export class BackgroundJobManager {
     const followUpCount = (state.followUpCount ?? 0) + 1;
     const nextState = {
       ...state,
-      parentTaskId: state.parentTaskId ?? taskId,
+      parentTaskId: state.parentTaskId ?? parentTaskId,
       stoppedByParent: false,
       followUpCount,
     };
@@ -1254,7 +1260,7 @@ export class BackgroundJobManager {
     });
     if (delivered) {
       activate();
-      return { success: true, status: delivered, backgroundJobId };
+      return { success: true, status: delivered, taskId: childId };
     }
 
     const latestChild = this.store.query(
@@ -1262,7 +1268,7 @@ export class BackgroundJobManager {
     );
     if (!latestChild) {
       throw new Error(
-        `Background subagent with ID "${backgroundJobId}" not found.`,
+        `Background subagent with taskId "${targetTaskId}" not found.`,
       );
     }
     const userMessage: Message = {
@@ -1286,7 +1292,7 @@ export class BackgroundJobManager {
     const status: SendMessageStatus = isRunnableTaskStatus(latestChild.status)
       ? "queued"
       : "resumed";
-    return { success: true, status, backgroundJobId };
+    return { success: true, status, taskId: childId };
   }
 
   async stopOwnedJobs(taskId: string) {

@@ -1091,11 +1091,11 @@ describe("sendMessage", () => {
       await expect(send("bgjob-cmd-one")).rejects.toThrow(
         /not a background subagent/,
       );
-      await expect(send("bgjob-task-missing")).rejects.toThrow(/not found/);
-      await expect(send("bgjob-task-other")).rejects.toThrow(/not found/);
-      await expect(send("bgjob-task-fg")).rejects.toThrow(/not found/);
+      await expect(send("missing")).rejects.toThrow(/not found/);
+      await expect(send("other")).rejects.toThrow(/not found/);
+      await expect(send("fg")).rejects.toThrow(/not found/);
       tasks.set("child", completedChild());
-      await expect(send("bgjob-task-child", "  ")).rejects.toThrow(/empty/);
+      await expect(send("child", "  ")).rejects.toThrow(/empty/);
     } finally {
       await manager.dispose();
     }
@@ -1110,7 +1110,7 @@ describe("sendMessage", () => {
     });
     try {
       await expect(
-        manager.sendMessage("bgjob-task-fork", "parent", {
+        manager.sendMessage("fork", "parent", {
           message: "Keep going.",
         }),
       ).rejects.toThrow(/fork agent/);
@@ -1140,13 +1140,13 @@ describe("sendMessage", () => {
       await Promise.resolve();
 
       await expect(
-        manager.sendMessage("bgjob-task-child", "parent", {
+        manager.sendMessage("child", "parent", {
           message: "Also check the images.",
         }),
       ).resolves.toEqual({
         success: true,
         status: "resumed",
-        backgroundJobId: "bgjob-task-child",
+        taskId: "child",
       });
       expect(commit).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1273,10 +1273,10 @@ describe("sendMessage", () => {
         },
       };
       await expect(
-        manager.sendMessage("bgjob-task-child", "parent", {
+        manager.sendMessage("child", "parent", {
           message: "Resume, but only check the README.",
         }),
-      ).resolves.toMatchObject({ status: "resumed" });
+      ).resolves.toMatchObject({ status: "resumed", taskId: "child" });
       internals.executor = undefined;
       expect(announced).toEqual([]);
       expect(readState(manager, "child")).toMatchObject({
@@ -1299,11 +1299,11 @@ describe("sendMessage", () => {
     manager.registerTask("child", { parentTaskId: "parent" });
     try {
       await expect(
-        manager.sendMessage("bgjob-task-child", "parent", {
+        manager.sendMessage("child", "parent", {
           message: "Start with the README.",
           interrupt: true,
         }),
-      ).resolves.toMatchObject({ status: "queued" });
+      ).resolves.toMatchObject({ status: "queued", taskId: "child" });
       expect(messages.get("child")?.at(-1)).toMatchObject({
         role: "user",
         parts: [{ type: "text", text: "Start with the README." }],
@@ -1342,16 +1342,16 @@ describe("sendMessage", () => {
       .mockResolvedValueOnce(undefined);
     try {
       await expect(
-        manager.sendMessage("bgjob-task-child", "parent", {
+        manager.sendMessage("child", "parent", {
           message: "Also check the images.",
         }),
-      ).resolves.toMatchObject({ status: "queued" });
+      ).resolves.toMatchObject({ status: "queued", taskId: "child" });
       await expect(
         manager.sendMessage("bgjob-task-child", "parent", {
           message: "Stop, check the README first.",
           interrupt: true,
         }),
-      ).resolves.toMatchObject({ status: "interrupted" });
+      ).resolves.toMatchObject({ status: "interrupted", taskId: "child" });
       expect(send).toHaveBeenNthCalledWith(
         1,
         "child",
@@ -1368,10 +1368,10 @@ describe("sendMessage", () => {
       // The loop ended between the status check and the message.
       tasks.set("child", completedChild());
       await expect(
-        manager.sendMessage("bgjob-task-child", "parent", {
+        manager.sendMessage("child", "parent", {
           message: "One more thing.",
         }),
-      ).resolves.toMatchObject({ status: "resumed" });
+      ).resolves.toMatchObject({ status: "resumed", taskId: "child" });
       expect(messages.get("child")?.at(-1)).toMatchObject({
         role: "user",
         parts: [{ type: "text", text: "One more thing." }],

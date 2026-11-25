@@ -315,17 +315,17 @@ export function createSubtaskBatchedToolCall({
 
 function sendMessage(
   store: Parameters<typeof BackgroundJobManager.forStore>[0],
-  taskId: string,
+  parentTaskId: string,
   input: unknown,
 ) {
-  const { backgroundJobId, message, interrupt } = input as {
-    backgroundJobId: string;
+  const { taskId, message, interrupt } = input as {
+    taskId: string;
     message: string;
     interrupt?: boolean;
   };
   return BackgroundJobManager.forStore(store).sendMessage(
-    backgroundJobId,
     taskId,
+    parentTaskId,
     { message, interrupt },
   );
 }

@@ -279,13 +279,13 @@ export class ManagedToolCallLifeCycle
         { notify: false },
       );
     } else if (this.toolName === "sendMessage") {
-      const { backgroundJobId, message, interrupt } = args as {
-        backgroundJobId: string;
+      const { taskId, message, interrupt } = args as {
+        taskId: string;
         message: string;
         interrupt?: boolean;
       };
       executePromise = BackgroundJobManager.forStore(this.store).sendMessage(
-        backgroundJobId,
+        taskId,
         options?.taskId ?? "",
         {
           message,
@@ -476,6 +476,7 @@ export class ManagedToolCallLifeCycle
       result: this.withWorktreeNote(
         createBackgroundSubAgentStartedResult(taskId, transcriptPath),
       ),
+      taskId,
       backgroundJobId: getSubAgentBackgroundJobId(taskId),
     };
   }

@@ -228,8 +228,9 @@ describe("forked background tasks", () => {
           {
             type: "tool-sendMessage",
             toolCallId: "send",
-            state: "input-available",
-            input: { backgroundJobId: oldJobId, message: "follow up" },
+            state: "output-available",
+            input: { taskId: "child", message: "follow up" },
+            output: { success: true, status: "resumed", taskId: "child" },
           },
           {
             type: "tool-readBackgroundJobOutput",
@@ -259,7 +260,8 @@ describe("forked background tasks", () => {
     expect(parts[1]).toMatchObject({ input: { backgroundJobId: newJobId } });
     expect(parts[2]).toMatchObject({
       type: "tool-sendMessage",
-      input: { backgroundJobId: newJobId, message: "follow up" },
+      input: { taskId: copiedChild.id, message: "follow up" },
+      output: { success: true, status: "resumed", taskId: copiedChild.id },
     });
     expect(parts[3]).toMatchObject({ input: { backgroundJobId: newJobId } });
     expect(parts[4]).toMatchObject({

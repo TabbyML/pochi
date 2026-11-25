@@ -51,7 +51,7 @@ const mocks = vi.hoisted(() => ({
 type Tool = ToolProps<"sendMessage">["tool"];
 
 const input = {
-  backgroundJobId: "bgjob-task-child",
+  taskId: "child",
   message: "Also check the image alt texts.\nList each one.",
 };
 
@@ -79,7 +79,7 @@ describe("SendMessageTool", () => {
     expect(screen.getByLabelText("subagent-message").textContent).toContain(
       "Also check the image alt texts.\nList each one.",
     );
-    expect(screen.queryByText("bgjob-task-child")).toBeNull();
+    expect(screen.queryByText("child")).toBeNull();
   });
 
   it("labels an interrupt before and after it happens", () => {
@@ -105,7 +105,7 @@ describe("SendMessageTool", () => {
           output: {
             success: true,
             status: "interrupted",
-            backgroundJobId: input.backgroundJobId,
+            taskId: input.taskId,
           },
         }}
       />,
@@ -124,7 +124,7 @@ describe("SendMessageTool", () => {
       output: {
         success: true,
         status: "queued",
-        backgroundJobId: input.backgroundJobId,
+        taskId: input.taskId,
       },
     });
     expect(
@@ -141,7 +141,7 @@ describe("SendMessageTool", () => {
       toolCallId: "call",
       state: "output-available",
       input,
-      output: { success: true, status, backgroundJobId: input.backgroundJobId },
+      output: { success: true, status, taskId: input.taskId },
     });
     expect(screen.getByText(label)).toBeTruthy();
   });
@@ -189,7 +189,7 @@ describe("SendMessageTool", () => {
         state: "input-available",
         input,
       });
-      expect(screen.getByText("bgjob-task-child")).toBeTruthy();
+      expect(screen.getByText("child")).toBeTruthy();
       expect(screen.queryByRole("button")).toBeNull();
     } finally {
       mocks.knownTask = true;

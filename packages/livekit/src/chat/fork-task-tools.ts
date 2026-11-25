@@ -190,13 +190,25 @@ const replaceTaskIdInMessages = (
         if (part.state === "output-available" && part.output.backgroundJobId) {
           const oldJobId = part.output.backgroundJobId;
           const newJobId = replaceBackgroundJobId(oldJobId);
+          const oldTaskId = part.output.taskId ?? getSubAgentTaskId(oldJobId);
+          const newTaskId = oldTaskId
+            ? (taskIdMap.get(oldTaskId) ?? oldTaskId)
+            : undefined;
+          let result = part.output.result.replaceAll(oldJobId, newJobId);
+          if (oldTaskId && newTaskId) {
+            result = result.replaceAll(
+              `taskId: ${oldTaskId}`,
+              `taskId: ${newTaskId}`,
+            );
+          }
           return {
             ...part,
             input,
             output: {
               ...part.output,
+              ...(part.output.taskId && newTaskId ? { taskId: newTaskId } : {}),
               backgroundJobId: newJobId,
-              result: part.output.result.replaceAll(oldJobId, newJobId),
+              result,
             },
           };
         }
@@ -225,7 +237,6 @@ const replaceTaskIdInMessages = (
       }
       if (
         (part.type === "tool-killBackgroundJob" ||
-          part.type === "tool-sendMessage" ||
           part.type === "tool-readBackgroundJobOutput") &&
         part.input?.backgroundJobId
       ) {
@@ -235,6 +246,25 @@ const replaceTaskIdInMessages = (
             ...part.input,
             backgroundJobId: replaceBackgroundJobId(part.input.backgroundJobId),
           },
+        };
+      }
+      if (part.type === "tool-sendMessage" && part.input?.taskId) {
+        const remapTarget = (id: string) =>
+          taskIdMap.get(id) ?? replaceBackgroundJobId(id);
+        return {
+          ...part,
+          input: {
+            ...part.input,
+            taskId: remapTarget(part.input.taskId),
+          },
+          ...(part.state === "output-available" && part.output?.taskId
+            ? {
+                output: {
+                  ...part.output,
+                  taskId: remapTarget(part.output.taskId),
+                },
+              }
+            : {}),
         };
       }
       return part;

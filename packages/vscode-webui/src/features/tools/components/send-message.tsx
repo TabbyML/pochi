@@ -19,7 +19,7 @@ export const SendMessageTool: React.FC<ToolProps<"sendMessage">> = ({
 }) => {
   const { t } = useTranslation();
   const input = tool.input;
-  const backgroundJobId = input?.backgroundJobId;
+  const targetId = input?.taskId;
   const error = getToolPartError(tool);
   const status: SendMessageStatus | undefined =
     tool.state === "output-available" && !error
@@ -52,14 +52,12 @@ export const SendMessageTool: React.FC<ToolProps<"sendMessage">> = ({
     <ExpandableToolContainer
       title={title}
       detail={
-        backgroundJobId || input?.message ? (
+        targetId || input?.message ? (
           <div
             className="flex flex-col gap-1.5 rounded-md border px-2 py-1.5"
             aria-label="subagent-message"
           >
-            {backgroundJobId && (
-              <SubagentTarget backgroundJobId={backgroundJobId} />
-            )}
+            {targetId && <SubagentTarget targetId={targetId} />}
             {input?.message && (
               <div className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words border-l-2 pl-2 text-sm">
                 {input.message}
@@ -73,9 +71,9 @@ export const SendMessageTool: React.FC<ToolProps<"sendMessage">> = ({
 };
 
 /** The subagent a message goes to: its agent, title, and live status. */
-function SubagentTarget({ backgroundJobId }: { backgroundJobId: string }) {
+function SubagentTarget({ targetId }: { targetId: string }) {
   const { t } = useTranslation();
-  const taskId = getSubAgentTaskId(backgroundJobId) ?? "";
+  const taskId = getSubAgentTaskId(targetId) ?? targetId;
   const store = useDefaultStore();
   const task = store.useQuery(catalog.queries.makeTaskQuery(taskId));
   const { backgroundTaskState } = useBackgroundTaskState(taskId);
@@ -85,7 +83,7 @@ function SubagentTarget({ backgroundJobId }: { backgroundJobId: string }) {
   if (!task) {
     return (
       <code className="truncate bg-transparent p-0 font-mono text-muted-foreground text-xs">
-        {backgroundJobId}
+        {targetId}
       </code>
     );
   }

@@ -135,7 +135,7 @@ export function createBackgroundSubAgentStartedResult(
   const transcript = transcriptPath
     ? `\nIts transcript is updated after each of its steps at ${transcriptPath}. Read it only to inspect how it works, not to wait for its result.`
     : "";
-  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.${transcript}
+  return `Subagent started in the background (taskId: ${taskId}, backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.${transcript}
 Next step: call attemptCompletion now and say the result is pending.
 Exception: you may first do work that is unrelated to this subagent's assignment and does not need its result.
 Never do any part of its assignment yourself, and do not poll, sleep, or guess its result.`;

@@ -6,16 +6,16 @@ export type SendMessageStatus = z.infer<typeof SendMessageStatus>;
 
 const toolDef = {
   description:
-    `- Sends a follow-up message to a background subagent by its backgroundJobId (bgjob-task-...)
+    `- Sends a follow-up message to a background subagent by its taskId
 - Works whether the subagent is running, waiting for an execution slot, waiting for an answer, or already finished (completed, failed, or stopped)
 - A finished subagent is resumed with its full conversation history; its new result arrives later as another background job notification
 - A running subagent receives the message at its next step. Set interrupt: true to stop its in-flight response and act on the message right away; tool calls that have not started yet are skipped, while a tool call that is already running finishes first
-- Fork agents and foreground subagents cannot receive messages`.trim(),
+- Fork agents, foreground subagents, and spawned top-level tasks cannot receive messages`.trim(),
   inputSchema: z.object({
-    backgroundJobId: z
+    taskId: z
       .string()
       .describe(
-        "The ID of the background subagent (bgjob-task-...) to send the message to.",
+        "The taskId of the background subagent to send the message to.",
       ),
     message: z
       .string()
@@ -36,9 +36,7 @@ const toolDef = {
     status: SendMessageStatus.describe(
       "queued: the subagent will read the message at its next step (it was running with nothing to interrupt, or waiting for an execution slot). interrupted: its in-flight response was stopped, or its pending tool calls were skipped, and it continues with the message. resumed: the subagent had finished and was restarted with the message.",
     ),
-    backgroundJobId: z
-      .string()
-      .describe("The backgroundJobId of the target subagent."),
+    taskId: z.string().describe("The taskId of the target subagent."),
   }),
 };
 
