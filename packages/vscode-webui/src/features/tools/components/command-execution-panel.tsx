@@ -322,6 +322,29 @@ export const CommandPanelContainer: FC<{
   );
 };
 
+/**
+ * A job's description, with its command in a tooltip. Commands can be long or
+ * span lines, so the tooltip keeps their line breaks and scrolls.
+ */
+const JobDescription: FC<{
+  description: string;
+  command?: string;
+  className?: string;
+}> = ({ description, command, className }) => {
+  const label = <span className={className}>{description}</span>;
+  if (!command) return label;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{label}</TooltipTrigger>
+      <TooltipContent>
+        <code className="block max-h-[50vh] max-w-sm overflow-y-auto overscroll-y-contain whitespace-pre-wrap break-all bg-transparent p-0 font-mono text-xs">
+          {command}
+        </code>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
+
 export const BackgroundJobPanel: FC<{
   backgroundJobId: string;
   output?: string;
@@ -418,7 +441,12 @@ export const BackgroundJobPanel: FC<{
   const title = isUserTerminal ? (
     (displayTerminalName ?? t("commandExecutionPanel.userTerminal"))
   ) : jobDescription ? (
-    <span title={resolvedCommand}>{jobDescription}</span>
+    // The container breaks commands anywhere; a description breaks at words.
+    <JobDescription
+      description={jobDescription}
+      command={resolvedCommand}
+      className="break-normal break-words"
+    />
   ) : (
     (resolvedCommand ?? backgroundJobId)
   );
@@ -517,12 +545,13 @@ export const BackgroundJobPanel: FC<{
     const notificationRowContent = (
       <>
         {jobDescription ? (
-          <span
+          <JobDescription
+            description={jobDescription}
+            // A command notification's summary tooltip already names the
+            // command.
+            command={summary ? undefined : resolvedCommand}
             className="min-w-0 flex-1 truncate text-foreground text-xs"
-            title={resolvedCommand ?? jobDescription}
-          >
-            {jobDescription}
-          </span>
+          />
         ) : (
           <code
             className="min-w-0 flex-1 truncate bg-transparent p-0 font-mono text-foreground text-xs"
