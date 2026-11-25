@@ -23,6 +23,9 @@ const isOutputFilePathId = (text: string, start: number, length: number) => {
   );
 };
 
+const toDescription = (value: unknown) =>
+  (typeof value === "string" && value.trim()) || undefined;
+
 export const useBackgroundJobDisplay = (messages: Message[]) => {
   const jobids = useMemo(() => {
     const ids = new Set<string>();
@@ -49,7 +52,12 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
   const displayInfo = useMemo(() => {
     const map = new Map<
       string,
-      { displayId: string; command: string; outputFile?: string }
+      {
+        displayId: string;
+        command: string;
+        description?: string;
+        outputFile?: string;
+      }
     >();
     const parts = messages.flatMap((msg) => msg.parts);
     for (const p of parts) {
@@ -62,6 +70,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
         map.set(p.output._meta.backgroundJobId, {
           displayId: `%${map.size + 1}`,
           command: p.input.command,
+          description: toDescription(p.input.description),
           outputFile: p.output._meta.outputFile,
         });
       } else if (
@@ -73,6 +82,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
         map.set(p.output.backgroundJobId, {
           displayId: `%${map.size + 1}`,
           command: p.input.command,
+          description: toDescription(p.input.description),
           outputFile: p.output.outputFile,
         });
       }
@@ -114,6 +124,13 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     [displayInfo],
   );
 
+  const getJobDescription = useCallback(
+    (jobId: string) => {
+      return displayInfo.get(jobId)?.description;
+    },
+    [displayInfo],
+  );
+
   const getJobOutputFile = useCallback(
     (jobId: string) => {
       return displayInfo.get(jobId)?.outputFile;
@@ -125,6 +142,7 @@ export const useBackgroundJobDisplay = (messages: Message[]) => {
     getJobDisplayId,
     replaceJobIdsInContent,
     getJobCommand,
+    getJobDescription,
     getJobOutputFile,
   };
 };
@@ -133,6 +151,7 @@ interface BackgroundJobContext {
   getJobDisplayId: (jobId: string) => string;
   replaceJobIdsInContent: (content: string) => string;
   getJobCommand: (jobId: string) => string | undefined;
+  getJobDescription: (jobId: string) => string | undefined;
   getJobOutputFile: (jobId: string) => string | undefined;
 }
 
@@ -148,6 +167,7 @@ export const BackgroundJobContextProvider = ({
     getJobDisplayId,
     replaceJobIdsInContent,
     getJobCommand,
+    getJobDescription,
     getJobOutputFile,
   } = useBackgroundJobDisplay(messages);
 
@@ -157,6 +177,7 @@ export const BackgroundJobContextProvider = ({
         getJobDisplayId,
         replaceJobIdsInContent,
         getJobCommand,
+        getJobDescription,
         getJobOutputFile,
       }}
     >
@@ -175,6 +196,7 @@ const useBackgroundJobContext = () => {
       getJobDisplayId: () => "",
       replaceJobIdsInContent: (content: string) => content,
       getJobCommand: (jobId: string) => jobId,
+      getJobDescription: () => undefined,
       getJobOutputFile: () => undefined,
     };
   }
@@ -193,14 +215,25 @@ export const useReplaceJobIdsInContent = () => {
 export const useBackgroundJobInfo = (
   backgroundJobId?: string,
 ):
-  | { command: string | undefined; displayId: string; outputFile?: string }
+  | {
+      command: string | undefined;
+      /** Short user-facing title the model gave the job, if any. */
+      description?: string;
+      displayId: string;
+      outputFile?: string;
+    }
   | undefined => {
-  const { getJobDisplayId, getJobCommand, getJobOutputFile } =
-    useBackgroundJobContext();
+  const {
+    getJobDisplayId,
+    getJobCommand,
+    getJobDescription,
+    getJobOutputFile,
+  } = useBackgroundJobContext();
   if (!backgroundJobId) return;
 
   return {
     command: getJobCommand(backgroundJobId),
+    description: getJobDescription(backgroundJobId),
     displayId: getJobDisplayId(backgroundJobId),
     // Recorded by the start card, so cards that only carry the id (e.g. the
     // kill card) can still open the transcript.

@@ -75,6 +75,60 @@ describe("replaceJobIdsInContent", () => {
   });
 });
 
+describe("useBackgroundJobInfo description", () => {
+  it("carries the trimmed description of commands and monitors", () => {
+    const messages = [
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-executeCommand",
+            toolCallId: "tool-1",
+            state: "output-available",
+            input: {
+              command: "bun install",
+              description: " Install project dependencies with bun ",
+              background: true,
+            },
+            output: { output: "", _meta: { backgroundJobId: "bgjob-cmd-a" } },
+          },
+          {
+            type: "tool-startMonitor",
+            toolCallId: "tool-2",
+            state: "output-available",
+            input: { command: "tail -f dev.log", description: "Dev server log" },
+            output: {
+              backgroundJobId: "bgjob-monitor-b",
+              outputFile: "/tmp/b.log",
+            },
+          },
+          {
+            type: "tool-executeCommand",
+            toolCallId: "tool-3",
+            state: "output-available",
+            input: { command: "bun run dev", description: "  " },
+            output: { output: "", _meta: { backgroundJobId: "bgjob-cmd-c" } },
+          },
+        ],
+      } as Message,
+    ];
+    const { result } = renderHook(
+      () => ["bgjob-cmd-a", "bgjob-monitor-b", "bgjob-cmd-c"].map(useBackgroundJobInfo),
+      {
+        wrapper: ({ children }: { children: ReactNode }) =>
+          createElement(BackgroundJobContextProvider, { messages, children }),
+      },
+    );
+
+    expect(result.current.map((info) => info?.description)).toEqual([
+      "Install project dependencies with bun",
+      "Dev server log",
+      undefined,
+    ]);
+  });
+});
+
 describe("BackgroundJobContextProvider task scope", () => {
   it("uses the complete task history for job info and text replacement", () => {
     const messages = [

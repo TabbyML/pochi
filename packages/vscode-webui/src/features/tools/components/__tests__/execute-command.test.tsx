@@ -192,6 +192,43 @@ describe("executeCommandTool", () => {
     expect(panel.dataset.outputFile).toBe("/tmp/bgjob-cmd-promoted.log");
   });
 
+  it("keeps the action title when a started command has a description", () => {
+    render(
+      <ExecuteCommandTool
+        tool={{
+          type: "tool-executeCommand",
+          toolCallId: "described-call",
+          state: "output-available",
+          input: {
+            command: "bun install",
+            description: "Install project dependencies with bun",
+            cwd: "/workspace",
+            background: true,
+          },
+          output: {
+            output: "Background command started",
+            isTruncated: false,
+            _meta: {
+              backgroundJobId: "bgjob-cmd-described",
+              outputFile: "/tmp/bgjob-cmd-described.log",
+            },
+          },
+        }}
+        isExecuting={false}
+        isLoading={false}
+      />,
+    );
+
+    // The description names the job in its row, not in the card title.
+    expect(screen.getByText("toolInvocation.backgroundExecute")).toBeTruthy();
+    expect(
+      screen.queryByText("Install project dependencies with bun"),
+    ).toBeNull();
+    expect(screen.getByTestId("background-job-panel").dataset.jobId).toBe(
+      "bgjob-cmd-described",
+    );
+  });
+
   it("leaves the job state to the badge instead of the status icon", () => {
     render(
       <ExecuteCommandTool

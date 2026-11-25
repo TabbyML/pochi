@@ -5,7 +5,6 @@ import {
   CommandPanelContainer,
   CopyCommandButton,
 } from "./command-execution-panel";
-import { HighlightedText } from "./highlight-text";
 import { StatusIcon } from "./status-icon";
 import { ExpandableToolContainer } from "./tool-container";
 import type { ToolProps } from "./types";
@@ -16,10 +15,10 @@ export const StartMonitorTool: React.FC<ToolProps<"startMonitor">> = ({
 }) => {
   const { t } = useTranslation();
 
-  const { command, description } =
+  const command =
     tool.state === "input-available" || tool.state === "output-available"
-      ? tool.input
-      : { command: undefined, description: undefined };
+      ? tool.input.command
+      : undefined;
 
   const backgroundJobId =
     tool.state === "output-available" ? tool.output.backgroundJobId : undefined;
@@ -27,10 +26,7 @@ export const StartMonitorTool: React.FC<ToolProps<"startMonitor">> = ({
   const title = (
     <>
       <StatusIcon isExecuting={isExecuting} tool={tool} />
-      <span className="ml-2">
-        {t("toolInvocation.startMonitor")}{" "}
-        <HighlightedText>{description}</HighlightedText>
-      </span>
+      <span className="ml-2">{t("toolInvocation.startMonitor")}</span>
     </>
   );
 
