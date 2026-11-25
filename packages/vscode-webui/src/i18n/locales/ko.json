@@ -685,7 +685,6 @@
     "moveToBackground": "백그라운드로 이동",
     "all": "전체",
     "showAll": "모든 백그라운드 작업 표시",
-    "moveToBackgroundHint": "백그라운드에서 계속 실행되며 완료되면 알려드립니다.",
-    "followUp": "후속 요청 {{count}}"
+    "moveToBackgroundHint": "백그라운드에서 계속 실행되며 완료되면 알려드립니다."
   }
 }

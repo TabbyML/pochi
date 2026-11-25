@@ -694,7 +694,6 @@
     "moveToBackground": "Move to background",
     "all": "All",
     "showAll": "Show all background tasks",
-    "moveToBackgroundHint": "Continues in the background and notifies you when done.",
-    "followUp": "Follow-up {{count}}"
+    "moveToBackgroundHint": "Continues in the background and notifies you when done."
   }
 }

@@ -48,14 +48,6 @@ export function SubagentResultNotificationItem({
             {agentType}
           </BackgroundTaskButton>
         </Badge>
-        {result.followUp && (
-          <Badge
-            variant="outline"
-            className="pointer-events-none relative inline-flex h-5 shrink-0 px-1.5 py-0 align-top font-normal"
-          >
-            {t("backgroundTasks.followUp", { count: result.followUp })}
-          </Badge>
-        )}
         <span
           className="pointer-events-none relative min-w-0 flex-1 truncate text-muted-foreground leading-5"
           title={title}

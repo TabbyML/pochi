@@ -690,7 +690,6 @@
     "moveToBackground": "バックグラウンドへ移動",
     "all": "すべて",
     "showAll": "すべてのバックグラウンドタスクを表示",
-    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。",
-    "followUp": "フォローアップ {{count}}"
+    "moveToBackgroundHint": "バックグラウンドで実行を続け、完了したら通知します。"
   }
 }

@@ -689,7 +689,6 @@
     "moveToBackground": "移到后台",
     "all": "全部",
     "showAll": "显示所有后台任务",
-    "moveToBackgroundHint": "在后台继续运行，完成后通知你。",
-    "followUp": "追问 {{count}}"
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
   }
 }
