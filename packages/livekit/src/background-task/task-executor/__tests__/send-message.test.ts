@@ -169,7 +169,12 @@ describe("TaskExecutor.sendMessage", () => {
     expect(toolOutput(toolMessage, "write-b")).toEqual({
       error: getToolCallCancelErrorMessage("steered"),
     });
-    expect(textOf(requestMessages.at(-1))).toContain("Leave b.ts alone.");
+    // Its own turn, not a note folded into the step it cut short.
+    expect(requestMessages.at(-1)).toMatchObject({
+      role: "user",
+      parts: [{ type: "text", text: "Leave b.ts alone." }],
+    });
+    expect(kits[0]?.flushes).toBe(1);
     expect(store.readTask("task")?.status).toBe("completed");
     await executor.dispose();
   });
@@ -313,10 +318,19 @@ class SteerChatKit {
     );
   }
 
+  flushes = 0;
+
   flushPendingInput() {
     if (this.queued.length === 0) return false;
+    this.flushes += 1;
     const texts = this.queued.splice(0);
-    const interrupted = this.chat.messages.at(-1)?.role === "assistant";
+    // Like isInterruptedAssistantResponse: a response cut off mid-stream.
+    const last = this.chat.messages.at(-1);
+    const interrupted =
+      last?.role === "assistant" &&
+      last.parts.some(
+        (part) => part.type === "text" && part.state === "streaming",
+      );
     this.chat.appendOrReplaceMessage({
       id: crypto.randomUUID(),
       role: "user",

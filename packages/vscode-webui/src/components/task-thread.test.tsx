@@ -193,4 +193,34 @@ describe("TaskThread scrolling", () => {
       "messageList.messageFromParentTaskInterrupted",
     );
   });
+
+  it("labels a follow-up that skipped the subagent's tool calls as an interruption", () => {
+    const messages: Message[] = [
+      { id: "u1", role: "user", parts: [{ type: "text", text: "Initial" }] },
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-readFile",
+            toolCallId: "read",
+            state: "output-available",
+            input: { path: "a.ts" },
+            output: {
+              error:
+                "Tool call was skipped because a new instruction interrupted this step.",
+            },
+          },
+        ],
+      } as unknown as Message,
+      { id: "u2", role: "user", parts: [{ type: "text", text: "Pivot" }] },
+    ];
+    render(<TaskThread source={makeSource(messages)} />);
+    const props = mocks.messageListProps.at(-1) as {
+      getUserMessageLabel: (message: Message) => string | undefined;
+    };
+    expect(props.getUserMessageLabel(messages[2])).toBe(
+      "messageList.messageFromParentTaskInterrupted",
+    );
+  });
 });

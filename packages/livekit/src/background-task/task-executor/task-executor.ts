@@ -441,6 +441,8 @@ class RunningTask {
   /** The loop has ended; messages sent now must resume the task instead. */
   private closed = false;
   private executingTools = false;
+  /** A steering message skipped tool calls of the current step. */
+  private steeredTools = false;
   /**
    * A steering message stopped the in-flight response. `stopping` until the
    * loop sees the abort failure that the stop leaves behind, `restarting`
@@ -504,6 +506,7 @@ class RunningTask {
     if (!isRequesting && !this.executingTools) return "queued";
     if (this.executingTools) {
       // Running tool calls finish; the ones that have not started are skipped.
+      this.steeredTools = true;
       this.toolCallQueue.interrupt("steered");
     }
     if (isRequesting) {
@@ -859,6 +862,12 @@ class RunningTask {
     } finally {
       this.executingTools = false;
       chatKit.markEndToolsExecution();
+    }
+    if (this.steeredTools) {
+      // The message changed the plan, so it goes out as its own turn rather
+      // than as a note to fold into the work in progress.
+      this.steeredTools = false;
+      chatKit.flushPendingInput();
     }
     return "next";
   }
