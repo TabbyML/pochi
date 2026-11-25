@@ -64,8 +64,12 @@ export function ToolCallLite({
     case "tool-killBackgroundJob":
       detail = <KillBackgroundJobTool />;
       break;
-    case "tool-sendMessage":
-      detail = <span>{t("toolInvocation.sendMessage")}</span>;
+    case "tool-sendMessageToSubagent":
+      detail = (
+        <span className="ml-2">
+          {t("toolInvocation.sendingMessageToSubagent")}
+        </span>
+      );
       break;
     case "tool-startMonitor":
       detail = <StartMonitorLiteTool tool={tool} />;

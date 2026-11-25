@@ -1,0 +1,51 @@
+import z from "zod";
+import { defineClientTool } from "./types";
+
+export const SendMessageToSubagentStatus = z.enum([
+  "queued",
+  "interrupted",
+  "resumed",
+]);
+export type SendMessageToSubagentStatus = z.infer<
+  typeof SendMessageToSubagentStatus
+>;
+
+const toolDef = {
+  description:
+    `- Sends a follow-up message to a background subagent by its backgroundJobId (bgjob-task-...)
+- Works whether the subagent is running, waiting for an execution slot, waiting for an answer, or already finished (completed, failed, or stopped)
+- A finished subagent is resumed with its full conversation history; its new result arrives later as another background job notification
+- A running subagent receives the message at its next step. Set interrupt: true to stop its in-flight response and act on the message right away; tool calls that have not started yet are skipped, while a tool call that is already running finishes first
+- Fork agents and foreground subagents cannot receive messages`.trim(),
+  inputSchema: z.object({
+    backgroundJobId: z
+      .string()
+      .describe(
+        "The ID of the background subagent (bgjob-task-...) to send the message to.",
+      ),
+    message: z
+      .string()
+      .describe(
+        "The follow-up instruction, correction, or answer for the subagent. Write it as a complete instruction; the subagent only sees this message and its own history.",
+      ),
+    interrupt: z
+      .boolean()
+      .optional()
+      .describe(
+        "Optional, defaults to false. When true, stops the subagent's in-flight response so it acts on this message immediately. Has no effect on a subagent that is not running.",
+      ),
+  }),
+  outputSchema: z.object({
+    success: z
+      .boolean()
+      .describe("Whether the message was delivered or queued."),
+    status: SendMessageToSubagentStatus.describe(
+      "queued: the subagent was running or waiting for a slot and will read the message at its next step. interrupted: the in-flight response was stopped and the subagent continues with the message. resumed: the subagent had finished and was restarted with the message.",
+    ),
+    backgroundJobId: z
+      .string()
+      .describe("The backgroundJobId of the target subagent."),
+  }),
+};
+
+export const sendMessageToSubagent = defineClientTool(toolDef);

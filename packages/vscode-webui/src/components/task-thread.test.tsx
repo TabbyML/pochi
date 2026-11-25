@@ -34,6 +34,15 @@ vi.mock("@/lib/hooks/use-is-at-bottom", () => ({
 
 vi.mock("@getpochi/common", () => ({
   formatters: { ui: mocks.formatMessages },
+  prompts: {
+    userInputAfterInterruption: "after-interruption",
+    createSystemReminder: (text: string) =>
+      `<system-reminder>${text}</system-reminder>`,
+  },
+}));
+
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 const message = {
@@ -131,7 +140,7 @@ describe("TaskThread scrolling", () => {
     expect(mocks.messageListProps.at(-1)?.messages).toBe(childMessages);
   });
 
-  it("keeps user messages when showUserMessages is true and hides only the initial prompt by default", () => {
+  it("hides only the task's own prompt and labels the parent's follow-ups", () => {
     const messages: Message[] = [
       { id: "u1", role: "user", parts: [{ type: "text", text: "Initial" }] },
       {
@@ -140,29 +149,48 @@ describe("TaskThread scrolling", () => {
         parts: [{ type: "text", text: "Done 1" }],
       },
       { id: "u2", role: "user", parts: [{ type: "text", text: "Follow-up" }] },
+      {
+        id: "a2",
+        role: "assistant",
+        parts: [{ type: "text", text: "Partial" }],
+      },
+      {
+        id: "u3",
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: "<system-reminder>after-interruption</system-reminder>",
+          },
+          { type: "text", text: "Pivot" },
+        ],
+      },
     ];
 
     render(<TaskThread source={makeSource(messages)} />);
-    const defaultProps = mocks.messageListProps.at(-1) as {
+    const props = mocks.messageListProps.at(-1) as {
       formatMessages: (msgs: Message[]) => Message[];
+      getUserMessageLabel: (message: Message) => string | undefined;
       showUserAvatar: boolean;
     };
-    expect(defaultProps.showUserAvatar).toBe(false);
-    expect(defaultProps.formatMessages(messages).map((m) => m.id)).toEqual([
+    expect(props.showUserAvatar).toBe(false);
+    expect(props.formatMessages(messages).map((m) => m.id)).toEqual([
       "a1",
       "u2",
+      "a2",
+      "u3",
     ]);
-
-    render(<TaskThread source={makeSource(messages)} showUserMessages />);
-    const detailProps = mocks.messageListProps.at(-1) as {
-      formatMessages: (msgs: Message[]) => Message[];
-      showUserAvatar: boolean;
-    };
-    expect(detailProps.showUserAvatar).toBe(true);
-    expect(detailProps.formatMessages(messages).map((m) => m.id)).toEqual([
-      "u1",
-      "a1",
+    // A later page of the list does not start with the prompt.
+    expect(props.formatMessages(messages.slice(2)).map((m) => m.id)).toEqual([
       "u2",
+      "a2",
+      "u3",
     ]);
+    expect(props.getUserMessageLabel(messages[2])).toBe(
+      "messageList.messageFromParentTask",
+    );
+    expect(props.getUserMessageLabel(messages[4])).toBe(
+      "messageList.messageFromParentTaskInterrupted",
+    );
   });
 });

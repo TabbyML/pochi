@@ -131,7 +131,8 @@ export function createBatchedToolCallFromLifecycle({
       });
     },
     cancel: (reason: ToolCallCancelReason) => {
-      lifecycle.abort(reason);
+      // Only background tasks steer; a chat page never interrupts its queue.
+      lifecycle.abort(reason === "steered" ? "user-abort" : reason);
     },
   };
 }
@@ -184,33 +185,8 @@ export function createSubtaskBatchedToolCall({
                 uid,
                 { notify: false },
               )
-            : toolCall.toolName === "sendMessage"
-              ? await BackgroundJobManager.forStore(store).sendMessage(
-                  (
-                    toolCall.input as {
-                      backgroundJobId: string;
-                      message: string;
-                      interrupt?: boolean;
-                    }
-                  ).backgroundJobId,
-                  uid,
-                  {
-                    message: (
-                      toolCall.input as {
-                        backgroundJobId: string;
-                        message: string;
-                        interrupt?: boolean;
-                      }
-                    ).message,
-                    interrupt: (
-                      toolCall.input as {
-                        backgroundJobId: string;
-                        message: string;
-                        interrupt?: boolean;
-                      }
-                    ).interrupt,
-                  },
-                )
+            : toolCall.toolName === "sendMessageToSubagent"
+              ? await sendMessageToSubagent(store, uid, toolCall.input)
               : await execute();
 
         if (
@@ -335,4 +311,21 @@ export function createSubtaskBatchedToolCall({
       });
     },
   };
+}
+
+function sendMessageToSubagent(
+  store: Parameters<typeof BackgroundJobManager.forStore>[0],
+  taskId: string,
+  input: unknown,
+) {
+  const { backgroundJobId, message, interrupt } = input as {
+    backgroundJobId: string;
+    message: string;
+    interrupt?: boolean;
+  };
+  return BackgroundJobManager.forStore(store).sendMessageToSubagent(
+    backgroundJobId,
+    taskId,
+    { message, interrupt },
+  );
 }

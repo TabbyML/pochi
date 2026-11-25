@@ -47,16 +47,20 @@ export function isBackgroundSubAgentRequested(
   return input?.background === true && shouldRunSubAgentInBackground(input);
 }
 
-/** Stable notification identity for a task and its terminal status. */
+/**
+ * Stable notification identity for a task and its terminal status. A result
+ * after the n-th follow-up message has its own identity, so it is delivered
+ * even though an earlier result with the same status already was.
+ */
 export function getSubAgentNotificationId(
   task: {
     id: string;
     status: string;
   },
-  turnKey?: string,
+  followUp?: number,
 ): string {
   const base = `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
-  return turnKey ? `${base}:${turnKey}` : base;
+  return followUp ? `${base}:followup-${followUp}` : base;
 }
 
 /**

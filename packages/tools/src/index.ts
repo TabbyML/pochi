@@ -49,7 +49,7 @@ import { editNotebook } from "./edit-notebook";
 import { killBackgroundJob } from "./kill-background-job";
 import { startMonitor } from "./monitor";
 import { createReadFileTool } from "./read-file";
-import { sendMessage } from "./send-message";
+import { sendMessageToSubagent } from "./send-message-to-subagent";
 import { type Skill, createSkillTool } from "./use-skill";
 import { parseToolSpec } from "./utils/tool-spec";
 import { writeToFile } from "./write-to-file";
@@ -78,6 +78,10 @@ export {
   makeUserInvocationDisabledMessage,
 } from "./use-skill";
 export { attemptCompletionSchema } from "./attempt-completion";
+export {
+  SendMessageToSubagentStatus,
+  sendMessageToSubagent,
+} from "./send-message-to-subagent";
 export {
   getToolCallCancelErrorMessage,
   ToolCallQueue,
@@ -155,7 +159,7 @@ export const createClientTools = (options?: CreateClientToolOptions) => {
   return {
     ...createBaseTools(options),
     killBackgroundJob,
-    sendMessage,
+    sendMessageToSubagent,
     startMonitor,
     renderWidget,
   };
@@ -221,7 +225,7 @@ const SubTaskExcludedTools = new Set([
   "newTask",
   "startMonitor",
   "killBackgroundJob",
-  "sendMessage",
+  "sendMessageToSubagent",
 ]);
 
 function filterTools(

@@ -1038,109 +1038,255 @@ it("does not revive a completed command when an older live snapshot arrives", as
   await manager.dispose();
 });
 
-describe("sendMessage", () => {
-  it("rejects non-subagent job IDs and unknown or unowned tasks", async () => {
-    const { manager, tasks } = setup();
-    tasks.set("child", {
-      id: "child",
-      parentId: "other-parent",
-      background: true,
-      status: "completed",
-    } as Task);
-
-    await expect(
-      manager.sendMessage("bgjob-cmd-one", "parent", { message: "hi" }),
-    ).rejects.toThrow(/not a background subagent/);
-    await expect(
-      manager.sendMessage("bgjob-task-missing", "parent", { message: "hi" }),
-    ).rejects.toThrow(/not found/);
-    await expect(
-      manager.sendMessage("bgjob-task-child", "parent", { message: "hi" }),
-    ).rejects.toThrow(/not found/);
-
-    await manager.dispose();
-  });
-
-  it("resumes a completed subagent and emits a new notification ID for the next turn", async () => {
-    const { manager, tasks, messages, store } = setup();
-    tasks.set("child", {
+describe("sendMessageToSubagent", () => {
+  const completedChild = (overrides: Partial<Task> = {}) =>
+    ({
       id: "child",
       parentId: "parent",
       background: true,
       status: "completed",
-    } as Task);
-    messages.set("child", [
-      { id: "u1", role: "user", parts: [{ type: "text", text: "first" }] },
-      { id: "a1", role: "assistant", parts: [{ type: "text", text: "done 1" }] },
-    ]);
-    manager.registerTask("child", { parentTaskId: "parent" });
-
-    try {
-      await manager.watchTask("parent");
-      const firstNotice = manager.getPendingNotifications("parent")[0];
-      expect(firstNotice?.notificationId).toBe(
-        "bgjob-task-child:terminal:completed",
-      );
-
-      // Mark first notification as delivered in parent messages
-      messages.set("parent", [
+      title: "Audit the API docs",
+      ...overrides,
+    }) as Task;
+  const childMessages = (): Message[] => [
+    { id: "u1", role: "user", parts: [{ type: "text", text: "Audit the docs." }] },
+    {
+      id: "a1",
+      role: "assistant",
+      parts: [
         {
-          id: "p1",
-          role: "user",
-          parts: [
-            {
-              type: "data-background-job-notification",
-              data: firstNotice,
-            } as never,
-          ],
+          type: "tool-attemptCompletion",
+          toolCallId: "done-1",
+          state: "input-available",
+          input: { result: "Found 3 broken links." },
         },
-      ]);
+      ],
+    } as Message,
+  ];
+  const deliver = (
+    setMessages: (taskId: string, value: Message[]) => void,
+    notices: BackgroundJobNotification[],
+  ) =>
+    setMessages("parent", [
+      {
+        id: "p1",
+        role: "user",
+        parts: toBackgroundJobNotificationParts(notices),
+      } as Message,
+    ]);
+  const readState = (manager: BackgroundJobManager, taskId: string) =>
+    (
+      manager as unknown as {
+        taskStateStore: { read: (id: string) => unknown };
+      }
+    ).taskStateStore.read(taskId);
 
-      const result = await manager.sendMessage("bgjob-task-child", "parent", {
-        message: "follow up",
-      });
-      expect(result).toEqual({
-        success: true,
-        status: "resumed",
-        backgroundJobId: "bgjob-task-child",
-      });
-
-      const committed = (store.commit as ReturnType<typeof vi.fn>).mock.calls
-        .flat()
-        .find(
-          (event: { name?: string }) => event?.name === "v1.ChatStreamStarted",
-        );
-      expect(committed).toBeDefined();
-      const childMsgs = messages.get("child") ?? [];
-      childMsgs.push(committed.args.data);
-
-      // Simulate subagent finishing its second turn
-      childMsgs.push({
-        id: "a2",
-        role: "assistant",
-        parts: [{ type: "text", text: "done 2" }],
-      });
-      messages.set("child", childMsgs);
-      tasks.set("child", {
-        ...tasks.get("child")!,
-        status: "completed",
-      });
-
-      const secondNotices = manager.getPendingNotifications("parent");
-      expect(secondNotices).toHaveLength(1);
-      expect(secondNotices[0]?.notificationId).toBe(
-        "bgjob-task-child:terminal:completed:a2",
+  it("only accepts this task's own background subagents", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("other", completedChild({ id: "other", parentId: "elsewhere" }));
+    tasks.set("fg", completedChild({ id: "fg", background: false }));
+    const send = (id: string, message = "Check the links too.") =>
+      manager.sendMessageToSubagent(id, "parent", { message });
+    try {
+      await expect(send("bgjob-cmd-one")).rejects.toThrow(
+        /not a background subagent/,
       );
-      expect(secondNotices[0]?.notificationId).not.toBe(
-        firstNotice?.notificationId,
-      );
+      await expect(send("bgjob-task-missing")).rejects.toThrow(/not found/);
+      await expect(send("bgjob-task-other")).rejects.toThrow(/not found/);
+      await expect(send("bgjob-task-fg")).rejects.toThrow(/not found/);
+      tasks.set("child", completedChild());
+      await expect(send("bgjob-task-child", "  ")).rejects.toThrow(/empty/);
     } finally {
       await manager.dispose();
     }
   });
 
-  it("forwards to executor when the subagent is currently running", async () => {
-    const { store, tasks } = makeJobStore();
+  it("refuses fork agents", async () => {
+    const { manager, tasks } = setup();
+    tasks.set("fork", completedChild({ id: "fork" }));
+    manager.registerTask("fork", {
+      parentTaskId: "parent",
+      useCase: "task-memory",
+    });
+    try {
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-fork", "parent", {
+          message: "Keep going.",
+        }),
+      ).rejects.toThrow(/fork agent/);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("resumes a finished subagent and announces each follow-up result separately", async () => {
+    const { manager, tasks, messages, commit, setMessages } = setup();
+    tasks.set("child", completedChild());
+    messages.set("child", childMessages());
+    manager.registerTask("child", { parentTaskId: "parent" });
+    try {
+      await manager.watchTask("parent");
+      const [first] = manager.getPendingNotifications("parent");
+      expect(first).toMatchObject({
+        notificationId: "bgjob-task-child:terminal:completed",
+        result: "Found 3 broken links.",
+      });
+      expect(first).not.toHaveProperty("followUp");
+      deliver(setMessages, [first!]);
+
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "Also check the images.",
+        }),
+      ).resolves.toEqual({
+        success: true,
+        status: "resumed",
+        backgroundJobId: "bgjob-task-child",
+      });
+      expect(commit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "v1.ChatStreamStarted",
+          args: expect.objectContaining({
+            id: "child",
+            data: expect.objectContaining({
+              role: "user",
+              parts: [{ type: "text", text: "Also check the images." }],
+            }),
+          }),
+        }),
+      );
+      expect(tasks.get("child")?.status).toBe("pending-model");
+      expect(readState(manager, "child")).toMatchObject({ followUpCount: 1 });
+      // Nothing to announce while the subagent works on the follow-up.
+      expect(manager.getPendingNotifications("parent")).toEqual([]);
+
+      messages.set("child", [
+        ...(messages.get("child") ?? []),
+        {
+          id: "a2",
+          role: "assistant",
+          parts: [
+            {
+              type: "tool-attemptCompletion",
+              toolCallId: "done-2",
+              state: "input-available",
+              input: { result: "2 images are missing alt text." },
+            },
+          ],
+        } as Message,
+      ]);
+      tasks.set("child", completedChild());
+      const [second] = manager.getPendingNotifications("parent");
+      expect(second).toMatchObject({
+        notificationId: "bgjob-task-child:terminal:completed:followup-1",
+        followUp: 1,
+        result: "2 images are missing alt text.",
+      });
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("keeps the original notification id for a subagent that never got a follow-up", async () => {
+    const { manager, tasks, messages } = setup();
+    tasks.set("child", completedChild());
+    // Reminders are user messages too, but not follow-ups.
+    messages.set("child", [
+      ...childMessages().slice(0, 1),
+      {
+        id: "r1",
+        role: "user",
+        parts: [{ type: "text", text: "<system-reminder>Use tools</system-reminder>" }],
+      },
+      ...childMessages().slice(1),
+    ]);
+    manager.registerTask("child", { parentTaskId: "parent" });
+    try {
+      await manager.watchTask("parent");
+      expect(manager.getPendingNotifications("parent")).toMatchObject([
+        { notificationId: "bgjob-task-child:terminal:completed" },
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("restores the follow-up count after a reload", async () => {
+    const { manager, tasks, messages } = setup();
+    tasks.set("child", completedChild());
+    messages.set("child", childMessages());
+    manager.registerTask("child", { parentTaskId: "parent", followUpCount: 2 });
+    try {
+      await manager.watchTask("parent");
+      expect(manager.getPendingNotifications("parent")).toMatchObject([
+        {
+          notificationId: "bgjob-task-child:terminal:completed:followup-2",
+          followUp: 2,
+        },
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("resumes a subagent the parent stopped and announces its new result", async () => {
+    const { manager, tasks, messages } = setup();
+    tasks.set(
+      "child",
+      completedChild({
+        status: "failed",
+        error: { kind: "AbortError", message: "Stopped by user." },
+      } as Partial<Task>),
+    );
+    messages.set("child", childMessages().slice(0, 1));
+    manager.registerTask("child", {
+      parentTaskId: "parent",
+      stoppedByParent: true,
+    });
+    try {
+      await manager.watchTask("parent");
+      expect(manager.getPendingNotifications("parent")).toEqual([]);
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "Resume, but only check the README.",
+        }),
+      ).resolves.toMatchObject({ status: "resumed" });
+      expect(readState(manager, "child")).toMatchObject({
+        stoppedByParent: false,
+        followUpCount: 1,
+      });
+      tasks.set("child", completedChild());
+      expect(manager.getPendingNotifications("parent")).toMatchObject([
+        { notificationId: "bgjob-task-child:terminal:completed:followup-1" },
+      ]);
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("reports a subagent waiting for an execution slot as queued", async () => {
+    const { manager, tasks, messages } = setup();
+    tasks.set("child", completedChild({ status: "pending-model" }));
+    messages.set("child", childMessages().slice(0, 1));
+    manager.registerTask("child", { parentTaskId: "parent" });
+    try {
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "Start with the README.",
+          interrupt: true,
+        }),
+      ).resolves.toMatchObject({ status: "queued" });
+      expect(messages.get("child")?.at(-1)).toMatchObject({
+        role: "user",
+        parts: [{ type: "text", text: "Start with the README." }],
+      });
+    } finally {
+      await manager.dispose();
+    }
+  });
+
+  it("hands the message to a running subagent, and resumes it once its loop has ended", async () => {
+    const { store, tasks, messages } = makeJobStore();
     const manager = BackgroundJobManager.forStore(store);
     manager.initialize({
       blobStore: {} as never,
@@ -1149,54 +1295,60 @@ describe("sendMessage", () => {
         executeToolCall: vi.fn(),
       },
     });
-    tasks.set("child", {
-      id: "child",
-      parentId: "parent",
-      background: true,
-      status: "pending-model",
-    } as Task);
+    tasks.set("child", completedChild({ status: "pending-model" }));
+    messages.set("child", childMessages().slice(0, 1));
     manager.registerTask("child", { parentTaskId: "parent" });
-
     const { executor } = manager as unknown as {
       executor: {
         sendMessage: (
           taskId: string,
           message: string,
           options?: { interrupt?: boolean },
-        ) => "queued" | "interrupted" | undefined;
+        ) => Promise<"queued" | "interrupted" | undefined>;
       };
     };
-    const sendSpy = vi
+    const send = vi
       .spyOn(executor, "sendMessage")
-      .mockReturnValueOnce("queued")
-      .mockReturnValueOnce("interrupted");
-
+      .mockResolvedValueOnce("queued")
+      .mockResolvedValueOnce("interrupted")
+      .mockResolvedValueOnce(undefined);
     try {
-      expect(
-        await manager.sendMessage("bgjob-task-child", "parent", {
-          message: "queue me",
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "Also check the images.",
         }),
-      ).toEqual({
-        success: true,
-        status: "queued",
-        backgroundJobId: "bgjob-task-child",
-      });
-      expect(
-        await manager.sendMessage("bgjob-task-child", "parent", {
-          message: "pivot now",
+      ).resolves.toMatchObject({ status: "queued" });
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "Stop, check the README first.",
           interrupt: true,
         }),
-      ).toEqual({
-        success: true,
-        status: "interrupted",
-        backgroundJobId: "bgjob-task-child",
+      ).resolves.toMatchObject({ status: "interrupted" });
+      expect(send).toHaveBeenNthCalledWith(
+        1,
+        "child",
+        "Also check the images.",
+        { interrupt: false },
+      );
+      expect(send).toHaveBeenNthCalledWith(
+        2,
+        "child",
+        "Stop, check the README first.",
+        { interrupt: true },
+      );
+
+      // The loop ended between the status check and the message.
+      tasks.set("child", completedChild());
+      await expect(
+        manager.sendMessageToSubagent("bgjob-task-child", "parent", {
+          message: "One more thing.",
+        }),
+      ).resolves.toMatchObject({ status: "resumed" });
+      expect(messages.get("child")?.at(-1)).toMatchObject({
+        role: "user",
+        parts: [{ type: "text", text: "One more thing." }],
       });
-      expect(sendSpy).toHaveBeenNthCalledWith(1, "child", "queue me", {
-        interrupt: false,
-      });
-      expect(sendSpy).toHaveBeenNthCalledWith(2, "child", "pivot now", {
-        interrupt: true,
-      });
+      expect(readState(manager, "child")).toMatchObject({ followUpCount: 3 });
     } finally {
       await manager.dispose();
     }

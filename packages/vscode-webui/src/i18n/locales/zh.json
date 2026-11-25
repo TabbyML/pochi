@@ -357,7 +357,14 @@
     "matched": "个已匹配",
     "resultsTruncated": "，结果已截断",
     "stopBackgroundJob": "我将停止以下后台任务",
-    "sendMessage": "我将向后台子代理发送消息",
+    "sendMessageToSubagent": "我将向子代理发送消息",
+    "sendMessageToSubagentInterrupt": "我将发送消息并打断子代理",
+    "sendingMessageToSubagent": "正在向子代理发送消息",
+    "sentMessageToSubagentQueued": "已为子代理排队一条消息",
+    "sentMessageToSubagentInterrupted": "已发送消息并打断子代理",
+    "sentMessageToSubagentResumed": "已发送消息并恢复子代理",
+    "sendMessageToSubagentFailed": "无法向子代理发送消息",
+    "interruptBadge": "打断",
     "stoppingBackgroundJob": "正在停止后台任务",
     "result_one": "{{count}}个结果",
     "result_other": "{{count}}个结果",
@@ -439,7 +446,9 @@
   },
   "messageList": {
     "compactedConversationTooltip": "从此处开始，对话已被压缩以减少令牌使用量",
-    "completedIn": "完成于 {{duration}}"
+    "completedIn": "完成于 {{duration}}",
+    "messageFromParentTask": "来自父任务",
+    "messageFromParentTaskInterrupted": "来自父任务 · 打断了上一条回复"
   },
   "markdown": {
     "codeOmitted": "... {{language}} 代码已省略 ( {{bytes}} 字节 ) ..."
@@ -681,6 +690,7 @@
     "moveToBackground": "移到后台",
     "all": "全部",
     "showAll": "显示所有后台任务",
-    "moveToBackgroundHint": "在后台继续运行，完成后通知你。"
+    "moveToBackgroundHint": "在后台继续运行，完成后通知你。",
+    "followUp": "追问 {{count}}"
   }
 }

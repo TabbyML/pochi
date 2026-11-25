@@ -364,7 +364,14 @@
     "matched": " matched",
     "resultsTruncated": ", results truncated",
     "stopBackgroundJob": "I will stop the following background job",
-    "sendMessage": "I will send a message to the background subagent",
+    "sendMessageToSubagent": "I will send a message to the subagent",
+    "sendMessageToSubagentInterrupt": "I will interrupt the subagent with a message",
+    "sendingMessageToSubagent": "Sending a message to the subagent",
+    "sentMessageToSubagentQueued": "Queued a message for the subagent",
+    "sentMessageToSubagentInterrupted": "Interrupted the subagent with a message",
+    "sentMessageToSubagentResumed": "Resumed the subagent with a message",
+    "sendMessageToSubagentFailed": "Could not send the message to the subagent",
+    "interruptBadge": "Interrupt",
     "stoppingBackgroundJob": "Stopping background job",
     "result_one": "{{count}} result",
     "result_other": "{{count}} results",
@@ -448,7 +455,9 @@
   },
   "messageList": {
     "compactedConversationTooltip": "Conversation has been compacted from this point onward to reduce token usage",
-    "completedIn": "Completed in {{duration}}"
+    "completedIn": "Completed in {{duration}}",
+    "messageFromParentTask": "From the parent task",
+    "messageFromParentTaskInterrupted": "From the parent task · interrupted the previous response"
   },
   "markdown": {
     "codeOmitted": "... {{language}} code omitted ( {{bytes}} bytes ) ..."
@@ -686,6 +695,7 @@
     "moveToBackground": "Move to background",
     "all": "All",
     "showAll": "Show all background tasks",
-    "moveToBackgroundHint": "Continues in the background and notifies you when done."
+    "moveToBackgroundHint": "Continues in the background and notifies you when done.",
+    "followUp": "Follow-up {{count}}"
   }
 }

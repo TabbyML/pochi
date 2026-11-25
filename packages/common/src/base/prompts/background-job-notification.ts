@@ -38,7 +38,7 @@ export function renderBackgroundJobNotification(
     case "subagent":
       status = notification.status;
       detail = `  <task-id>${escapeXml(notification.taskId)}</task-id>
-${notification.agentType ? `  <agent-type>${escapeXml(notification.agentType)}</agent-type>\n` : ""}${notification.title ? `  <title>${escapeXml(notification.title)}</title>\n` : ""}  <result>${escapeXml(notification.result)}</result>`;
+${notification.agentType ? `  <agent-type>${escapeXml(notification.agentType)}</agent-type>\n` : ""}${notification.title ? `  <title>${escapeXml(notification.title)}</title>\n` : ""}${notification.followUp ? `  <follow-up>${notification.followUp}</follow-up>\n` : ""}  <result>${escapeXml(notification.result)}</result>`;
       instruction =
         "Review the subagent result and take appropriate action. The status above is final.";
       break;

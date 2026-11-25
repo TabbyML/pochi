@@ -11,7 +11,10 @@ import {
   withTimeout,
 } from "@getpochi/common";
 import type { BackgroundCommands } from "@getpochi/common/vscode-webui-bridge";
-import { parseOutputSchema } from "@getpochi/tools";
+import {
+  type SendMessageToSubagentStatus,
+  parseOutputSchema,
+} from "@getpochi/tools";
 import { isShallowEqual } from "remeda";
 import type { ForkAgent, ForkAgentHandle } from "../background-task/fork-agent";
 import { AutoMemoryAdaptor } from "../background-task/memory/auto-memory";
@@ -20,6 +23,7 @@ import { InMemoryChat } from "../background-task/task-executor/in-memory-chat";
 import {
   type RunningTaskAdaptor,
   TaskExecutor,
+  isRunnableTaskStatus,
 } from "../background-task/task-executor/task-executor";
 import type { BlobStore } from "../blob-store";
 import { getBackgroundJobNotificationIds } from "../chat/background-job-notification";
@@ -97,7 +101,13 @@ type Job = {
       command?: string;
       exitCode?: number;
     }
-  | { kind: "subagent"; taskId: string; agentType?: string }
+  | {
+      kind: "subagent";
+      taskId: string;
+      agentType?: string;
+      /** Follow-up messages sent with sendMessageToSubagent. */
+      followUpCount?: number;
+    }
   | { kind: "fork"; taskId: string }
 );
 
@@ -220,16 +230,17 @@ export class BackgroundJobManager {
               { notify: false },
             );
           }
-          if (args.toolName === "sendMessage") {
+          if (args.toolName === "sendMessageToSubagent") {
             const input = args.input as {
               backgroundJobId: string;
               message: string;
               interrupt?: boolean;
             };
-            return this.sendMessage(input.backgroundJobId, args.taskId, {
-              message: input.message,
-              interrupt: input.interrupt,
-            });
+            return this.sendMessageToSubagent(
+              input.backgroundJobId,
+              args.taskId,
+              { message: input.message, interrupt: input.interrupt },
+            );
           }
           return options.adaptor.executeToolCall(args);
         },
@@ -514,7 +525,13 @@ export class BackgroundJobManager {
       taskId,
       ...(state.useCase
         ? { kind: "fork" }
-        : { kind: "subagent", agentType: state.agentType }),
+        : {
+            kind: "subagent",
+            agentType: state.agentType,
+            ...(state.followUpCount
+              ? { followUpCount: state.followUpCount }
+              : {}),
+          }),
     });
     if (!registered) {
       const unsubscribe = this.store.subscribe(
@@ -898,6 +915,7 @@ export class BackgroundJobManager {
             task,
             messages,
             this.taskResultNotes.get(task.id),
+            job.followUpCount,
           ),
         );
     }
@@ -1038,15 +1056,6 @@ export class BackgroundJobManager {
     return {
       kill: (id: string, options?: KillOptions) =>
         BackgroundJobManager.forStore(this.store).kill(id, taskId, options),
-      sendMessage: (
-        id: string,
-        input: { message: string; interrupt?: boolean },
-      ) =>
-        BackgroundJobManager.forStore(this.store).sendMessage(
-          id,
-          taskId,
-          input,
-        ),
     };
   }
 
@@ -1182,21 +1191,27 @@ export class BackgroundJobManager {
     return { success: true };
   }
 
-  async sendMessage(
+  /**
+   * Sends a follow-up message from a task to one of its background subagents.
+   * A running subagent reads it at its next step, or right away when
+   * `interrupt` is set. A finished one is resumed with it.
+   */
+  async sendMessageToSubagent(
     backgroundJobId: string,
     taskId: string,
     { message, interrupt = false }: { message: string; interrupt?: boolean },
   ): Promise<{
     success: true;
-    status: "queued" | "interrupted" | "resumed";
+    status: SendMessageToSubagentStatus;
     backgroundJobId: string;
   }> {
     if (this.disposed) throw new Error("Background job manager is disposed.");
     if (parseBackgroundJobId(backgroundJobId) !== "task") {
       throw new Error(
-        `"${backgroundJobId}" is not a background subagent. sendMessage only supports background subagents ("bgjob-task-...").`,
+        `"${backgroundJobId}" is not a background subagent. sendMessageToSubagent only supports background subagents ("bgjob-task-...").`,
       );
     }
+    if (!message.trim()) throw new Error("The message is empty.");
     const childId = getSubAgentTaskId(backgroundJobId);
     const job = this.jobs.get(backgroundJobId);
     const child = childId
@@ -1205,30 +1220,39 @@ export class BackgroundJobManager {
     if (
       !childId ||
       !child ||
-      (job
-        ? job.ownerTaskId !== taskId
-        : !(child.background && child.parentId === taskId))
+      !child.background ||
+      (job ? job.ownerTaskId !== taskId : child.parentId !== taskId)
     ) {
       throw new Error(
         `Background subagent with ID "${backgroundJobId}" not found.`,
       );
     }
-
-    this.silenced.delete(backgroundJobId);
-    this.taskResultNotes.delete(childId);
     const state = (await this.taskStateStore.read(childId)) ?? {};
-    if (state.stoppedByParent) {
-      await this.taskStateStore.set(childId, {
-        ...state,
-        stoppedByParent: false,
-      });
+    if (job?.kind === "fork" || isForkAgentUseCase(state.useCase)) {
+      throw new Error(
+        `"${backgroundJobId}" is a fork agent. Fork agents cannot receive messages.`,
+      );
     }
 
-    const runningStatus = this.executor?.sendMessage(childId, message, {
+    // Every follow-up gets its own result notification, even when the parent
+    // stopped the subagent earlier.
+    const followUpCount = (state.followUpCount ?? 0) + 1;
+    const nextState = {
+      ...state,
+      parentTaskId: state.parentTaskId ?? taskId,
+      stoppedByParent: false,
+      followUpCount,
+    };
+    await this.taskStateStore.set(childId, nextState);
+    this.silenced.delete(backgroundJobId);
+    this.taskResultNotes.delete(childId);
+    this.registerTask(childId, nextState);
+
+    const delivered = await this.executor?.sendMessage(childId, message, {
       interrupt,
     });
-    if (runningStatus) {
-      return { success: true, status: runningStatus, backgroundJobId };
+    if (delivered) {
+      return { success: true, status: delivered, backgroundJobId };
     }
 
     const latestChild = this.store.query(
@@ -1239,36 +1263,29 @@ export class BackgroundJobManager {
         `Background subagent with ID "${backgroundJobId}" not found.`,
       );
     }
-
-    const wasQueued = this.executor?.isTaskQueued(childId) ?? false;
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
       parts: [{ type: "text", text: message }],
     };
-    this.batch(() => {
-      this.store.commit(
-        ...catalog.taskEvents(this.localTaskIds.has(childId), [
-          catalog.events.chatStreamStarted({
-            id: childId,
-            data: userMessage,
-            todos: latestChild.todos ? [...latestChild.todos] : [],
-            modelId: latestChild.modelId ?? undefined,
-            updatedAt: new Date(),
-          }),
-        ]),
-      );
-      this.registerTask(childId, {
-        parentTaskId: taskId,
-        agentType: state.agentType,
-      });
-    });
-
-    return {
-      success: true,
-      status: wasQueued ? "queued" : "resumed",
-      backgroundJobId,
-    };
+    this.store.commit(
+      ...catalog.taskEvents(this.localTaskIds.has(childId), [
+        catalog.events.chatStreamStarted({
+          id: childId,
+          data: userMessage,
+          todos: latestChild.todos ? [...latestChild.todos] : [],
+          modelId: latestChild.modelId ?? undefined,
+          updatedAt: new Date(),
+        }),
+      ]),
+    );
+    // A subagent that was runnable but not running is waiting for a slot.
+    const status: SendMessageToSubagentStatus = isRunnableTaskStatus(
+      latestChild.status,
+    )
+      ? "queued"
+      : "resumed";
+    return { success: true, status, backgroundJobId };
   }
 
   async stopOwnedJobs(taskId: string) {

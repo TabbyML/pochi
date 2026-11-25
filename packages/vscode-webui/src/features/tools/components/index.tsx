@@ -19,7 +19,7 @@ import { ReadBackgroundJobOutputTool } from "./read-background-job-output";
 import { readFileTool } from "./read-file";
 import { RenderWidgetTool } from "./render-widget";
 import { searchFilesTool } from "./search-files";
-import { SendMessageTool } from "./send-message";
+import { SendMessageToSubagentTool } from "./send-message-to-subagent";
 import { StartBackgroundJobTool } from "./start-background-job";
 import type { ToolProps, UIToolName, UIToolPart } from "./types";
 import { UseSkillTool } from "./use-skill";
@@ -116,7 +116,7 @@ const Tools: Record<string, React.FC<ToolProps<any>>> = {
   startBackgroundJob: StartBackgroundJobTool,
   readBackgroundJobOutput: ReadBackgroundJobOutputTool,
   killBackgroundJob: KillBackgroundJobTool,
-  sendMessage: SendMessageTool,
+  sendMessageToSubagent: SendMessageToSubagentTool,
   startMonitor: StartMonitorTool,
   searchFiles: searchFilesTool,
   listFiles: listFilesTool,

@@ -226,7 +226,7 @@ describe("forked background tasks", () => {
             input: { backgroundJobId: oldJobId },
           },
           {
-            type: "tool-sendMessage",
+            type: "tool-sendMessageToSubagent",
             toolCallId: "send",
             state: "input-available",
             input: { backgroundJobId: oldJobId, message: "follow up" },
@@ -258,7 +258,7 @@ describe("forked background tasks", () => {
     });
     expect(parts[1]).toMatchObject({ input: { backgroundJobId: newJobId } });
     expect(parts[2]).toMatchObject({
-      type: "tool-sendMessage",
+      type: "tool-sendMessageToSubagent",
       input: { backgroundJobId: newJobId, message: "follow up" },
     });
     expect(parts[3]).toMatchObject({ input: { backgroundJobId: newJobId } });

@@ -43,6 +43,7 @@ export function getToolCallErrorMessage(
   switch (reason) {
     case "user-abort":
     case "previous-tool-call-failed":
+    case "steered":
       return getToolCallCancelErrorMessage(reason);
     case "user-reject":
       return "User rejected the tool call";
@@ -57,6 +58,7 @@ export function isToolCallCancellationError(
   return (
     error === getToolCallErrorMessage("user-abort") ||
     error === getToolCallErrorMessage("previous-tool-call-failed") ||
+    error === getToolCallErrorMessage("steered") ||
     error === getToolCallErrorMessage("user-reject") ||
     error === "Tool call was cancelled"
   );
