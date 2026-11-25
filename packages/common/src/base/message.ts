@@ -94,6 +94,8 @@ export const BackgroundSubagentNotification = z.object({
   agentType: z.string().optional(),
   title: z.string().optional(),
   result: z.string(),
+  /** Set when this result answers the n-th follow-up message. */
+  followUp: z.number().int().positive().optional(),
 });
 
 export const BackgroundMonitorNotification = z.object({

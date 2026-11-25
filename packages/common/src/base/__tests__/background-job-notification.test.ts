@@ -37,6 +37,25 @@ it("uses the same envelope and explicit stopped status for subagents", () => {
   expect(prompt).not.toContain("finished-at");
 });
 
+it("marks a subagent result that answers a follow-up message", () => {
+  const base = {
+    kind: "subagent" as const,
+    notificationId: "bgjob-task-child:terminal:completed",
+    backgroundJobId: "bgjob-task-child",
+    taskId: "child",
+    status: "completed" as const,
+    result: "done",
+  };
+  expect(renderBackgroundJobNotification(base)).not.toContain("<follow-up>");
+  expect(
+    renderBackgroundJobNotification({
+      ...base,
+      notificationId: "bgjob-task-child:terminal:completed:followup-2",
+      followUp: 2,
+    }),
+  ).toContain("  <follow-up>2</follow-up>\n  <result>done</result>");
+});
+
 describe("monitor notification rendering", () => {
   const monitor = {
     kind: "monitor" as const,

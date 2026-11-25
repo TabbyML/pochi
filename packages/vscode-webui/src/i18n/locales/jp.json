@@ -358,6 +358,13 @@
     "matched": "マッチ",
     "resultsTruncated": "、結果が切り詰められました",
     "stopBackgroundJob": "以下のバックグラウンドジョブを停止します",
+    "sendMessageToSubagent": "サブエージェントにメッセージを送信します",
+    "sendMessageToSubagentInterrupt": "メッセージでサブエージェントを中断します",
+    "sendingMessageToSubagent": "サブエージェントにメッセージを送信中",
+    "sentMessageToSubagentQueued": "サブエージェントへのメッセージをキューに追加しました",
+    "sentMessageToSubagentInterrupted": "メッセージでサブエージェントを中断しました",
+    "sentMessageToSubagentResumed": "メッセージでサブエージェントを再開しました",
+    "sendMessageToSubagentFailed": "サブエージェントにメッセージを送信できませんでした",
     "stoppingBackgroundJob": "バックグラウンドジョブを停止中",
     "result_one": "{{count}}件の結果",
     "result_other": "{{count}}件の結果",
@@ -440,7 +447,9 @@
   },
   "messageList": {
     "compactedConversationTooltip": "トークン使用量を削減するため、この時点から会話が圧縮されています",
-    "completedIn": "{{duration}} で完了"
+    "completedIn": "{{duration}} で完了",
+    "messageFromParentTask": "親タスクから",
+    "messageFromParentTaskInterrupted": "親タスクから · 前の応答を中断しました"
   },
   "markdown": {
     "codeOmitted": "... {{language}} コードが省略されました ( {{bytes}} バイト ) ..."

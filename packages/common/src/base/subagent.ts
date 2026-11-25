@@ -47,12 +47,20 @@ export function isBackgroundSubAgentRequested(
   return input?.background === true && shouldRunSubAgentInBackground(input);
 }
 
-/** Stable notification identity for a task and its terminal status. */
-export function getSubAgentNotificationId(task: {
-  id: string;
-  status: string;
-}): string {
-  return `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
+/**
+ * Stable notification identity for a task and its terminal status. A result
+ * after the n-th follow-up message has its own identity, so it is delivered
+ * even though an earlier result with the same status already was.
+ */
+export function getSubAgentNotificationId(
+  task: {
+    id: string;
+    status: string;
+  },
+  followUp?: number,
+): string {
+  const base = `${getSubAgentBackgroundJobId(task.id)}:terminal:${task.status}`;
+  return followUp ? `${base}:followup-${followUp}` : base;
 }
 
 /**
@@ -127,7 +135,7 @@ export function createBackgroundSubAgentStartedResult(
   const transcript = transcriptPath
     ? `\nIts transcript is updated after each of its steps at ${transcriptPath}. Read it only to inspect how it works, not to wait for its result.`
     : "";
-  return `Subagent started in the background (backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.${transcript}
+  return `Subagent started in the background (taskId: ${taskId}, backgroundJobId: ${getSubAgentBackgroundJobId(taskId)}). Its result will arrive in a system notification that resumes this task.${transcript}
 Next step: call attemptCompletion now and say the result is pending.
 Exception: you may first do work that is unrelated to this subagent's assignment and does not need its result.
 Never do any part of its assignment yourself, and do not poll, sleep, or guess its result.`;

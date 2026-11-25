@@ -1,10 +1,18 @@
 import { MessageList } from "@/components/message/message-list";
 import { useIsAtBottom } from "@/lib/hooks/use-is-at-bottom";
 import { cn } from "@/lib/utils";
-import { formatters } from "@getpochi/common";
+import { formatters, prompts } from "@getpochi/common";
 import type { Message } from "@getpochi/livekit";
 import type { Todo } from "@getpochi/tools";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 
 export type TaskThreadSource = {
   messages: Message[];
@@ -98,6 +106,32 @@ export const TaskThread: React.FC<{
     }
   }, [instantAutoScroll, messages.length, scrollToBottom, showMessageList]);
 
+  const { t } = useTranslation();
+  // The task's own prompt is shown by whoever started it. Later user messages
+  // are follow-ups from the parent task. Matched by id, since the list renders
+  // only a page of the messages at a time.
+  const promptMessageId = messages[0]?.role === "user" ? messages[0].id : "";
+  const formatMessages = useCallback(
+    (msgs: Message[]) => prepareForRender(msgs, promptMessageId),
+    [promptMessageId],
+  );
+  const interruptingMessageIds = useMemo(
+    () =>
+      new Set(
+        messages
+          .filter((message) => isAfterInterruption(message))
+          .map((message) => message.id),
+      ),
+    [messages],
+  );
+  const getUserMessageLabel = useCallback(
+    (message: Message) =>
+      interruptingMessageIds.has(message.id)
+        ? t("messageList.messageFromParentTaskInterrupted")
+        : t("messageList.messageFromParentTask"),
+    [interruptingMessageIds, t],
+  );
+
   return (
     <div className={cn("flex flex-col", className)}>
       {showMessageList && (
@@ -115,7 +149,8 @@ export const TaskThread: React.FC<{
           )}
           showUserAvatar={false}
           messages={messages}
-          formatMessages={prepareForRender}
+          formatMessages={formatMessages}
+          getUserMessageLabel={getUserMessageLabel}
           user={user}
           assistant={assistant}
           isLoading={isLoading}
@@ -156,9 +191,23 @@ function filterTrailingAskFollowupQuestion(messages: Message[]): Message[] {
   return messages;
 }
 
-function prepareForRender(messages: Message[]): Message[] {
+/** Whether a user message cut the previous response short. */
+function isAfterInterruption(message: Message): boolean {
+  const reminder = prompts.createSystemReminder(
+    prompts.userInputAfterInterruption,
+  );
+  return (
+    message.role === "user" &&
+    message.parts.some((part) => part.type === "text" && part.text === reminder)
+  );
+}
+
+function prepareForRender(
+  messages: Message[],
+  promptMessageId: string,
+): Message[] {
   const filteredMessages = messages.filter(
-    (message) => message.role !== "user",
+    (message) => message.id !== promptMessageId,
   );
   // Filter out trailing askFollowupQuestion tool calls
   const withoutTrailingAskFollowup =

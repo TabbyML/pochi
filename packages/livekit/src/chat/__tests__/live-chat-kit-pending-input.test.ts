@@ -104,6 +104,21 @@ describe("LiveChatKit pending input", () => {
     ]);
   });
 
+  it("frames flushed input as an interruption when the caller cut the step short", () => {
+    const kit = makeChatKit();
+    // The response looks complete: its tool calls have results, some of them
+    // the ones a steering message skipped.
+    kit.chat.messages = [userMessage("run it"), assistantMessage()];
+    kit.queueUserInput({ parts: textParts("only check the README") });
+
+    expect(kit.flushPendingInput({ interrupted: true })).toBe(true);
+
+    expect(kit.chat.sentMessages[0].parts).toEqual([
+      ...reminderParts(prompts.userInputAfterInterruption),
+      ...textParts("only check the README"),
+    ]);
+  });
+
   it("puts user inputs before notifications in the same request", async () => {
     const kit = makeChatKit();
     kit.chat.messages = [userMessage("run it"), assistantMessage()];
@@ -366,6 +381,22 @@ describe("isInterruptedAssistantResponse", () => {
     expect(isInterruptedAssistantResponse(followupQuestionMessage())).toBe(
       false,
     );
+    // E.g. a background subagent that finished and then gets a follow-up.
+    expect(
+      isInterruptedAssistantResponse({
+        id: "completed",
+        role: "assistant",
+        parts: [
+          { type: "step-start" },
+          {
+            type: "tool-attemptCompletion",
+            toolCallId: "done",
+            state: "input-available",
+            input: { result: "Found 3 broken links." },
+          },
+        ],
+      }),
+    ).toBe(false);
     expect(isInterruptedAssistantResponse(userMessage("run it"))).toBe(false);
     expect(isInterruptedAssistantResponse(undefined)).toBe(false);
   });
