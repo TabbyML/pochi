@@ -366,6 +366,22 @@ describe("isInterruptedAssistantResponse", () => {
     expect(isInterruptedAssistantResponse(followupQuestionMessage())).toBe(
       false,
     );
+    // E.g. a background subagent that finished and then gets a follow-up.
+    expect(
+      isInterruptedAssistantResponse({
+        id: "completed",
+        role: "assistant",
+        parts: [
+          { type: "step-start" },
+          {
+            type: "tool-attemptCompletion",
+            toolCallId: "done",
+            state: "input-available",
+            input: { result: "Found 3 broken links." },
+          },
+        ],
+      }),
+    ).toBe(false);
     expect(isInterruptedAssistantResponse(userMessage("run it"))).toBe(false);
     expect(isInterruptedAssistantResponse(undefined)).toBe(false);
   });
