@@ -27,6 +27,7 @@ export type PochiTaskParams = { cwd: string } & (
       type: "new-task";
       uid?: string;
       prompt?: string;
+      modelId?: string;
       pastedTextFiles?: PastedTextFile[];
       todos?: Todo[];
       files?: FileUIPart[];

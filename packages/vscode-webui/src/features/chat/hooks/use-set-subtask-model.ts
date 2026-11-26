@@ -6,8 +6,13 @@ import { useEffect } from "react";
 export const useSetSubtaskModel = ({
   isSubTask,
   customAgent,
-}: { isSubTask: boolean; customAgent?: ValidCustomAgentFile }) => {
-  const { customAgentModel } = useCustomAgent(customAgent?.name);
+  model,
+}: {
+  isSubTask: boolean;
+  customAgent?: ValidCustomAgentFile;
+  model?: string;
+}) => {
+  const { customAgentModel } = useCustomAgent(customAgent?.name, model);
   const { updateSelectedModelId } = useSelectedModels({
     isSubTask,
     modelOverride: customAgentModel,

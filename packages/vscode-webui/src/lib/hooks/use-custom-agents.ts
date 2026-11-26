@@ -50,7 +50,7 @@ export function useCustomAgents(filterValidFiles = false) {
   };
 }
 
-export const useCustomAgent = (name?: string) => {
+export const useCustomAgent = (name?: string, modelOverride?: string) => {
   const { customAgents, isLoading: customAgentsLoading } =
     useCustomAgents(true);
   const {
@@ -65,6 +65,11 @@ export const useCustomAgent = (name?: string) => {
     ? customAgents.find((agent) => agent.name === name)
     : undefined;
   const customAgentModel = useMemo<DisplayModel | undefined>(() => {
+    if (modelOverride) {
+      const resolvedOverride = resolveModelFromId(modelOverride, modelList);
+      if (resolvedOverride) return resolvedOverride;
+    }
+
     if (!customAgent?.model) return parentTaskModel;
 
     const resolvedModel = resolveModelFromId(customAgent.model, modelList);
@@ -89,11 +94,18 @@ export const useCustomAgent = (name?: string) => {
     }
 
     return parentTaskModel;
-  }, [customAgent?.model, customAgent?.isBuiltIn, modelList, parentTaskModel]);
+  }, [
+    modelOverride,
+    customAgent?.model,
+    customAgent?.isBuiltIn,
+    modelList,
+    parentTaskModel,
+  ]);
   const isCustomAgentModelLoading =
-    !!customAgent?.model && (modelListLoading || modelListFetching);
+    !!(modelOverride || customAgent?.model) &&
+    (modelListLoading || modelListFetching);
   const isLoading =
-    !!name && (customAgentsLoading || isCustomAgentModelLoading);
+    (!!name && customAgentsLoading) || isCustomAgentModelLoading;
 
   return {
     customAgent,

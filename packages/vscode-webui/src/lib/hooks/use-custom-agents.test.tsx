@@ -17,6 +17,15 @@ const fixtures = vi.hoisted(() => {
     options: {},
     getCredentials: vi.fn(),
   } as DisplayModel;
+  const overrideModel = {
+    id: "pochi/fast-model",
+    name: "Fast model",
+    type: "vendor",
+    vendorId: "pochi",
+    modelId: "fast-model",
+    options: {},
+    getCredentials: vi.fn(),
+  } as DisplayModel;
   const agent = {
     name: "explore",
     description: "Explore",
@@ -29,7 +38,8 @@ const fixtures = vi.hoisted(() => {
   return {
     agent,
     credentialModel,
-    modelList: [credentialModel],
+    overrideModel,
+    modelList: [credentialModel, overrideModel],
     parentModel: credentialModel,
   };
 });
@@ -59,5 +69,30 @@ describe("useCustomAgent", () => {
     rerender();
 
     expect(result.current.customAgentModel).toBe(firstModel);
+  });
+
+  it("prefers modelOverride over customAgent.model and parentModel", () => {
+    const { result } = renderHook(() =>
+      useCustomAgent("explore", "pochi/fast-model"),
+    );
+
+    expect(result.current.customAgentModel).toBe(fixtures.overrideModel);
+  });
+
+  it("resolves modelOverride when agentType is omitted", () => {
+    const { result } = renderHook(() =>
+      useCustomAgent(undefined, "fast-model"),
+    );
+
+    expect(result.current.customAgent).toBeUndefined();
+    expect(result.current.customAgentModel).toBe(fixtures.overrideModel);
+  });
+
+  it("falls back to customAgent.model when modelOverride is not found", () => {
+    const { result } = renderHook(() =>
+      useCustomAgent("explore", "unknown/missing-model"),
+    );
+
+    expect(result.current.customAgentModel?.modelId).toBe("internal-explore");
   });
 });

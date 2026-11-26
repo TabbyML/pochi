@@ -54,6 +54,8 @@ export function useLiveSubTask(
 
   const agentType =
     tool.state !== "input-streaming" ? tool.input?.agentType : undefined;
+  const model =
+    tool.state !== "input-streaming" ? tool.input?.model : undefined;
   // Background subtasks are driven by the TaskExecutor, not by this hook.
   // Decided from the tool input alone, like the lifecycle does, so both sides
   // agree without racing on task state.
@@ -64,7 +66,7 @@ export function useLiveSubTask(
     customAgent,
     customAgentModel,
     isLoading: isCustomAgentLoading,
-  } = useCustomAgent(agentType);
+  } = useCustomAgent(agentType, model);
   const attemptCompletionSchema = useMemo(() => {
     const resultSchema = customAgent?.isBuiltIn
       ? customAgent._internal?.resultSchema
@@ -372,7 +374,7 @@ export function useLiveSubTask(
       // Wait for the lifecycle to finish preparing the task (e.g. creating
       // its isolated worktree) so the first request sees the final cwd.
       !!ensureNewTaskStreamingResult(lifecycle.streamingResult) &&
-      !(agentType && isCustomAgentLoading) &&
+      !isCustomAgentLoading &&
       currentStepCount <= SubtaskMaxStep &&
       !abortController.current.signal.aborted &&
       // task is not completed or aborted
@@ -415,20 +417,25 @@ export function useLiveSubTask(
   return {
     parentId: task.parentId,
     moveToBackground: () =>
-      lifecycle.moveToBackground(uid, agentType, async () => {
-        const finished = new Promise<void>((resolve) => {
-          if (
-            chatKit.chat.status === "streaming" ||
-            chatKit.chat.status === "submitted"
-          ) {
-            streamStopped.current = resolve;
-          } else resolve();
-        });
-        abortController.current.abort("detached");
-        await chatKit.chat.stop();
-        await batchExecuteManager.stop(uid, "user-abort");
-        await finished;
-      }),
+      lifecycle.moveToBackground(
+        uid,
+        agentType,
+        async () => {
+          const finished = new Promise<void>((resolve) => {
+            if (
+              chatKit.chat.status === "streaming" ||
+              chatKit.chat.status === "submitted"
+            ) {
+              streamStopped.current = resolve;
+            } else resolve();
+          });
+          abortController.current.abort("detached");
+          await chatKit.chat.stop();
+          await batchExecuteManager.stop(uid, "user-abort");
+          await finished;
+        },
+        model,
+      ),
     messages,
     todos: [],
     isLoading,

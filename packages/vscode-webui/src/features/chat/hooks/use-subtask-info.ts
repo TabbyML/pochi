@@ -9,6 +9,7 @@ export interface SubtaskInfo {
   parentUid: string;
   manualRun: boolean;
   agent?: string;
+  model?: string;
   description?: string;
   todos?: Todo[];
 }
@@ -32,6 +33,7 @@ export function useSubtaskInfo(
     | NewTaskTool
     | undefined;
   const agent = newtaskTool?.input?.agentType;
+  const model = newtaskTool?.input?.model;
   const description = newtaskTool?.input?.description;
   const todos = TodoSchema.array().safeParse(newtaskTool?.input?._meta?.todos);
   const isSubTask = !!parentUid;
@@ -45,6 +47,7 @@ export function useSubtaskInfo(
     parentUid: parentUid,
     manualRun: isSubTask && subtaskOffhand === false,
     agent,
+    model,
     description,
     todos: todos.success ? todos.data : undefined,
   };

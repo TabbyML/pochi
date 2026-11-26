@@ -172,7 +172,10 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
   async resolveTaskLLM(
     context: Parameters<NonNullable<RunningTaskAdaptor["resolveTaskLLM"]>>[0],
   ) {
-    const llm = this.resolveAgentLLM(context.taskState.agentType);
+    const llm = this.resolveAgentLLM(
+      context.taskState.agentType,
+      context.taskState.model,
+    );
     if (llm) {
       this.taskLLMs.set(context.taskId, llm);
     } else {
@@ -181,7 +184,22 @@ export class VscodeRunningTaskAdaptor implements RunningTaskAdaptor {
     return llm;
   }
 
-  private resolveAgentLLM(agentType: string | undefined) {
+  private resolveAgentLLM(
+    agentType: string | undefined,
+    modelOverride?: string,
+  ) {
+    if (modelOverride) {
+      const resolvedOverride = resolveModelFromId(
+        modelOverride,
+        this.modelList,
+      );
+      if (resolvedOverride) return displayModelToLLM(resolvedOverride);
+
+      logger.warn(
+        `Model "${modelOverride}" not found; falling back to the agent or selected model.`,
+      );
+    }
+
     if (!agentType) {
       return undefined;
     }
