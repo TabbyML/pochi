@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { NotificationStatusIcon } from "@/components/ui/notification-row";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -29,6 +28,7 @@ import {
   MessageSquareShare,
   RefreshCwIcon,
   Share2Icon,
+  TriangleAlert,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -187,6 +187,7 @@ ${environmentInfo}
           size="icon"
           className="button-focus h-6 w-6 p-0"
           disabled={!shareId || disabled}
+          aria-label={t("share.title")}
           title={shareId && syncStatus.error ? syncLabel : undefined}
         >
           <span className="relative">
@@ -207,9 +208,9 @@ ${environmentInfo}
       >
         <div
           aria-busy={syncStatus.isLoading || isSyncing}
-          className="flex min-h-9 items-center gap-2 whitespace-nowrap px-2 py-1"
+          className="flex min-h-9 items-center justify-between gap-3 whitespace-nowrap px-2 py-1"
         >
-          <DropdownMenuLabel asChild className="mr-auto p-0">
+          <DropdownMenuLabel asChild className="p-0 leading-none">
             <h3>{t("share.title")}</h3>
           </DropdownMenuLabel>
           {syncStatus.isLoading ? (
@@ -217,49 +218,54 @@ ${environmentInfo}
               aria-hidden="true"
               className="h-2 w-8 bg-[var(--vscode-inputOption-hoverBackground)]"
             />
-          ) : !isSynced ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-testid="sync-status-icon"
-                  role="img"
-                  aria-label={syncLabel}
-                  className="inline-flex shrink-0 text-muted-foreground"
+          ) : !isSynced || isSyncing ? (
+            <div className="flex items-center gap-1.5">
+              {!isSynced && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      data-testid="sync-status-icon"
+                      role="img"
+                      aria-label={syncLabel}
+                      className="inline-flex shrink-0 items-center justify-center text-muted-foreground"
+                    >
+                      {syncStatus.error ? (
+                        <TriangleAlert
+                          aria-hidden="true"
+                          className="size-3.5"
+                          strokeWidth={1.5}
+                        />
+                      ) : (
+                        <SyncIcon
+                          aria-hidden="true"
+                          className={
+                            isSyncing
+                              ? "size-3.5 motion-safe:animate-spin"
+                              : "size-3.5"
+                          }
+                        />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{syncLabel}</TooltipContent>
+                </Tooltip>
+              )}
+              {hasSyncProblem && !isSyncing && canRetrySync ? (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void syncStatus.sync().catch(() => {});
+                  }}
+                  className="cursor-pointer px-0 py-0 font-medium text-primary text-xs leading-none underline-offset-4 hover:underline focus:bg-transparent focus:text-primary focus:underline"
                 >
-                  {syncStatus.error ? (
-                    <NotificationStatusIcon status="failed" />
-                  ) : (
-                    <SyncIcon
-                      aria-hidden="true"
-                      className={
-                        isSyncing
-                          ? "size-3.5 motion-safe:animate-spin"
-                          : "size-3.5"
-                      }
-                    />
-                  )}
+                  {t("share.sync.retry")}
+                </DropdownMenuItem>
+              ) : isSyncing ? (
+                <span className="text-muted-foreground text-xs leading-none">
+                  {t("share.sync.syncing")}
                 </span>
-              </TooltipTrigger>
-              <TooltipContent>{syncLabel}</TooltipContent>
-            </Tooltip>
-          ) : null}
-          {!syncStatus.isLoading &&
-          hasSyncProblem &&
-          !isSyncing &&
-          canRetrySync ? (
-            <DropdownMenuItem
-              onSelect={(event) => {
-                event.preventDefault();
-                void syncStatus.sync().catch(() => {});
-              }}
-              className="cursor-pointer px-0 py-0 font-medium text-primary text-xs underline-offset-4 hover:underline focus:bg-transparent focus:text-primary focus:underline"
-            >
-              {t("share.sync.retry")}
-            </DropdownMenuItem>
-          ) : !syncStatus.isLoading && isSyncing ? (
-            <span className="text-muted-foreground text-xs">
-              {t("share.sync.syncing")}
-            </span>
+              ) : null}
+            </div>
           ) : null}
         </div>
         <DropdownMenuSeparator />

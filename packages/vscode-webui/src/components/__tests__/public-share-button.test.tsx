@@ -145,17 +145,16 @@ describe("share sync controls", () => {
     expect(sync.sync).not.toHaveBeenCalled();
   });
 
-  it("uses the notification warning icon and lets failed uploads retry", async () => {
+  it("uses a muted warning icon and lets failed uploads retry", async () => {
     sync.error = "Upload failed";
     render(<PublicShareButton task={task} />);
-    expect(screen.getByTestId("sync-status-dot").className).not.toContain(
-      "bg-destructive",
+    expect(screen.getByTestId("sync-status-dot").className).toContain(
+      "bg-[var(--vscode-notificationsWarningIcon-foreground)]",
     );
     fireEvent.keyDown(screen.getByRole("button"), { key: "ArrowDown" });
     const icon = screen.getByTestId("sync-status-icon");
-    expect(icon.querySelector("svg")?.getAttribute("style")).toContain(
-      "--vscode-notificationsWarningIcon-foreground",
-    );
+    expect(icon.className).toContain("text-muted-foreground");
+    expect(icon.querySelector("svg")?.getAttribute("style")).toBeNull();
     expect(icon.querySelector("svg")?.getAttribute("stroke-width")).toBe("1.5");
     fireEvent.pointerMove(icon, { pointerType: "mouse" });
     await waitFor(() =>
