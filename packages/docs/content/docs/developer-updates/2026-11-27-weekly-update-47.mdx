@@ -1,0 +1,16 @@
+---
+title: 'Weekly Update #47: Keep background work on track in Pochi 0.86'
+---
+# Weekly Update #47: Keep background work on track in Pochi 0.86
+
+### TL;DR
+
+Plans change while agents are working. In Pochi 0.86, you can send a follow-up to the same background subagent from the parent task, and tell which background command just finished without reading the whole command line.
+
+### ✨ Enhancements
+
+- **Give a background subagent new instructions without starting over.** If you remember an edge case while a subagent is investigating, ask Pochi in the parent chat to pass it along. The parent can queue the note for after the current turn, redirect the subagent while it runs, or follow up after it finishes. The subagent keeps its conversation history. Available in [0.86.1](https://github.com/TabbyML/pochi/releases/tag/vscode%400.86.1). [**#2095**](https://github.com/TabbyML/pochi/pull/2095)
+- **Recognize the same job across chat and the background jobs panel.** When tests and a typecheck run in parallel, each job keeps the same short name in the panel, tool cards, and completion notification. The full command is still visible before approval and available on hover in the job panel. Job names first shipped in [0.86.0](https://github.com/TabbyML/pochi/releases/tag/vscode%400.86.0), and 0.86.1 makes them consistent across the UI. [**#2098**](https://github.com/TabbyML/pochi/pull/2098) · [**#2100**](https://github.com/TabbyML/pochi/pull/2100)
+- **Preview an image without leaving the conversation.** Hover over an image file badge to see the image without opening it in a separate editor. [**#2097**](https://github.com/TabbyML/pochi/pull/2097)
+
+The rolling release workflow and expanded regression tests mentioned [last week](./2026-11-20-weekly-update-46) have landed in 0.86.
