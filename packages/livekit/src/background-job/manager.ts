@@ -326,12 +326,14 @@ export class BackgroundJobManager {
       taskId,
       parentTaskId,
       agentType,
+      model,
       title,
       stopForeground,
     }: {
       taskId: string;
       parentTaskId: string;
       agentType?: string;
+      model?: string;
       /** The newTask description; names the task before it starts running. */
       title?: string;
       stopForeground?: () => Promise<void>;
@@ -343,7 +345,11 @@ export class BackgroundJobManager {
     const task = this.store.query(catalog.queries.makeTaskQuery(taskId));
     if (!task || task.parentId !== parentTaskId)
       throw new Error("Subtask does not belong to this parent.");
-    const state = { parentTaskId, agentType };
+    const state: BackgroundTaskState = {
+      parentTaskId,
+      agentType,
+      ...(model ? { model } : {}),
+    };
     await this.taskStateStore.set(taskId, state);
     abortSignal?.throwIfAborted();
     if (this.disposed) throw new Error("Background job manager is disposed.");

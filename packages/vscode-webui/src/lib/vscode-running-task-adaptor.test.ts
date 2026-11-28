@@ -145,6 +145,37 @@ describe("VscodeRunningTaskAdaptor media", () => {
     },
   );
 
+  it("prefers taskState.model over agentType model and falls back when unavailable", async () => {
+    settings.selectedModel.id = "pochi/text";
+    await adaptor.resolveTaskLLM({
+      taskId: "child",
+      cwd: "/repo",
+      taskState: {
+        parentTaskId: "parent",
+        agentType: "text",
+        model: "pochi/vision",
+      },
+    });
+    await readFile("child");
+
+    await adaptor.resolveTaskLLM({
+      taskId: "child-fallback",
+      cwd: "/repo",
+      taskState: {
+        parentTaskId: "parent",
+        agentType: "vision",
+        model: "pochi/missing",
+      },
+    });
+    await readFile("child-fallback");
+
+    expect(
+      vi
+        .mocked(vscodeHost.executeToolCall)
+        .mock.calls.map((call) => call[2].contentType),
+    ).toEqual([["image/png"], ["image/png"]]);
+  });
+
   it("keeps overrides task-scoped and clears them when a task falls back to the default model", async () => {
     await adaptor.resolveTaskLLM({
       taskId: "child",

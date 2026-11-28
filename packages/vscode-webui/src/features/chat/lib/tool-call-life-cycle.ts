@@ -178,6 +178,7 @@ export interface ToolCallLifeCycle {
     taskId: string,
     agentType: string | undefined,
     stopForeground: () => Promise<void>,
+    model?: string,
   ): Promise<void>;
 
   /**
@@ -364,6 +365,7 @@ export class ManagedToolCallLifeCycle
             taskId: uid,
             parentTaskId: options.taskId ?? "",
             agentType: args.agentType,
+            model: args.model,
             title: args.description,
           },
           options.abortSignal,
@@ -422,7 +424,13 @@ export class ManagedToolCallLifeCycle
       }
       options.abortSignal.throwIfAborted();
       await vscodeHost.openTaskInPanel(
-        { type: "new-task", uid, cwd, prompt: args.prompt },
+        {
+          type: "new-task",
+          uid,
+          cwd,
+          prompt: args.prompt,
+          ...(args.model ? { modelId: args.model } : {}),
+        },
         { preview: false, background: true },
       );
     } catch (error) {
@@ -499,6 +507,7 @@ export class ManagedToolCallLifeCycle
     taskId: string,
     agentType: string | undefined,
     stopForeground: () => Promise<void>,
+    model?: string,
   ): Promise<void> {
     if (this.backgroundHandoff) return this.backgroundHandoff;
     const run = async () => {
@@ -514,6 +523,7 @@ export class ManagedToolCallLifeCycle
           taskId: uid,
           parentTaskId: task.parentId,
           agentType,
+          model,
           stopForeground: async () => {
             await stopForeground();
             if (this.status !== "execute:streaming")

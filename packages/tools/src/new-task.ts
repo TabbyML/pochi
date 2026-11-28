@@ -97,6 +97,12 @@ export const inputSchema = z.object({
   spawn: NewTaskSpawn.optional().describe(
     'Optional, defaults to "subagent". Set to "task" only when the user explicitly asks for a new or separate task; it starts an independent top-level task in its own editor tab instead of a subagent. The task shows up in the user\'s task list, the user can follow and continue it, and it can launch its own agents. It always runs the default agent, so leave agentType empty. Only its task id and transcript path come back to you; background is ignored.',
   ),
+  model: z
+    .string()
+    .optional()
+    .describe(
+      "Optional. The model to use for the task (e.g., <vendorId>/<modelId>, a Pochi model ID, or a provider model ID). For subagents, overrides the custom agent's default model and the parent task's selected model. For spawned tasks, initializes the new task with this model selected.",
+    ),
   _meta: z
     .object({
       uid: z.string().describe("A unique identifier for the task."),

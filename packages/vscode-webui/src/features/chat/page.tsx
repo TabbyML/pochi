@@ -149,11 +149,14 @@ function Chat({
     customAgent,
     customAgentModel,
     isLoading: isCustomAgentLoading,
-  } = useCustomAgent(subtask?.agent);
+  } = useCustomAgent(subtask?.agent, subtask?.model);
   const modelOverride =
-    isSubTask && customAgent?.model ? customAgentModel : undefined;
+    isSubTask && (subtask?.model || customAgent?.model)
+      ? customAgentModel
+      : undefined;
   const {
     isLoading: isModelsLoading,
+    models,
     selectedModel,
     updateSelectedModelId,
   } = useSelectedModels({
@@ -199,7 +202,13 @@ function Chat({
     taskId: uid,
   });
 
-  useRestoreTaskModel(task, info, isModelsLoading, updateSelectedModelId);
+  useRestoreTaskModel(
+    task,
+    info,
+    isModelsLoading,
+    updateSelectedModelId,
+    models,
+  );
 
   const { autoApproveActive, autoApproveSettings } = useAutoApprove({
     autoApproveGuard: autoApproveGuard.current === "auto",
@@ -432,7 +441,7 @@ function Chat({
     isMcpConfigLoading,
   });
 
-  useSetSubtaskModel({ isSubTask, customAgent });
+  useSetSubtaskModel({ isSubTask, customAgent, model: subtask?.model });
 
   usePendingModelAutoStart({
     enabled:
@@ -441,7 +450,7 @@ function Chat({
       !isModelsLoading &&
       !!selectedModel &&
       info.type !== "fork-task" &&
-      (!isSubTask || (!!subtask && !(subtask.agent && isCustomAgentLoading))),
+      (!isSubTask || (!!subtask && !isCustomAgentLoading)),
     task,
     retry,
   });

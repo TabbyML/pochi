@@ -104,6 +104,39 @@ describe("ManagedToolCallLifeCycle top-level task spawn", () => {
     expect(result).toContain("pochi://$/transcripts/task-1.md");
   });
 
+  it("passes modelId when spawning a top-level task with model", async () => {
+    vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
+    const store = makeParentStore();
+    const lifecycle = new ManagedToolCallLifeCycle(
+      store as never,
+      { toolName: "newTask", toolCallId: "spawn-model" },
+      new AbortController().signal,
+    );
+
+    lifecycle.execute(
+      {
+        description: "Fix it",
+        prompt: "Fix the bug",
+        spawn: "task",
+        model: "pochi/fast-model",
+        _meta: { uid: "task-2" },
+      },
+      { taskId: "parent" },
+    );
+
+    await vi.waitFor(() => expect(lifecycle.status).toBe("complete"));
+    expect(vscodeHostMock.openTaskInPanel).toHaveBeenCalledWith(
+      {
+        type: "new-task",
+        uid: "task-2",
+        cwd: "/repo",
+        prompt: "Fix the bug",
+        modelId: "pochi/fast-model",
+      },
+      { preview: false, background: true },
+    );
+  });
+
   it("starts the task in a new worktree from the parent's HEAD", async () => {
     vscodeHostMock.openTaskInPanel = vi.fn(async () => undefined);
     vscodeHostMock.createWorktree = vi.fn(async () => ({

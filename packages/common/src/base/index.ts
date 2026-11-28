@@ -145,6 +145,8 @@ export interface BackgroundTaskState {
   parentTaskId?: string;
   useCase?: ForkAgentUseCase;
   agentType?: string;
+  /** Model ID override specified via newTask's model parameter. */
+  model?: string;
   /** Maximum number of steps this background task may run. */
   maxSteps?: number;
   /** Step-start count inherited from the parent, excluded from the max-step guard. */
